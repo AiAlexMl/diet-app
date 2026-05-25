@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>בונה תפריט תזונה</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-wrapper" id="app">
+
+  <!-- לוגו -->
+  <div class="app-logo">
+    <span class="logo-icon">🥗</span>
+    <span class="logo-text">DiatAI</span>
+  </div>
+
+  <!-- שורת התקדמות -->
+  <div class="step-bar">
+    <div class="step active" id="s0"></div>
+    <div class="step"        id="s1"></div>
+    <div class="step"        id="s2"></div>
+    <div class="step"        id="s3"></div>
+    <div class="step"        id="s4"></div>
+  </div>
+
+  <!-- ══ מסך 1: פרטים אישיים ══ -->
+  <div class="screen active" id="screen-0">
+    <div class="screen-title">פרטים אישיים</div>
+    <div class="screen-sub">נחשב את הצרכים התזונתיים שלך</div>
+
+    <div class="section">
+      <div class="grid-3">
+        <div class="field"><label>גיל</label><input type="number" id="age" value="28" min="15" max="80"></div>
+        <div class="field"><label>גובה (ס"מ)</label><input type="number" id="height" value="178" min="140" max="220"></div>
+        <div class="field"><label>משקל (ק"ג)</label><input type="number" id="weight" value="80" min="40" max="200"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">מין</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="male-btn"   onclick="setGender('male')">זכר</button>
+        <button class="toggle-btn"        id="female-btn" onclick="setGender('female')">נקבה</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">מטרה</div>
+      <div class="toggle-group">
+        <button class="toggle-btn"        id="cut-btn"      onclick="setGoal('cut')">חיטוב</button>
+        <button class="toggle-btn active" id="maintain-btn" onclick="setGoal('maintain')">שמירה</button>
+        <button class="toggle-btn"        id="bulk-btn"     onclick="setGoal('bulk')">מסה</button>
+      </div>
+    </div>
+
+    <div class="rmr-box" id="rmr-box">
+      <div><div class="rmr-label">BMR</div><div class="rmr-val" id="bmr-disp">—</div></div>
+      <div><div class="rmr-label">RMR (×1.2)</div><div class="rmr-val" id="rmr-disp">—</div></div>
+      <div><div class="rmr-label">יעד קלורי</div><div class="rmr-val rmr-target" id="target-disp">—</div></div>
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn-primary" onclick="goTo(1)">המשך ←</button>
+    </div>
+  </div>
+
+  <!-- ══ מסך 2: העדפות תזונה ══ -->
+  <div class="screen" id="screen-1">
+    <div class="screen-title">העדפות תזונה</div>
+    <div class="screen-sub">סמן מה רלוונטי אליך</div>
+
+    <div class="section">
+      <div class="sec-title">סגנון תזונה</div>
+      <div class="chip-group">
+        <div class="chip" data-val="kosher"       onclick="toggleDiet(this)">כשר</div>
+        <div class="chip" data-val="vegan"        onclick="toggleDiet(this)">טבעוני</div>
+        <div class="chip" data-val="vegetarian"   onclick="toggleDiet(this)">צמחוני</div>
+        <div class="chip" data-val="gluten_free"  onclick="toggleDiet(this)">ללא גלוטן</div>
+        <div class="chip" data-val="lactose_free" onclick="toggleDiet(this)">ללא לקטוז</div>
+        <div class="chip" data-val="supplements"  onclick="toggleDiet(this)">תוספי תזונה</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">אלרגיות</div>
+      <div class="chip-group">
+        <div class="chip" data-val="nuts"     onclick="toggleAllergy(this)">אגוזים</div>
+        <div class="chip" data-val="peanuts"  onclick="toggleAllergy(this)">בוטנים</div>
+        <div class="chip" data-val="eggs"     onclick="toggleAllergy(this)">ביצים</div>
+        <div class="chip" data-val="fish"     onclick="toggleAllergy(this)">דגים</div>
+        <div class="chip" data-val="soy"      onclick="toggleAllergy(this)">סויה</div>
+        <div class="chip" data-val="sesame"   onclick="toggleAllergy(this)">שומשום/טחינה</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">זמן אימון</div>
+      <div class="time-grid">
+        <div class="time-card" data-val="morning" onclick="setTime(this)">
+          <div class="tc-icon">🌅</div>
+          <div class="tc-label">בוקר</div>
+          <div class="tc-sub">06:30</div>
+        </div>
+        <div class="time-card" data-val="noon" onclick="setTime(this)">
+          <div class="tc-icon">☀️</div>
+          <div class="tc-label">צהריים</div>
+          <div class="tc-sub">15:00</div>
+        </div>
+        <div class="time-card" data-val="evening" onclick="setTime(this)">
+          <div class="tc-icon">🌙</div>
+          <div class="tc-label">ערב</div>
+          <div class="tc-sub">20:30</div>
+        </div>
+      </div>
+      <button class="btn-skip" id="notrain-btn" onclick="toggleNoTrain()"
+              style="width:100%;margin-top:8px">לא מתאמן כרגע</button>
+      <div class="info-note" id="time-note"></div>
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn-secondary" onclick="goTo(0)">← חזור</button>
+      <button class="btn-primary"   onclick="goTo(2)">המשך ←</button>
+    </div>
+  </div>
+
+  <!-- ══ מסך 3: מאכלים מועדפים ══ -->
+  <div class="screen" id="screen-2">
+    <div class="screen-title">מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂</div>
+    <div class="cat-tabs" id="like-tabs"></div>
+    <div class="food-grid" id="like-grid"></div>
+    <div class="count-bar">
+      <span>סומנו: <strong id="like-count">0</strong> מאכלים</span>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-secondary" onclick="goTo(1)">← חזור</button>
+      <button class="btn-primary"   onclick="goTo(3)">המשך ←</button>
+    </div>
+  </div>
+
+  <!-- ══ מסך 4: מאכלים מוחרגים ══ -->
+  <div class="screen" id="screen-3">
+    <div class="screen-title">יש משהו שאתה פשוט לא אוכל? 🚫</div>
+    <div class="screen-sub">אם אין — לחץ המשך</div>
+    <div class="cat-tabs" id="avoid-tabs"></div>
+    <div class="food-grid" id="avoid-grid"></div>
+    <div class="count-bar">
+      <span>מוחרגים: <strong id="avoid-count">0</strong> מאכלים</span>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-secondary" onclick="goTo(2)">← חזור</button>
+      <button class="btn-primary"   onclick="renderMenu()">בנה לי תפריט ←</button>
+    </div>
+  </div>
+
+  <!-- ══ מסך 5: תפריט ══ -->
+  <div class="screen" id="screen-4">
+    <div id="menu-output"></div>
+  </div>
+
+</div><!-- /app-wrapper -->
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
