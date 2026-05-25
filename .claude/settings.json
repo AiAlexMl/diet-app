@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash($git status*)",
+      "Bash($git add*)",
+      "Bash($git commit*)",
+      "Bash($git log*)",
+      "Bash($git diff*)",
+      "Bash($git branch*)",
+      "Bash(Start-Process*)",
+      "Bash(*git.exe status*)",
+      "Bash(*git.exe add*)",
+      "Bash(*git.exe commit*)",
+      "Bash(*git.exe log*)",
+      "Bash(*git.exe diff*)",
+      "Bash(*git.exe branch*)"
+    ]
+  }
+}
