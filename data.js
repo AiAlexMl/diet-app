@@ -5,7 +5,6 @@
 
 const DB = {
   "חלבון מן החי": [
-    { id:1,  name:"חזה עוף מבושל",       prep:"מבושל",      p:31.0, c:0.0,  f:3.6,  cal:165, tags:["meat"] },
     { id:2,  name:"חזה עוף אפוי",        prep:"אפוי בתנור", p:32.0, c:0.0,  f:4.2,  cal:175, tags:["meat"] },
     { id:3,  name:"חזה עוף מטוגן",       prep:"מטוגן",      p:33.4, c:0.5,  f:4.7,  cal:187, tags:["meat"] },
     { id:4,  name:"שוק עוף",             prep:"אפוי",       p:28.5, c:0.0,  f:11.2, cal:216, tags:["meat"] },
@@ -19,7 +18,9 @@ const DB = {
     { id:12, name:"דג בורי",             prep:"אפוי",       p:24.8, c:0.0,  f:6.3,  cal:159, tags:["fish"] },
     { id:13, name:"מוסר ים",             prep:"אפוי",       p:22.4, c:0.0,  f:3.5,  cal:124, tags:["fish"] },
     { id:14, name:"דג אמנון",            prep:"אפוי",       p:26.1, c:0.0,  f:2.6,  cal:128, tags:["fish"] },
-    { id:15, name:"ביצה שלמה",           prep:"",           p:12.6, c:1.1,  f:10.6, cal:155, tags:["egg"], maxDay:120, isEgg:true },
+    { id:15, name:'ביצה M',               prep:"",           p:12.6, c:1.1,  f:10.6, cal:155, tags:["egg"], maxDay:106, isEgg:true, unitG:53 },
+    { id:16, name:'ביצה L',               prep:"",           p:12.6, c:1.1,  f:10.6, cal:155, tags:["egg"], maxDay:126, isEgg:true, unitG:63 },
+    { id:17, name:'ביצה XL',              prep:"",           p:12.6, c:1.1,  f:10.6, cal:155, tags:["egg"], maxDay:146, isEgg:true, unitG:73 },
   ],
   "מוצרי חלב": [
     { id:20, name:"קוטג' 5%",            prep:"", p:11.0, c:3.5,  f:4.0,  cal:90,  tags:["dairy"], unitG:250, unitLabel:"קופסה (250g)",  halfLabel:"חצי קופסה (125g)" },
@@ -44,8 +45,9 @@ const DB = {
     { id:42, name:"קינואה מבושלת",      prep:"", p:4.4, c:21.3, f:1.9, cal:120, tags:["grain","hot_carb"] },
     { id:43, name:"כוסמת מבושלת",       prep:"", p:3.4, c:20.0, f:0.6, cal:92,  tags:["grain","hot_carb"] },
     { id:44, name:"בולגור מבושל",       prep:"", p:3.1, c:18.6, f:0.2, cal:83,  tags:["grain","hot_carb"] },
-    { id:45, name:"פריכיות אורז",       prep:"", p:0.7, c:7.5,  f:0.3, cal:35,  tags:["grain","bread","cracker"], unitG:9, unitLabel:"פריכייה אחת" },
-    { id:46, name:"פריכיות תירס",       prep:"", p:0.8, c:7.8,  f:0.3, cal:35,  tags:["grain","bread","cracker"], unitG:9, unitLabel:"פריכייה אחת" },
+    { id:45, name:"פריכיות אורז גדולות", prep:"", p:7.8, c:80.7, f:3.5, cal:384, tags:["grain","bread","cracker"], unitG:9,  unitLabel:"פריכייה אחת" },
+    { id:46, name:"פריכיות תירס",       prep:"", p:8.5, c:79.0, f:3.5, cal:384, tags:["grain","bread","cracker"], unitG:9,  unitLabel:"פריכייה אחת" },
+    { id:100,name:"פריכיות אורז קטנות", prep:"", p:7.8, c:80.7, f:3.5, cal:384, tags:["grain","bread","cracker"], unitG:4,  unitLabel:"פריכייה קטנה" },
   ],
   "ירקות עמילניים": [
     { id:47, name:"בטטה",               prep:"אפויה", p:2.0, c:21.0, f:0.1, cal:90,  tags:["starch","hot_carb"], unitG:150, unitLabel:"בטטה בינונית" },
@@ -89,6 +91,10 @@ const DB = {
     { id:81, name:"תות שדה",            prep:"", p:0.7, c:7.7,  f:0.3, cal:32,  tags:["fruit"], unitG:150, unitLabel:"קערת תותים" },
     { id:82, name:"מנגו",               prep:"", p:0.8, c:15.0, f:0.4, cal:60,  tags:["fruit"], unitG:150, unitLabel:"חצי מנגו" },
     { id:83, name:"אשכולית",            prep:"", p:0.8, c:10.7, f:0.1, cal:42,  tags:["fruit"], unitG:246, unitLabel:"אשכולית שלמה" },
+    { id:102,name:"נקטרינה",           prep:"", p:1.1, c:10.6, f:0.3, cal:44,  tags:["fruit"], unitG:142, unitLabel:"נקטרינה בינונית" },
+    { id:103,name:"אפרסק",             prep:"", p:0.9, c:9.5,  f:0.3, cal:39,  tags:["fruit"], unitG:150, unitLabel:"אפרסק בינוני" },
+    { id:104,name:"שזיף",              prep:"", p:0.7, c:11.4, f:0.3, cal:46,  tags:["fruit"], unitG:66,  unitLabel:"שזיף אחד" },
+    { id:105,name:"קלמנטינה",          prep:"", p:0.9, c:12.0, f:0.2, cal:47,  tags:["fruit"], unitG:74,  unitLabel:"קלמנטינה אחת" },
   ],
   "שומנים": [
     { id:86, name:"שמן זית",            prep:"", p:0.0,  c:0.0,  f:100.0, cal:884, tags:["fat","oil"],      unitG:14, unitLabel:"כף שמן" },
@@ -105,6 +111,7 @@ const DB = {
     { id:97, name:"אבקת חלבון צמחי",    prep:"", p:70.0, c:8.0, f:6.0, cal:360, tags:["supplement"], unitG:30, unitLabel:"סקופ אחד (30g)" },
     { id:98, name:"קזאין",              prep:"", p:72.0, c:9.0, f:4.5, cal:370, tags:["supplement"], unitG:30, unitLabel:"סקופ אחד (30g)" },
     { id:99, name:"בר חלבון",           prep:"", p:21.0, c:20.0,f:6.0, cal:190, tags:["supplement"], unitG:60, unitLabel:"בר אחד (60g)" },
+    { id:101,name:"חטיף אנרגיה",       prep:"", p:9.0,  c:64.0,f:7.0, cal:380, tags:["supplement"], unitG:65, unitLabel:"חטיף אחד (65g)" },
   ],
 };
 

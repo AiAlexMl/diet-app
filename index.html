@@ -31,7 +31,7 @@
 
     <div class="section">
       <div class="grid-3">
-        <div class="field"><label>גיל</label><input type="number" id="age" value="28" min="15" max="80"></div>
+        <div class="field"><label>גיל</label><input type="number" id="age" value="28" min="15" max="60"></div>
         <div class="field"><label>גובה (ס"מ)</label><input type="number" id="height" value="178" min="140" max="220"></div>
         <div class="field"><label>משקל (ק"ג)</label><input type="number" id="weight" value="80" min="40" max="200"></div>
       </div>
@@ -54,6 +54,7 @@
       </div>
     </div>
 
+    <div id="bmi-warn-box" class="bmi-warn-inline" style="display:none"></div>
     <div class="rmr-box" id="rmr-box">
       <div><div class="rmr-label">BMR</div><div class="rmr-val" id="bmr-disp">—</div></div>
       <div><div class="rmr-label">RMR (×1.2)</div><div class="rmr-val" id="rmr-disp">—</div></div>
@@ -127,6 +128,7 @@
   <!-- ══ מסך 3: מאכלים מועדפים ══ -->
   <div class="screen" id="screen-2">
     <div class="screen-title">מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂</div>
+    <div class="screen-sub">עבור בין הקטגוריות וסמן את המאכלים שאתה אוהב</div>
     <div class="cat-tabs" id="like-tabs"></div>
     <div class="food-grid" id="like-grid"></div>
     <div class="count-bar">
@@ -141,7 +143,7 @@
   <!-- ══ מסך 4: מאכלים מוחרגים ══ -->
   <div class="screen" id="screen-3">
     <div class="screen-title">יש משהו שאתה פשוט לא אוכל? 🚫</div>
-    <div class="screen-sub">אם אין — לחץ המשך</div>
+    <div class="screen-sub">עבור בין הקטגוריות וסמן מאכלים שתרצה לא לראות בתפריט. אם אין — לחץ המשך</div>
     <div class="cat-tabs" id="avoid-tabs"></div>
     <div class="food-grid" id="avoid-grid"></div>
     <div class="count-bar">
@@ -163,5 +165,19 @@
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="ui.js"></script>
+
+<!-- חלון ויתור -->
+<div class="disclaimer-overlay" id="disclaimer-overlay">
+  <div class="disclaimer-box">
+    <div class="disclaimer-icon">⚕️</div>
+    <div class="disclaimer-title">לפני שמתחילים</div>
+    <div class="disclaimer-body">
+      האפליקציה מספקת מידע כללי בלבד ואינה מחליפה ייעוץ מקצועי של תזונאי, דיאטנית או רופא.
+      <br><br>
+      כל שימוש באפליקציה הוא על דעת המשתמש ועל אחריותו הבלעדית.
+    </div>
+    <button class="btn-primary disclaimer-btn" onclick="closeDisclaimer()">הבנתי, המשך ←</button>
+  </div>
+</div>
 </body>
 </html>

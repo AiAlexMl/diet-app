@@ -56,6 +56,18 @@ function updateMacroDisplay() {
   document.getElementById('rmr-disp').textContent    = S.rmr.toLocaleString();
   document.getElementById('target-disp').textContent = S.target.toLocaleString();
   document.getElementById('rmr-box').style.display   = 'flex';
+
+  const bmi = S.weight / (S.height / 100) ** 2;
+  const warnBox = document.getElementById('bmi-warn-box');
+  if (S.goal === 'cut' && bmi < 20) {
+    warnBox.textContent = `BMI שלך הוא ${bmi.toFixed(1)} — נמוך. חיטוב במשקל זה עלול לגרום לנזק בריאותי. מומלץ לשקול שמירה או בניית מסה.`;
+    warnBox.style.display = 'block';
+  } else if (S.goal === 'bulk' && bmi >= 30) {
+    warnBox.textContent = `BMI שלך הוא ${bmi.toFixed(1)} — גבוה. בתפריט מסה מומלץ להתייעץ עם תזונאי או רופא לפני שמתחילים.`;
+    warnBox.style.display = 'block';
+  } else {
+    warnBox.style.display = 'none';
+  }
 }
 
 ['age','height','weight'].forEach(id =>
@@ -118,9 +130,11 @@ function renderGrid(mode) {
   const tabsEl = document.getElementById(mode + '-tabs');
   const gridEl = document.getElementById(mode + '-grid');
 
-  tabsEl.innerHTML = CATS.map(c =>
-    `<div class="cat-tab${c === cat ? ' ' + cls : ''}" onclick="selectCat('${mode}','${c}')">${c}</div>`
-  ).join('');
+  tabsEl.innerHTML = CATS.map(c => {
+    const count = DB[c].filter(f => mode === 'like' ? S.liked.has(f.id) : S.avoided.has(f.id)).length;
+    const badge = count > 0 ? `<span class="tab-badge">${count}</span>` : '';
+    return `<div class="cat-tab${c === cat ? ' ' + cls : ''}" onclick="selectCat('${mode}','${c}')">${c}${badge}</div>`;
+  }).join('');
 
   gridEl.innerHTML = DB[cat].map(f => {
     const on = mode === 'like' ? S.liked.has(f.id) : S.avoided.has(f.id);
@@ -147,6 +161,25 @@ function toggleFood(mode, id) {
   card.classList.toggle(mode === 'like' ? 'liked' : 'avoided', on);
   card.querySelector('.fc-icon').textContent =
     mode === 'like' ? (on ? '❤️' : '🤍') : (on ? '🚫' : '✓');
+  updateTabBadges(mode);
+}
+
+function updateTabBadges(mode) {
+  const cat = mode === 'like' ? likeCat : avoidCat;
+  const cls = mode === 'like' ? 'active-like' : 'active-avoid';
+  const tabs = document.getElementById(mode + '-tabs').querySelectorAll('.cat-tab');
+  CATS.forEach((c, i) => {
+    const tab = tabs[i];
+    if (!tab) return;
+    const count = DB[c].filter(f => mode === 'like' ? S.liked.has(f.id) : S.avoided.has(f.id)).length;
+    const existing = tab.querySelector('.tab-badge');
+    if (count > 0) {
+      if (existing) existing.textContent = count;
+      else tab.insertAdjacentHTML('beforeend', `<span class="tab-badge">${count}</span>`);
+    } else if (existing) {
+      existing.remove();
+    }
+  });
 }
 
 // ══════════════════════════════════════════
@@ -173,11 +206,19 @@ function renderMenu() {
     <div class="menu-sub">${tLabel}</div>
   </div>`;
 
-  // אזהרת BMI נמוך
+  // אזהרת BMI
   if (S.bmiWarning) {
     html += `<div class="bmi-warning">
       <span class="bmi-warning-icon">⚠️</span>
       <span>${S.bmiWarning}</span>
+    </div>`;
+  }
+
+  // אזהרת פחמימות נמוכות
+  if (S.carbWarning) {
+    html += `<div class="bmi-warning" style="background:#fffbeb;border-color:#fde68a;border-right-color:#f59e0b;color:#78350f">
+      <span class="bmi-warning-icon">ℹ️</span>
+      <span>${S.carbWarning}</span>
     </div>`;
   }
 
@@ -201,6 +242,10 @@ function renderMenu() {
           <span class="meal-cal">${m.totCal} קל׳</span>
         </div>
       </div>`;
+
+    if (m.items.length === 0) {
+      html += `<div class="empty-meal-note">לא נמצאו מזונות מתאימים לארוחה זו. נסה להסיר חלק מהמאכלים המוחרגים.</div>`;
+    }
 
     m.items.forEach(it => {
       if (it.isSaladGroup) {
@@ -265,9 +310,42 @@ function renderMenu() {
     </div>
   </div>
   <div class="nav-btns" style="margin-top:12px">
-    <button class="btn-primary" onclick="goTo(0)">בנה תפריט חדש ←</button>
+    <button class="btn-primary" onclick="resetApp()">בנה תפריט חדש ←</button>
   </div>`;
 
   document.getElementById('menu-output').innerHTML = html;
   goTo(4);
+}
+
+// ══════════════════════════════════════════
+//  חלון ויתור
+// ══════════════════════════════════════════
+function closeDisclaimer() {
+  document.getElementById('disclaimer-overlay').style.display = 'none';
+}
+
+// ══════════════════════════════════════════
+//  איפוס מלא לתפריט חדש
+// ══════════════════════════════════════════
+function resetApp() {
+  S.liked.clear();
+  S.avoided.clear();
+  S.diet.clear();
+  S.allergy.clear();
+  S.time   = null;
+  S.noTrain = false;
+  S.goal   = 'maintain';
+
+  document.querySelectorAll('.chip').forEach(el => el.classList.remove('active', 'active-danger'));
+  ['cut','maintain','bulk'].forEach(x => document.getElementById(x + '-btn').classList.remove('active'));
+  document.getElementById('maintain-btn').classList.add('active');
+  document.querySelectorAll('.time-card').forEach(c => c.classList.remove('active'));
+  const noTrainBtn = document.getElementById('notrain-btn');
+  noTrainBtn.textContent   = 'לא מתאמן כרגע';
+  noTrainBtn.style.borderStyle = 'dashed';
+  document.getElementById('time-note').style.display = 'none';
+  document.getElementById('like-count').textContent  = '0';
+  document.getElementById('avoid-count').textContent = '0';
+
+  goTo(0);
 }

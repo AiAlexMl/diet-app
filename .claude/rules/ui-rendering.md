@@ -9,17 +9,60 @@ paths:
 
 ## Screen Navigation
 
-`goTo(n)` shows screen `n` (0–4), hides others via `display:none`, updates step-bar classes. Screens: 0=פרטים אישיים, 1=העדפות תזונה, 2=מאכלים מועדפים, 3=מאכלים מוחרגים, 4=תפריט.
+`goTo(n)` shows screen `n` (0–4), hides others via `display:none`, updates step-bar classes.
+
+| Screen | Content |
+|--------|---------|
+| 0 | פרטים אישיים — age/height/weight/gender/goal + live RMR box + live BMI warning |
+| 1 | העדפות תזונה — diet chips, allergy chips, training time cards |
+| 2 | מאכלים מועדפים — category tabs with badge counts, food cards |
+| 3 | מאכלים מוחרגים — same grid structure, avoid mode |
+| 4 | תפריט — output of `renderMenu()` |
+
+## Live BMI Warning (screen 0)
+
+`updateMacroDisplay()` computes BMI inline and shows/hides `#bmi-warn-box` (`.bmi-warn-inline`):
+- cut + BMI < 20 → orange warning
+- bulk + BMI ≥ 30 → orange warning
+- Otherwise → hidden
+
+## Food Grid (screens 2–3)
+
+`renderGrid(mode)` builds:
+1. **Category tabs** — each tab shows a badge with selected-item count for that category
+2. **Food cards** — ❤️/🚫 icons, name, prep
+
+`toggleFood(mode, id)` updates the card in-place and calls `updateTabBadges(mode)` to refresh all badge counts without re-rendering the grid.
 
 ## Menu Rendering (`renderMenu`)
 
-Food row name priority:
-1. `it.displayName` if set (eggs → "חביתה מביצה אחת")
-2. Otherwise: `it.f.name` + `it.f.prep` if the prep word isn't already in the name (e.g., "בטטה אפויה", "ברוקולי מאודה")
+Renders in order:
+1. Menu header (goal label + training label)
+2. `S.bmiWarning` → orange `.bmi-warning` banner (⚠️)
+3. `S.carbWarning` → yellow `.bmi-warning` banner (ℹ️)
+4. Morning training tip (if applicable)
+5. Meal cards
+6. Daily summary card
 
-Salad group (`isSaladGroup: true`) rendered as a collapsible row with `it.parts.join(' + ')` as subtitle.
+**Food row name priority:**
+1. `it.displayName` if set — eggs: "חביתה מביצה אחת (L)"
+2. `it.f.name + it.f.prep` if prep word not already in name (e.g., "ברוקולי מאודה")
 
-BMI warning (`S.bmiWarning`) rendered as an orange banner (`.bmi-warning`) above the meal cards.
+**Salad group** (`isSaladGroup: true`) — renders label + `it.parts.join(' + ')` as subtitle.
+
+**Empty meal** — if `m.items.length === 0`, renders `.empty-meal-note` message instead.
+
+## Reset (`resetApp`)
+
+Called from "בנה תפריט חדש" button in menu screen. Clears:
+- `S.liked`, `S.avoided`, `S.diet`, `S.allergy`
+- `S.goal` → `'maintain'`, `S.time` → `null`, `S.noTrain` → `false`
+
+Resets all chip/toggle/time-card UI classes, count displays, noTrain button text, then calls `goTo(0)`.
+
+## Disclaimer Overlay
+
+Shown on page load via HTML (`.disclaimer-overlay` always visible at start). `closeDisclaimer()` sets `display:none`. Cannot be re-opened.
 
 ## Design System (style.css v2.0)
 
@@ -28,7 +71,7 @@ BMI warning (`S.bmiWarning`) rendered as an orange banner (`.bmi-warning`) above
 - **App wrapper**: `background: rgba(255,255,255,0.92)` with `backdrop-filter: blur`
 - **Shadows**: `--shadow-sm` / `--shadow-md` on cards; hover lifts with `translateY(-1px)`
 - **Buttons**: primary = gradient with `box-shadow`; active state = full accent fill
-- **Chips/toggles**: active state = solid accent color (not light-blue tint)
+- **Chips/toggles**: active state = solid accent color
 - **Summary card**: gradient purple/blue with font-weight 800 on numbers
 - **RTL**: `direction: rtl` on body; all layout is RTL-first
 

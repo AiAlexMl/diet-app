@@ -17,6 +17,7 @@ const S = {
   // ערכי מאקרו מחושבים
   bmr: 0, rmr: 0, target: 0, proteinG: 0, fatG: 0, carbG: 0,
   bmiWarning: null,
+  carbWarning: null,
 };
 
 // ── ALL foods flat array (מאוחד מ-DB) ──
@@ -32,9 +33,11 @@ function calcMacro() {
 
   S.bmr    = Math.round(bmr);
   S.rmr    = Math.round(bmr * 1.2);
-  S.target = S.goal === 'cut'  ? S.rmr - 500
+  const cutDeficit = Math.min(500, Math.round(S.rmr * 0.20));
+  S.target = S.goal === 'cut'  ? S.rmr - cutDeficit
            : S.goal === 'bulk' ? S.rmr + 300
            : S.rmr;
+  S.target = Math.max(S.target, S.gender === 'female' ? 1200 : 1500);
 
   // חלבון — לפי BMI, רצפה לנשים על שומן
   const bmi = S.weight / (S.height / 100) ** 2;
@@ -42,7 +45,14 @@ function calcMacro() {
   S.proteinG = Math.round(Math.min(S.weight, pw) * 2);
   S.fatG     = Math.max(S.gender === 'female' ? 40 : 25,
                         Math.round(S.target * 0.2 / 9));
-  S.carbG    = Math.max(0, Math.round((S.target - S.proteinG * 4 - S.fatG * 9) / 4));
+  const macroFloor = S.proteinG * 4 + S.fatG * 9 + 100 * 4;
+  if (S.target < macroFloor) {
+    S.target = macroFloor;
+    S.carbWarning = 'הגירעון הקלורי צומצם מעט כדי לעמוד במינימום המומלץ של חלבון, שומן ופחמימות.';
+  } else {
+    S.carbWarning = null;
+  }
+  S.carbG = Math.round((S.target - S.proteinG * 4 - S.fatG * 9) / 4);
 }
 
 // ══════════════════════════════════════════
@@ -68,9 +78,10 @@ function allowed(f) {
 // ══════════════════════════════════════════
 //  כמויות חכמות
 // ══════════════════════════════════════════
-function eggDisplay(g) {
-  const n = Math.max(1, Math.min(2, Math.round(g / 60)));
-  return { label: n === 1 ? 'חביתה מביצה אחת' : 'חביתה משתי ביצים', g: n * 60 };
+function eggDisplay(g, unitW, size) {
+  const n = Math.max(1, Math.min(2, Math.round(g / unitW)));
+  const base = n === 1 ? 'חביתה מביצה אחת' : 'חביתה משתי ביצים';
+  return { label: size ? `${base} (${size})` : base, g: n * unitW };
 }
 
 function cottagePortion(targetG) {
@@ -79,21 +90,22 @@ function cottagePortion(targetG) {
     : { g: 125, dispG: 'חצי קופסה (125g)' };
 }
 
-function crackerPortion(targetG) {
-  const n = Math.max(2, Math.min(6, Math.round(targetG / 9)));
-  return { g: n * 9, dispG: `${n} פריכיות (${n * 9}g)` };
+function crackerPortion(targetG, unitW) {
+  const n = Math.max(2, Math.min(6, Math.round(targetG / unitW)));
+  return { g: n * unitW, dispG: `${n} פריכיות (${n * unitW}g)` };
 }
 
 function mkItem(f, g) {
   let dispG, displayName;
   if (f.isEgg) {
-    const e = eggDisplay(g); g = e.g;
+    const size = f.name.startsWith('ביצה ') ? f.name.replace('ביצה ', '') : null;
+    const e = eggDisplay(g, f.unitG || 63, size); g = e.g;
     displayName = e.label;   // "חביתה מביצה אחת" / "חביתה משתי ביצים"
     dispG = '';
   } else if ((f.id === 20 || f.id === 21) && f.halfLabel) {
     const c = cottagePortion(g); g = c.g; dispG = c.dispG;
   } else if (f.tags.includes('cracker')) {
-    const c = crackerPortion(g); g = c.g; dispG = c.dispG;
+    const c = crackerPortion(g, f.unitG || 9); g = c.g; dispG = c.dispG;
   } else if (f.unitLabel) {
     dispG = f.unitLabel;
   } else {
@@ -171,7 +183,7 @@ function buildSalad(used) {
   // שמן זית — חובה בסלט (אם מותר לפי העדפות)
   const oil = ALL.find(f => f.id === 86);
   const hasOil = oil && allowed(oil);
-  const oilG = hasOil ? 14 : 0;
+  const oilG = hasOil ? 5 : 0;
 
   const saladCal =
     Math.round(v1.cal * g1 / 100) +
@@ -186,7 +198,7 @@ function buildSalad(used) {
   };
   const parts = [fmtPart(v1, g1), fmtPart(v2, g2)];
   if (v3) parts.push(fmtPart(v3, g3));
-  if (hasOil) parts.push('כף שמן זית');
+  if (hasOil) parts.push('כפית שמן זית');
 
   use(used, { f: v1, g: g1 });
   use(used, { f: v2, g: g2 });
@@ -331,7 +343,9 @@ function buildMenu() {
   // אזהרת BMI נמוך מדי לחיטוב
   const bmi = S.weight / (S.height / 100) ** 2;
   S.bmiWarning = (S.goal === 'cut' && bmi < 20)
-    ? `BMI שלך הוא ${bmi.toFixed(1)} — נמוך מאוד. בנתונים אלה חיטוב עלול לפגוע במסת השריר. מומלץ לשקול תהליך בניית מסה במקום.`
+    ? `BMI שלך הוא ${bmi.toFixed(1)} — נמוך. חיטוב במשקל זה עלול לגרום לנזק בריאותי ולפגיעה במסת השריר. מומלץ לשקול שמירה או בניית מסה.`
+    : (S.goal === 'bulk' && bmi >= 30)
+    ? `BMI שלך הוא ${bmi.toFixed(1)} — גבוה. בתפריט מסה עם BMI כזה מומלץ להתייעץ עם תזונאי או רופא לפני שמתחילים.`
     : null;
 
   const t = S.target;

@@ -11,6 +11,7 @@ Each item in `DB`:
 ```
 
 `p` = protein g/100g, `c` = carbs g/100g, `f` = fat g/100g, `cal` = kcal/100g.
+All numeric fields (`p`, `c`, `f`, `cal`) are **per 100g** — never per serving.
 
 ## Tags
 
@@ -21,13 +22,13 @@ All filtering logic is tag-driven:
 | `meat` | Chicken, beef, turkey |
 | `fish` | All fish including tuna |
 | `tuna` | Canned tuna — also has `fish`; `maxDay:160` |
-| `egg` | Eggs — also has `isEgg:true`; `maxDay:120` |
+| `egg` | Eggs (M/L/XL) — also has `isEgg:true`; `maxDay` varies by size |
 | `dairy` | Cottage, yogurt, cheese, milk |
 | `grain` | Grains (rice, pasta, oats, quinoa…) |
 | `hot_carb` | Carbs served hot — grain or starch |
 | `starch` | Starchy vegetables (sweet potato, potato, corn) |
 | `bread` | Bread and pita |
-| `cracker` | Rice/corn cakes — portion logic via `crackerPortion()` |
+| `cracker` | Rice/corn cakes — portion logic via `crackerPortion(g, unitG)`; `unitG` varies (4g or 9g) |
 | `breakfast` | Oatmeal — breakfast-only carb |
 | `salad` | Can appear standalone OR in composite salad |
 | `salad_only` | **Only** inside composite salad — never standalone (lettuce, cabbage, onion) |
@@ -36,15 +37,33 @@ All filtering logic is tag-driven:
 | `legume` | Lentils, chickpeas, beans, tofu, edamame |
 | `fruit` | All fruits |
 | `fat` | Healthy fats (avocado, nuts, oil) |
-| `oil` | Olive oil (id:86) — added to every salad |
+| `oil` | Olive oil (id:86) — added to every salad at **5g (כפית)** |
 | `nuts` / `peanuts` / `sesame` / `soy` | Allergen sub-tags |
-| `supplement` | Protein powder, bars — only shown when `supplements` diet selected |
+| `supplement` | Protein powder, bars, energy bars — only shown when `supplements` diet selected |
 
 ## Key Constraints
 
 - `maxDay` — caps total grams per day (tracked in `used` Map in `buildMenu`)
 - `maxMeal` — caps grams per single meal
-- `unitG` — snaps serving size to nearest multiple (e.g., 9g per cracker)
+- `unitG` — snaps serving to nearest multiple; also the minimum serving. For crackers this is the weight per piece (4g or 9g)
 - `unitLabel` — human-readable portion description shown in menu
-- `isEgg:true` — triggers `eggDisplay()` in `mkItem()`; shown as "חביתה" not "ביצה שלמה"
-- `halfLabel` — used for cottage cheese half-container display
+- `isEgg:true` — triggers `eggDisplay(g, unitG, size)` in `mkItem()`; displayed as "חביתה מביצה אחת (L)" etc.
+- `halfLabel` — used for cottage cheese half-container display (ids 20–21 only)
+
+## ID Ranges
+
+| Range | Category |
+|-------|----------|
+| 2–14 | חלבון מן החי — meat (2–7), fish (8–14) |
+| 15–17 | ביצים — M (id:15, 53g), L (id:16, 63g), XL (id:17, 73g) |
+| 20–27 | מוצרי חלב |
+| 33–46 | דגנים — grains, bread, crackers (9g/piece) |
+| 47–49 | ירקות עמילניים |
+| 50–57 | קטניות |
+| 60–74 | ירקות |
+| 75–83, 102–105 | פירות |
+| 86–93 | שומנים |
+| 96–101 | תוספים |
+| 100 | פריכיות אורז קטנות (4g/piece) — in דגנים |
+
+## Next available IDs: 18–19, 28–32, 106+

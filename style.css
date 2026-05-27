@@ -396,6 +396,30 @@ input[type="number"]:focus {
   box-shadow: var(--shadow-sm);
 }
 
+/* ── אזהרת BMI בזמן אמת (מסך 0) ── */
+.bmi-warn-inline {
+  background: #fff7ed;
+  border: 1.5px solid #fed7aa;
+  border-right: 4px solid #f97316;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px; color: #7c2d12;
+  line-height: 1.6; margin-top: 10px;
+}
+
+/* ── badge מונה בטאב קטגוריה ── */
+.tab-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 6px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.cat-tab.active-avoid .tab-badge { background: #fff; color: var(--text-danger); }
+
 /* ── אזהרת BMI ── */
 .bmi-warning {
   display: flex; align-items: flex-start; gap: 10px;
@@ -409,6 +433,37 @@ input[type="number"]:focus {
   margin-bottom: 14px;
 }
 .bmi-warning-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+/* ── חלון ויתור ── */
+.disclaimer-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 1.5rem;
+}
+.disclaimer-box {
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  max-width: 460px; width: 100%;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  text-align: center;
+}
+.disclaimer-icon  { font-size: 48px; margin-bottom: 16px; }
+.disclaimer-title { font-size: 24px; font-weight: 700; margin-bottom: 14px; }
+.disclaimer-body  {
+  font-size: 16px; color: var(--text-sec);
+  line-height: 1.9; margin-bottom: 1.75rem;
+}
+.disclaimer-btn { width: 100%; }
+
+/* ── ארוחה ריקה ── */
+.empty-meal-note {
+  font-size: 12px; color: var(--text-tert);
+  text-align: center; padding: 10px 0;
+  font-style: italic;
+}
 
 /* ── counter bar ── */
 .count-bar {
