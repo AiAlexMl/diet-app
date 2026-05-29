@@ -23,6 +23,19 @@ const S = {
 // ── ALL foods flat array (מאוחד מ-DB) ──
 const ALL = Object.values(DB).flat();
 
+// ── טונה: סוג אחד בלבד לתפריט, מקסימום קופסה אחת ──
+const TUNA_IDS = new Set(ALL.filter(f => f.tags.includes('tuna')).map(f => f.id));
+const tunaUsed = used => [...TUNA_IDS].some(id => used.has(id));
+
+// ערבוב (Fisher-Yates) — לגיוון בחירת מאכלים מועדפים
+const shuffle = arr => {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
 // ══════════════════════════════════════════
 //  חישובי מאקרו — Harris-Benedict 1919 × 1.2
 // ══════════════════════════════════════════
@@ -117,6 +130,7 @@ function mkItem(f, g) {
     p:   Math.round(f.p   * g / 10) / 10,
     c:   Math.round(f.c   * g / 10) / 10,
     fat: Math.round(f.f   * g / 100),
+    fib: Math.round((f.fib || 0) * g / 10) / 10,
   };
 }
 
@@ -124,8 +138,9 @@ function mkItem(f, g) {
 //  בחירת מזון — מועדפים ראשונה, ללא חזרות
 // ══════════════════════════════════════════
 function pick(pool, used, calT, protT, maxG) {
+  // מועדפים ראשונים (בסדר אקראי לגיוון), אחריהם השאר בסדר המאגר
   const sorted = [
-    ...pool.filter(f => S.liked.has(f.id) && allowed(f) && !used.has(f.id)),
+    ...shuffle(pool.filter(f => S.liked.has(f.id) && allowed(f) && !used.has(f.id))),
     ...pool.filter(f => !S.liked.has(f.id) && allowed(f) && !used.has(f.id)),
   ];
   for (const f of sorted) {
@@ -205,12 +220,14 @@ function buildSalad(used) {
   if (v3) use(used, { f: v3, g: g3 });
   if (hasOil && oil) use(used, { f: oil, g: oilG });
 
+  const fibOf = f => f.fib || 0;
   return {
     isSaladGroup: true, label: 'סלט ירק', parts,
     cal: saladCal,
     p:   Math.round((v1.p*g1/100 + v2.p*g2/100 + (v3 ? v3.p*g3/100 : 0)) * 10) / 10,
     c:   Math.round((v1.c*g1/100 + v2.c*g2/100 + (v3 ? v3.c*g3/100 : 0)) * 10) / 10,
     fat: Math.round((v1.f*g1/100 + v2.f*g2/100 + (v3 ? v3.f*g3/100 : 0) + (hasOil ? oil.f*oilG/100 : 0)) * 10) / 10,
+    fib: Math.round((fibOf(v1)*g1/100 + fibOf(v2)*g2/100 + (v3 ? fibOf(v3)*g3/100 : 0)) * 10) / 10,
   };
 }
 
@@ -255,7 +272,7 @@ function buildBreakfast(cal, used) {
 function buildHotMeal(cal, used, addHotVeg, usedCarbCats) {
   const items = [];
   const protShare = S.proteinG * cal / S.target;
-  const hotMeat = ALL.filter(f => (f.tags.includes('meat') || f.tags.includes('fish')) && !f.tags.includes('tuna'));
+  const hotMeat = ALL.filter(f => (f.tags.includes('meat') || f.tags.includes('fish') || f.tags.includes('legume')) && !f.tags.includes('tuna'));
   const m = pick(hotMeat, used, cal * 0.45, protShare * 0.9, 300);
   if (m) { items.push(m); use(used, m); }
 
@@ -266,24 +283,18 @@ function buildHotMeal(cal, used, addHotVeg, usedCarbCats) {
   const hcPool = prefHc.length ? [...prefHc, ...allHc.filter(f => usedCarbCats.has(getCarbCat(f)))] : allHc;
   const c = pick(hcPool, used, cal * 0.4, 0, 250);
   if (c) { usedCarbCats.add(getCarbCat(c.f)); items.push(c); use(used, c); }
-  const sal = buildSalad(used);
-  if (sal) {
-    items.push(sal);
-  } else if (addHotVeg) {
-    const hv = ALL.filter(f => f.tags.includes('hot_veg'));
-    const hvi = pick(hv, used, cal * 0.1, 0, 200);
-    if (hvi) { items.push(hvi); use(used, hvi); }
-  } else {
-    const sv = buildSingleVeg(used, true);
-    if (sv) items.push(sv);
-  }
+  // ירק: ~40% מהמקרים ירק חם (ברוקולי/כרובית/קישוא) במקום סלט
+  const preferHotVeg = Math.random() < 0.4;
+  let veg = preferHotVeg ? buildSingleVeg(used, true) : buildSalad(used);
+  if (!veg) veg = preferHotVeg ? buildSalad(used) : buildSingleVeg(used, true);
+  if (veg) items.push(veg);
   return items;
 }
 
 function buildTunaMeal(cal, used) {
   const items = [];
   const protShare = S.proteinG * cal / S.target;
-  const tuna = ALL.filter(f => f.tags.includes('tuna'));
+  const tuna = ALL.filter(f => f.tags.includes('tuna') && !tunaUsed(used));
   const t = pick(tuna, used, cal * 0.4, protShare * 0.8, 160);
   if (t) { items.push(t); use(used, t); }
   const bread = ALL.filter(f => f.tags.includes('bread') || f.tags.includes('cracker'));
@@ -298,7 +309,7 @@ function buildTunaMeal(cal, used) {
 function buildDinner(cal, used) {
   const items = [];
   const protShare = S.proteinG * cal / S.target;
-  const cold = ALL.filter(f => f.tags.includes('tuna') || f.tags.includes('dairy') || f.tags.includes('egg'));
+  const cold = ALL.filter(f => (f.tags.includes('tuna') && !tunaUsed(used)) || f.tags.includes('dairy') || f.tags.includes('egg') || f.tags.includes('legume'));
   const p = pick(cold, used, cal * 0.5, protShare * 0.7, 250);
   if (p) { items.push(p); use(used, p); }
   const sal = buildSalad(used);
@@ -325,7 +336,7 @@ function buildSnack(cal, used) {
   const d = ALL.filter(f => f.tags.includes('dairy') || f.tags.includes('supplement'));
   const p = pick(d, used, cal * 0.65, S.proteinG * cal / S.target, 200);
   if (p) { items.push(p); use(used, p); }
-  const fr = pick(ALL.filter(f => f.tags.includes('fruit')), used, cal * 0.35, 0, 250);
+  const fr = pick(ALL.filter(f => f.tags.includes('fruit') || (f.tags.includes('fat') && !f.tags.includes('oil'))), used, cal * 0.35, 0, 250);
   if (fr) { items.push(fr); use(used, fr); }
   else {
     const cr = pick(ALL.filter(f => f.tags.includes('cracker')), used, cal * 0.3, 0, 54);
@@ -361,7 +372,7 @@ function buildMenu() {
     if (def.type === 'breakfast') {
       items = buildBreakfast(budget, used);
     } else if (def.type === 'hot') {
-      const useTuna = hotCount.n > 0 && Math.random() > 0.65;
+      const useTuna = hotCount.n > 0 && Math.random() > 0.65 && !tunaUsed(used);
       items = useTuna ? buildTunaMeal(budget, used) : buildHotMeal(budget, used, hotCount.n > 0, usedCarbCats);
       hotCount.n++;
     } else if (def.type === 'snack') {
@@ -373,7 +384,8 @@ function buildMenu() {
     const totP   = Math.round(items.reduce((s, x) => s + (x.p   || 0), 0) * 10) / 10;
     const totC   = Math.round(items.reduce((s, x) => s + (x.c   || 0), 0) * 10) / 10;
     const totF   = Math.round(items.reduce((s, x) => s + (x.fat || 0), 0) * 10) / 10;
-    return { ...def, budget, items, totCal, totP, totC, totF };
+    const totFib = Math.round(items.reduce((s, x) => s + (x.fib || 0), 0) * 10) / 10;
+    return { ...def, budget, items, totCal, totP, totC, totF, totFib };
   });
 
   // ערובת פרי: אם לא נכנס אף פרי ליום והקלוריות מאפשרות — מוסיפים לנשנוש (או לאחרונה)
@@ -391,6 +403,7 @@ function buildMenu() {
       meal.totP = Math.round((meal.totP + (fr.p   || 0)) * 10) / 10;
       meal.totC = Math.round((meal.totC + (fr.c   || 0)) * 10) / 10;
       meal.totF = Math.round((meal.totF + (fr.fat || 0)) * 10) / 10;
+      meal.totFib = Math.round((meal.totFib + (fr.fib || 0)) * 10) / 10;
     }
   }
 

@@ -7,11 +7,30 @@ paths:
 
 Each item in `DB`:
 ```js
-{ id, name, prep, p, c, f, cal, tags[], unitG?, unitLabel?, maxDay?, maxMeal?, isEgg?, halfLabel? }
+{ id, name, prep, p, c, f, fib, cal, tags[], unitG?, unitLabel?, maxDay?, maxMeal?, isEgg?, halfLabel? }
 ```
 
-`p` = protein g/100g, `c` = carbs g/100g, `f` = fat g/100g, `cal` = kcal/100g.
-All numeric fields (`p`, `c`, `f`, `cal`) are **per 100g** — never per serving.
+`p` = protein g/100g, `c` = carbs g/100g, `f` = fat g/100g, `fib` = fiber g/100g, `cal` = kcal/100g.
+All numeric fields (`p`, `c`, `f`, `fib`, `cal`) are **per 100g** — never per serving.
+`fib` values are approximate (USDA-based). `mkItem()` reads `f.fib || 0`, so a missing `fib` is treated as 0.
+
+## Product Images
+
+Each generic food has an image at `images/<id>.jpg`. The path is **derived from `id` automatically** in `renderMenu()` (`it.f.img || 'images/'+id+'.jpg'`) — generic items do NOT carry an `img` field. A missing file is hidden at runtime via the `<img onerror>` handler, so absence is safe.
+
+Images were sourced from Wikimedia Commons (CC-licensed) via the fetch pipeline; `images/manifest.json` records `{ term, sourceTitle, license, artist }` per id for attribution. Search terms are English; ids 98/100 are copies of 97/45.
+
+## Future Schema (prepared, not yet populated)
+
+Optional fields reserved for the sponsorship layer. Absent = generic item; code treats absence as the default:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `img` | string | **Override** for the derived path. Generic items omit it (path comes from id). Branded items set it to a real product photo supplied by the company — never scraped |
+| `brand` | string | Company name; absent = generic |
+| `tier` | number | Sponsorship priority weight (0/absent = none). Used by the future swap layer as a **tie-breaker only** — never overrides allergy/diet/macro constraints |
+
+The menu algorithm stays brand-agnostic; sponsorship will be a presentation/substitution layer applied after `buildMenu()`.
 
 ## Tags
 

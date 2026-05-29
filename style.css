@@ -314,6 +314,25 @@ input[type="number"]:focus {
 .tag-pre  { background: var(--bg-info); color: var(--accent); border: 1px solid var(--border-info); }
 .tag-post { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
 
+/* תמונת מוצר (thumbnail + hover להגדלה) */
+.food-thumb {
+  position: relative; display: inline-block;
+  width: 26px; height: 26px; margin-left: 8px;
+  vertical-align: middle;
+}
+.food-thumb img {
+  width: 26px; height: 26px;
+  object-fit: cover; border-radius: 6px;
+  border: 1px solid var(--border); cursor: pointer;
+  background: #fff;
+}
+.food-thumb:hover img {
+  position: absolute; z-index: 50;
+  right: 0; top: 50%; transform: translateY(-50%);
+  width: 150px; height: 150px;
+  border-radius: 10px; box-shadow: var(--shadow-md);
+}
+
 /* שורת מזון */
 .food-row {
   display: flex; justify-content: space-between;
@@ -384,6 +403,16 @@ input[type="number"]:focus {
   background: rgba(0,0,0,0.08); border-radius: 99px; overflow: hidden;
 }
 .bar-fill { height: 100%; border-radius: 99px; }
+
+/* שורת סיבים תזונתיים */
+.fiber-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--border-info);
+  font-size: 13px; color: var(--text-sec);
+}
+.fiber-row strong { color: var(--text); font-weight: 700; }
+.fiber-low { color: #b45309; font-size: 12px; }
 
 /* הערת תחתית */
 .tips-box {

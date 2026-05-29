@@ -48,6 +48,8 @@ Renders in order:
 1. `it.displayName` if set — eggs: "חביתה מביצה אחת (L)"
 2. `it.f.name + it.f.prep` if prep word not already in name (e.g., "ברוקולי מאודה")
 
+**Product image** — each non-salad food row shows a 26px thumbnail (`images/<id>.jpg`, derived from id; `it.f.img` overrides). Hover enlarges it to 150px (`.food-thumb:hover img`). Missing files hide via `<img onerror>`. Salad parts don't show images yet.
+
 **Salad group** (`isSaladGroup: true`) — renders label + `it.parts.join(' + ')` as subtitle.
 
 **Empty meal** — if `m.items.length === 0`, renders `.empty-meal-note` message instead.

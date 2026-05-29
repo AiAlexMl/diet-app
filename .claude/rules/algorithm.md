@@ -37,10 +37,16 @@ paths:
 | Builder | Description |
 |---------|-------------|
 | `buildBreakfast` | dairy/egg protein + breakfast carb + salad or single veg |
-| `buildHotMeal` | hot meat/fish + hot_carb (varied by `usedCarbCats`) + salad or hot veg |
+| `buildHotMeal` | meat/fish/**legume** protein + hot_carb (varied by `usedCarbCats`) + **~40% hot veg / else salad** |
 | `buildTunaMeal` | tuna + bread/cracker + salad |
-| `buildDinner` | cold protein (tuna/dairy/egg) + salad + optional bread |
-| `buildSnack` | dairy or supplement + fruit (or cracker fallback) |
+| `buildDinner` | cold protein (tuna/dairy/egg/**legume**) + salad + optional bread |
+| `buildSnack` | dairy or supplement + fruit **or fat (nuts/avocado, not oil)** (cracker fallback) |
+
+Legumes and fats are pulled into protein/snack pools so liked items in those categories actually appear, and so vegetarians/vegans get a protein source.
+
+## Tuna rule
+
+`tunaUsed(used)` gates all tuna pools: only one tuna type per menu, capped at one can (`maxDay:160`).
 
 ## `buildSalad` Rules
 
@@ -57,14 +63,17 @@ paths:
 
 ## `pick()` Priority
 
-1. Foods in `S.liked` → `allowed()` → not in `used` (or under `maxDay`)
-2. All other allowed foods not yet used
+1. Foods in `S.liked` → `allowed()` → not in `used` — **shuffled** (Fisher-Yates) so liked items rotate across regenerations
+2. All other allowed foods not yet used (DB order)
 3. Serving size: calculated from calorie/protein budget, snapped to `unitG`, clamped to `maxDay`/`maxMeal`
+
+Liked foods always outrank non-liked when their category's pool is built; the shuffle only varies order *among* liked items.
 
 ## `mkItem()` Return Shape
 
 ```js
-{ f, g, dispG, displayName?, cal, p, c, fat }
+{ f, g, dispG, displayName?, cal, p, c, fat, fib }
 ```
 - `displayName` set only for eggs: "חביתה מביצה אחת (L)"; `dispG` is `''`
 - All other items: `displayName` is `undefined`; `dispG` holds the portion string
+- `fib` — fiber grams for the served portion (`f.fib || 0`); meals sum it to `totFib`, daily total shown in summary with a `~14g/1000kcal` target hint

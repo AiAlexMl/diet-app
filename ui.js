@@ -194,6 +194,8 @@ function renderMenu() {
   const dP    = Math.round(meals.reduce((s, m) => s + m.totP, 0));
   const dC    = Math.round(meals.reduce((s, m) => s + m.totC, 0));
   const dF    = Math.round(meals.reduce((s, m) => s + m.totF, 0));
+  const dFib  = Math.round(meals.reduce((s, m) => s + (m.totFib || 0), 0));
+  const fibTarget = Math.round(dCal / 1000 * 14);  // ~14g סיבים לכל 1000 קק"ל
   const pPct  = Math.round(dP * 4 / dCal * 100);
   const cPct  = Math.round(dC * 4 / dCal * 100);
   const fPct  = 100 - pPct - cPct;
@@ -265,8 +267,10 @@ function renderMenu() {
           const firstWord = it.f.prep.split(/[\s\/]/)[0];
           return it.f.name.includes(firstWord) ? it.f.name : `${it.f.name} ${it.f.prep}`;
         })();
+        const imgSrc = it.f.img || `images/${it.f.id}.jpg`;
+        const thumb = `<span class="food-thumb"><img src="${imgSrc}" alt="${it.f.name}" loading="lazy" onerror="this.parentElement.style.display='none'"></span>`;
         html += `<div class="food-row">
-          <span class="food-row-name">${rowName}</span>
+          <span class="food-row-name">${thumb}${rowName}</span>
           <div class="food-row-right">
             ${it.dispG ? `<span class="food-row-amount">${it.dispG}</span>` : ''}
             <span class="food-row-cal">${it.cal} קל׳</span>
@@ -304,6 +308,10 @@ function renderMenu() {
       <span class="bar-lbl">שומן</span>
       <div class="bar-track"><div class="bar-fill" style="width:${fPct}%;background:#EF9F27"></div></div>
       <span style="font-size:12px;color:var(--text-tert);width:30px">${fPct}%</span>
+    </div>
+    <div class="fiber-row">
+      <span>סיבים תזונתיים</span>
+      <span><strong>${dFib}g</strong> ${dFib < fibTarget ? `<span class="fiber-low">(מומלץ ~${fibTarget}g)</span>` : '✓'}</span>
     </div>
     <div class="tips-box" style="margin-top:12px">
       פעילות אנאירובית מומלצת לשמירת מסת שריר. אירובי יכול לזרז את התהליך אך אינו חובה.
