@@ -156,10 +156,10 @@
                "artist":  "jules / stonesoup"
            },
     "35":  {
-               "term":  "cooked pasta",
-               "sourceTitle":  "File:Sour pasta with tomatoes and spinach.jpg",
+               "term":  "(picked)",
+               "sourceTitle":  "File:Cooked-Fusilli-on-plate-1.jpg",
                "license":  "CC0",
-               "artist":  "Perunana"
+               "artist":  "MartinThoma"
            },
     "36":  {
                "term":  "whole wheat pasta",
@@ -240,7 +240,7 @@
                "artist":  "Alabama Extension"
            },
     "48":  {
-               "term":  "baked potato",
+               "term":  "(picked, centered)",
                "sourceTitle":  "File:Baked potato (Clovis, CA June 2022).png",
                "license":  "CC BY-SA 4.0",
                "artist":  "NeoBatfreak"
@@ -264,10 +264,10 @@
                "artist":  "Andy Li"
            },
     "52":  {
-               "term":  "hummus",
-               "sourceTitle":  "File:Homemade hummus and pita 03.jpg",
-               "license":  "CC BY-SA 4.0",
-               "artist":  "Satdeep Gill"
+               "term":  "(picked)",
+               "sourceTitle":  "File:Hummus from The Nile.jpg",
+               "license":  "CC BY-SA 2.0",
+               "artist":  "Paul Goyette"
            },
     "53":  {
                "term":  "white beans",
@@ -538,5 +538,11 @@
                 "sourceTitle":  "File:Flapjack.jpeg",
                 "license":  "CC0",
                 "artist":  "Shisma"
+            },
+    "106":  {
+                "term":  "porridge oatmeal bowl",
+                "sourceTitle":  "File:Oatmeal porridge 1-minute with additional ingredients.jpg",
+                "license":  "CC BY-SA 4.0",
+                "artist":  "UserTwoSix"
             }
 }

@@ -42,7 +42,8 @@ const DB = {
     { id:38, name:"לחם שיפון",          prep:"", p:2.7, c:15.6, f:1.1, fib:5.8, cal:82,  tags:["grain","bread"], unitG:30,  unitLabel:"פרוסה אחת" },
     { id:39, name:"פיתה מלאה",          prep:"", p:8.5, c:48.0, f:1.5, fib:6.0, cal:239, tags:["grain","bread"], unitG:65,  unitLabel:"פיתה אחת" },
     { id:40, name:"פיתה לבנה",          prep:"", p:7.5, c:52.0, f:1.2, fib:2.2, cal:255, tags:["grain","bread"], unitG:65,  unitLabel:"פיתה אחת" },
-    { id:41, name:"שיבולת שועל",        prep:"מבושל", p:2.5, c:12.0, f:1.5, fib:1.7, cal:71, tags:["grain","breakfast"] },
+    { id:41, name:"שיבולת שועל במים",   prep:"מבושל", p:2.5, c:12.0, f:1.5, fib:1.7, cal:71,  tags:["grain","breakfast"] },
+    { id:106,name:"שיבולת שועל בחלב",   prep:"מבושל", p:4.8, c:15.0, f:3.8, fib:1.6, cal:116, tags:["grain","breakfast"], containsMilk:true },
     { id:42, name:"קינואה מבושלת",      prep:"", p:4.4, c:21.3, f:1.9, fib:2.8, cal:120, tags:["grain","hot_carb"] },
     { id:43, name:"כוסמת מבושלת",       prep:"", p:3.4, c:20.0, f:0.6, fib:2.7, cal:92,  tags:["grain","hot_carb"] },
     { id:44, name:"בולגור מבושל",       prep:"", p:3.1, c:18.6, f:0.2, fib:4.5, cal:83,  tags:["grain","hot_carb"] },
@@ -62,7 +63,7 @@ const DB = {
     { id:53, name:"שעועית לבנה",        prep:"", p:9.7,  c:25.4, f:0.4, fib:6.3, cal:139, tags:["legume"] },
     { id:54, name:"שעועית שחורה",       prep:"", p:8.9,  c:23.7, f:0.5, fib:8.7, cal:132, tags:["legume"] },
     { id:55, name:"אפונה מבושלת",       prep:"", p:5.4,  c:15.6, f:0.2, fib:5.5, cal:84,  tags:["legume"] },
-    { id:56, name:"טופו",               prep:"אפוי", p:17.3, c:2.8, f:8.7, fib:0.9, cal:144, tags:["legume","soy"] },
+    { id:56, name:"טופו",               prep:"אפוי", p:17.3, c:2.8, f:8.7, fib:0.9, cal:144, tags:["legume","soy"], vegOnly:true },
     { id:57, name:"אדממה",              prep:"", p:11.9, c:8.9,  f:5.2, fib:5.2, cal:121, tags:["legume","soy"] },
   ],
   "ירקות": [

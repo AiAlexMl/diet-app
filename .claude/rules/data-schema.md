@@ -68,6 +68,8 @@ All filtering logic is tag-driven:
 - `unitLabel` — human-readable portion description shown in menu
 - `isEgg:true` — triggers `eggDisplay(g, unitG, size)` in `mkItem()`; displayed as "חביתה מביצה אחת (L)" etc.
 - `halfLabel` — used for cottage cheese half-container display (ids 20–21 only)
+- `vegOnly:true` — only allowed for vegan/vegetarian diets (e.g., tofu id 56). Checked in `allowed()`
+- `containsMilk:true` — excluded for vegan/lactose_free (e.g., oatmeal-with-milk id 106). Checked in `allowed()`
 
 ## ID Ranges
 
@@ -76,7 +78,7 @@ All filtering logic is tag-driven:
 | 2–14 | חלבון מן החי — meat (2–7), fish (8–14) |
 | 15–17 | ביצים — M (id:15, 53g), L (id:16, 63g), XL (id:17, 73g) |
 | 20–27 | מוצרי חלב |
-| 33–46 | דגנים — grains, bread, crackers (9g/piece) |
+| 33–46, 106 | דגנים — grains, bread, crackers; 41 oatmeal (water), 106 oatmeal (milk) |
 | 47–49 | ירקות עמילניים |
 | 50–57 | קטניות |
 | 60–74 | ירקות |
@@ -85,4 +87,4 @@ All filtering logic is tag-driven:
 | 96–101 | תוספים |
 | 100 | פריכיות אורז קטנות (4g/piece) — in דגנים |
 
-## Next available IDs: 18–19, 28–32, 106+
+## Next available IDs: 18–19, 28–32, 107+

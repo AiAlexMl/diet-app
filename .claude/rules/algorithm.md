@@ -37,9 +37,9 @@ paths:
 | Builder | Description |
 |---------|-------------|
 | `buildBreakfast` | dairy/egg protein + breakfast carb + salad or single veg |
-| `buildHotMeal` | meat/fish/**legume** protein + hot_carb (varied by `usedCarbCats`) + **~40% hot veg / else salad** |
+| `buildHotMeal` | meat/fish protein (**legume only if liked / ~25% / no meat available**) + hot_carb (prefers an unused category) + **~40% hot veg / else salad** |
 | `buildTunaMeal` | tuna + bread/cracker + salad |
-| `buildDinner` | cold protein (tuna/dairy/egg/**legume**) + salad + optional bread |
+| `buildDinner` | cold protein (tuna/dairy/egg; **legume only if liked / ~25% / none available**) + salad + optional bread |
 | `buildSnack` | dairy or supplement + fruit **or fat (nuts/avocado, not oil)** (cracker fallback) |
 
 Legumes and fats are pulled into protein/snack pools so liked items in those categories actually appear, and so vegetarians/vegans get a protein source.
@@ -63,11 +63,11 @@ Legumes and fats are pulled into protein/snack pools so liked items in those cat
 
 ## `pick()` Priority
 
-1. Foods in `S.liked` → `allowed()` → not in `used` — **shuffled** (Fisher-Yates) so liked items rotate across regenerations
-2. All other allowed foods not yet used (DB order)
+1. Foods in `S.liked` → `allowed()` → not in `used` — **shuffled** (Fisher-Yates)
+2. All other allowed foods not yet used — **also shuffled** (for menu variety across regenerations)
 3. Serving size: calculated from calorie/protein budget, snapped to `unitG`, clamped to `maxDay`/`maxMeal`
 
-Liked foods always outrank non-liked when their category's pool is built; the shuffle only varies order *among* liked items.
+Liked foods always outrank non-liked (liked group comes first); both groups are shuffled internally so menus vary while preferences are still honored. `buildSalad` and `buildSingleVeg` shuffle their non-liked pools the same way.
 
 ## `mkItem()` Return Shape
 

@@ -85,6 +85,8 @@ function allowed(f) {
   if (d.has('vegetarian') && (f.tags.includes('meat') || f.tags.includes('fish'))) return false;
   if (d.has('lactose_free') && f.tags.includes('dairy')) return false;
   if (f.tags.includes('supplement') && !d.has('supplements')) return false;
+  if (f.vegOnly && !d.has('vegan') && !d.has('vegetarian')) return false;
+  if (f.containsMilk && (d.has('vegan') || d.has('lactose_free'))) return false;
   return true;
 }
 
@@ -138,10 +140,10 @@ function mkItem(f, g) {
 //  בחירת מזון — מועדפים ראשונה, ללא חזרות
 // ══════════════════════════════════════════
 function pick(pool, used, calT, protT, maxG) {
-  // מועדפים ראשונים (בסדר אקראי לגיוון), אחריהם השאר בסדר המאגר
+  // מועדפים ראשונים, אחריהם השאר — שתי הקבוצות בסדר אקראי לגיוון
   const sorted = [
     ...shuffle(pool.filter(f => S.liked.has(f.id) && allowed(f) && !used.has(f.id))),
-    ...pool.filter(f => !S.liked.has(f.id) && allowed(f) && !used.has(f.id)),
+    ...shuffle(pool.filter(f => !S.liked.has(f.id) && allowed(f) && !used.has(f.id))),
   ];
   for (const f of sorted) {
     let lim = maxG;
@@ -168,8 +170,8 @@ function use(used, item) {
 // ══════════════════════════════════════════
 function buildSalad(used) {
   const sortByLiked = arr => [
-    ...arr.filter(f => S.liked.has(f.id)),
-    ...arr.filter(f => !S.liked.has(f.id)),
+    ...shuffle(arr.filter(f => S.liked.has(f.id))),
+    ...shuffle(arr.filter(f => !S.liked.has(f.id))),
   ];
 
   // ירקות רגילים (עגבנייה, מלפפון, פלפל, גזר...) — יכולים לעמוד לבד
@@ -236,7 +238,7 @@ function buildSingleVeg(used, hotOk) {
   const pool = ALL.filter(f =>
     f.tags.includes(tag) && allowed(f) && !used.has(f.id) && !f.tags.includes('salad_only')
   );
-  const sorted = [...pool.filter(f => S.liked.has(f.id)), ...pool.filter(f => !S.liked.has(f.id))];
+  const sorted = [...shuffle(pool.filter(f => S.liked.has(f.id))), ...shuffle(pool.filter(f => !S.liked.has(f.id)))];
   if (!sorted.length) return null;
   const f = sorted[0], g = f.unitG || 100;
   use(used, { f, g });
@@ -272,7 +274,11 @@ function buildBreakfast(cal, used) {
 function buildHotMeal(cal, used, addHotVeg, usedCarbCats) {
   const items = [];
   const protShare = S.proteinG * cal / S.target;
-  const hotMeat = ALL.filter(f => (f.tags.includes('meat') || f.tags.includes('fish') || f.tags.includes('legume')) && !f.tags.includes('tuna'));
+  // חלבון עיקרי: בשר/דג בעיקר; קטניות רק אם מסומנות, ~25% מהמקרים, או כשאין בשר/דג זמין (צמחוני)
+  const meatFish = ALL.filter(f => (f.tags.includes('meat') || f.tags.includes('fish')) && !f.tags.includes('tuna'));
+  const legumes  = ALL.filter(f => f.tags.includes('legume'));
+  const includeLeg = legumes.some(f => S.liked.has(f.id)) || Math.random() < 0.25 || !meatFish.some(f => allowed(f) && !used.has(f.id));
+  const hotMeat = includeLeg ? [...meatFish, ...legumes] : meatFish;
   const m = pick(hotMeat, used, cal * 0.45, protShare * 0.9, 300);
   if (m) { items.push(m); use(used, m); }
 
@@ -280,7 +286,7 @@ function buildHotMeal(cal, used, addHotVeg, usedCarbCats) {
   const getCarbCat = f => f.tags.find(t => t === 'grain' || t === 'starch') || 'other';
   const allHc = ALL.filter(f => f.tags.includes('hot_carb'));
   const prefHc = allHc.filter(f => !usedCarbCats.has(getCarbCat(f)));
-  const hcPool = prefHc.length ? [...prefHc, ...allHc.filter(f => usedCarbCats.has(getCarbCat(f)))] : allHc;
+  const hcPool = prefHc.length ? prefHc : allHc;
   const c = pick(hcPool, used, cal * 0.4, 0, 250);
   if (c) { usedCarbCats.add(getCarbCat(c.f)); items.push(c); use(used, c); }
   // ירק: ~40% מהמקרים ירק חם (ברוקולי/כרובית/קישוא) במקום סלט
@@ -309,7 +315,10 @@ function buildTunaMeal(cal, used) {
 function buildDinner(cal, used) {
   const items = [];
   const protShare = S.proteinG * cal / S.target;
-  const cold = ALL.filter(f => (f.tags.includes('tuna') && !tunaUsed(used)) || f.tags.includes('dairy') || f.tags.includes('egg') || f.tags.includes('legume'));
+  const coldBase = ALL.filter(f => (f.tags.includes('tuna') && !tunaUsed(used)) || f.tags.includes('dairy') || f.tags.includes('egg'));
+  const legumesD = ALL.filter(f => f.tags.includes('legume'));
+  const includeLegD = legumesD.some(f => S.liked.has(f.id)) || Math.random() < 0.25 || !coldBase.some(f => allowed(f) && !used.has(f.id));
+  const cold = includeLegD ? [...coldBase, ...legumesD] : coldBase;
   const p = pick(cold, used, cal * 0.5, protShare * 0.7, 250);
   if (p) { items.push(p); use(used, p); }
   const sal = buildSalad(used);
