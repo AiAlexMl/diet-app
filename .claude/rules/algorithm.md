@@ -28,21 +28,30 @@ paths:
 
 1. Calls `calcMacro()`
 2. Sets `S.bmiWarning` (cut+BMI<20 or bulk+BMI≥30)
-3. Selects `MEAL_TIMES` template based on `S.time` / `S.noTrain`
-4. Builds each meal via dedicated builder; shares a `used` Map (tracks grams per food ID) and a `usedCarbCats` Set (`'grain'`/`'starch'`) for carb variety
+3. Selects `MEAL_TIMES` schedule based on `S.time` / `S.noTrain`
+4. For each meal calls `buildMeal(def.type, budget, used, ctx)`; shares a `used` Map (grams per food ID) and `ctx.usedCarbCats` for hot-carb variety
 5. After all meals: if no fruit was used and `target > 1200`, injects one fruit into the snack
 
-## Builders
+## Meal Templates (the realism mechanism)
 
-| Builder | Description |
-|---------|-------------|
-| `buildBreakfast` | dairy/egg protein + breakfast carb + salad or single veg |
-| `buildHotMeal` | meat/fish protein (**legume only if liked / ~25% / no meat available**) + hot_carb (prefers an unused category) + **~40% hot veg / else salad** |
-| `buildTunaMeal` | tuna + bread/cracker + salad |
-| `buildDinner` | cold protein (tuna/dairy/egg; **legume only if liked / ~25% / none available**) + salad + optional bread |
-| `buildSnack` | dairy or supplement + fruit **or fat (nuts/avocado, not oil)** (cracker fallback) |
+Meals are built from **templates** (`MEAL_TEMPLATES` keyed by `breakfast`/`hot`/`snack`/`dinner`), not free category-mixing — so every meal is a coherent plate by construction.
 
-Legumes and fats are pulled into protein/snack pools so liked items in those categories actually appear, and so vegetarians/vegans get a protein source.
+`buildMeal(type)` → `chooseTemplate()` (keep templates whose required slots are fillable for the diet; prefer ones containing a liked food; weighted-random) → `buildFromTemplate()` fills each slot.
+
+A **slot**: `{ match(f,used) | special, calPct, protPct?, max, optional?, spread? }`.
+- `special`: `'salad'`→`buildSalad`; `'hotveg'`/`'hotveg_or_salad'`→`buildSingleVeg`/(~40% hot veg else salad); `'hot_carb'`→prefers an unused carb category via `ctx.usedCarbCats`.
+- otherwise `pick()` from `ALL.filter(match)`.
+- `spread:'ifAlone'` → `makeSpread()` adds a condiment (tahini/PB) to a bread/cracker **only if the meal has no protein yet** (so cottage/egg/tuna meals get no spread). The bread's `displayName` shows "עם X"; the spread is a **separate row** with its own grams/calories.
+
+Templates: **breakfast** eggs / cheese / yogurt_bowl / porridge / cornflakes / oats_water; **hot** meat (w3) / legume (w1) / tuna (w1); **snack** dairy_fruit / fruit_nuts / cracker_cheese / shake; **dinner** cheese_bread / tuna_bread / big_salad.
+
+## Food role flags (enforce realism, set in `data.js`)
+
+- `condiment` (olive oil, tahini, peanut butter) — never standalone; only via `attachSpread` on bread/cracker
+- `drink` (milk) — never a protein; only the `milk` slot in cornflakes template
+- `complete` (oatmeal-with-milk 106) — self-contained breakfast; its template has no protein slot
+
+Legumes are a `hot`/`big_salad` main (so vegetarians/vegans get protein); meat outweighs legume 3:1 for omnivores.
 
 ## Tuna rule
 

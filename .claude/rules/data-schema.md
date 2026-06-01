@@ -70,6 +70,9 @@ All filtering logic is tag-driven:
 - `halfLabel` — used for cottage cheese half-container display (ids 20–21 only)
 - `vegOnly:true` — only allowed for vegan/vegetarian diets (e.g., tofu id 56). Checked in `allowed()`
 - `containsMilk:true` — excluded for vegan/lactose_free (e.g., oatmeal-with-milk id 106). Checked in `allowed()`
+- `condiment:true` — olive oil (86), tahini (91), peanut butter (92); never standalone, only via `attachSpread` on bread/cracker
+- `drink:true` — milk (27); only the cornflakes `milk` slot, never a protein
+- `complete:true` — self-contained meal (oatmeal-with-milk 106); its template has no protein slot
 
 ## ID Ranges
 
@@ -78,7 +81,7 @@ All filtering logic is tag-driven:
 | 2–14 | חלבון מן החי — meat (2–7), fish (8–14) |
 | 15–17 | ביצים — M (id:15, 53g), L (id:16, 63g), XL (id:17, 73g) |
 | 20–27 | מוצרי חלב |
-| 33–46, 106 | דגנים — grains, bread, crackers; 41 oatmeal (water), 106 oatmeal (milk) |
+| 33–46, 106–108 | דגנים — grains/bread/crackers; 41 oatmeal (water), 106 oatmeal (milk), 107 granola, 108 cornflakes |
 | 47–49 | ירקות עמילניים |
 | 50–57 | קטניות |
 | 60–74 | ירקות |
@@ -87,4 +90,4 @@ All filtering logic is tag-driven:
 | 96–101 | תוספים |
 | 100 | פריכיות אורז קטנות (4g/piece) — in דגנים |
 
-## Next available IDs: 18–19, 28–32, 107+
+## Next available IDs: 18–19, 28–32, 109+

@@ -248,110 +248,176 @@ function buildSingleVeg(used, hotOk) {
 // ══════════════════════════════════════════
 //  בניית ארוחות לפי סוג
 // ══════════════════════════════════════════
-function buildBreakfast(cal, used) {
+// ── תבניות ארוחה (archetypes) — כל ארוחה לפי תבנית מציאותית ──
+const _tag = t => f => f.tags.includes(t);
+const isYogurt = f => f.id === 22 || f.id === 23 || f.id === 24;
+const isCheese = f => f.id === 20 || f.id === 21 || f.id === 25 || f.id === 26; // קוטג'/לבנה/צהובה
+
+const MEAL_TEMPLATES = {
+  breakfast: [
+    { name:'eggs',        weight:3, slots:[
+      { match:_tag('egg'),   calPct:.45, protPct:.85, max:300 },
+      { match:_tag('bread'), calPct:.35, max:120, spread:'ifAlone' },
+      { special:'salad', optional:true },
+    ]},
+    { name:'cheese',      weight:3, slots:[
+      { match:isCheese,      calPct:.45, protPct:.85, max:200 },
+      { match:_tag('bread'), calPct:.35, max:120, spread:'ifAlone' },
+      { special:'salad', optional:true },
+    ]},
+    { name:'yogurt_bowl', weight:2, slots:[
+      { match:isYogurt,      calPct:.5, protPct:.8, max:250 },
+      { match:f => f.tags.includes('granola') || f.id === 41, calPct:.3, max:60 },
+      { match:_tag('fruit'), calPct:.2, max:200, optional:true },
+    ]},
+    { name:'porridge',    weight:2, slots:[
+      { match:f => f.id === 106, calPct:.6, max:350 },
+      { match:_tag('fruit'),     calPct:.4, max:200, optional:true },
+    ]},
+    { name:'cornflakes',  weight:2, slots:[
+      { match:f => f.id === 108, calPct:.4, max:60 },
+      { match:f => f.drink,      calPct:.35, max:250 },
+      { match:_tag('fruit'),     calPct:.25, max:200, optional:true },
+    ]},
+    { name:'oats_water',  weight:1, slots:[   // צמחוני/טבעוני וגיוון: שיבולת במים
+      { match:f => f.id === 41, calPct:.5, max:300 },
+      { match:_tag('fruit'), calPct:.3, max:200, optional:true },
+      { match:f => f.tags.includes('fat') && !f.condiment, calPct:.2, max:30, optional:true },
+    ]},
+  ],
+  hot: [
+    { name:'meat',   weight:3, slots:[
+      { match:f => (f.tags.includes('meat') || f.tags.includes('fish')) && !f.tags.includes('tuna'), calPct:.45, protPct:.9, max:300 },
+      { special:'hot_carb', calPct:.4, max:250 },
+      { special:'hotveg_or_salad', optional:true },
+    ]},
+    { name:'legume', weight:1, slots:[
+      { match:_tag('legume'), calPct:.4, protPct:.9, max:300 },
+      { special:'hot_carb', calPct:.4, max:250 },
+      { special:'hotveg_or_salad', optional:true },
+    ]},
+    { name:'tuna',   weight:1, slots:[
+      { match:(f, u) => f.tags.includes('tuna') && !tunaUsed(u), calPct:.4, protPct:.8, max:160 },
+      { match:_tag('bread'), calPct:.3, max:130, spread:'ifAlone' },
+      { special:'salad', optional:true },
+    ]},
+  ],
+  snack: [
+    { name:'dairy_fruit',    weight:3, slots:[
+      { match:f => f.tags.includes('dairy') && !f.drink, calPct:.6, protPct:.85, max:250 },
+      { match:_tag('fruit'), calPct:.4, max:200, optional:true },
+    ]},
+    { name:'fruit_nuts',     weight:2, slots:[
+      { match:_tag('fruit'), calPct:.55, max:200 },
+      { match:f => f.tags.includes('fat') && !f.condiment, calPct:.45, max:30 },
+    ]},
+    { name:'cracker_cheese', weight:2, slots:[
+      { match:isCheese, calPct:.45, protPct:.6, max:120, optional:true },
+      { match:_tag('cracker'), calPct:.45, max:54, spread:'ifAlone' },
+    ]},
+    { name:'shake',          weight:2, slots:[
+      { match:_tag('supplement'), calPct:.7, protPct:.9, max:60 },
+      { match:_tag('fruit'), calPct:.3, max:200, optional:true },
+    ]},
+  ],
+  dinner: [
+    { name:'cheese_bread', weight:3, slots:[
+      { match:f => isCheese(f) || f.tags.includes('egg'), calPct:.45, protPct:.8, max:250 },
+      { match:_tag('bread'), calPct:.25, max:120, spread:'ifAlone', optional:true },
+      { special:'salad', optional:true },
+    ]},
+    { name:'tuna_bread',   weight:2, slots:[
+      { match:(f, u) => f.tags.includes('tuna') && !tunaUsed(u), calPct:.4, protPct:.8, max:160 },
+      { match:_tag('bread'), calPct:.25, max:120, spread:'ifAlone', optional:true },
+      { special:'salad', optional:true },
+    ]},
+    { name:'big_salad',    weight:2, slots:[
+      { special:'salad' },
+      { match:f => f.tags.includes('egg') || isCheese(f) || f.tags.includes('legume'), calPct:.45, protPct:.8, max:250 },
+      { match:_tag('bread'), calPct:.2, max:80, spread:'ifAlone', optional:true },
+    ]},
+  ],
+};
+
+// ממרח (טחינה/חמאת בוטנים) — נצמד ללחם/פריכייה: השם מציין "עם X",
+// והממרח עצמו מקבל שורה נפרדת עם כמות וקלוריות משלו. מחזיר את שורת הממרח (או null).
+function makeSpread(breadItem, used) {
+  const spreads = ALL.filter(f => f.condiment && !f.tags.includes('oil') && allowed(f) && !used.has(f.id));
+  if (!spreads.length) return null;
+  const liked = spreads.filter(f => S.liked.has(f.id));
+  if (!liked.length && Math.random() >= 0.4) return null;
+  const pool = liked.length ? liked : spreads;
+  const f = pool[Math.floor(Math.random() * pool.length)];
+  const g = f.unitG || 15;
+  breadItem.displayName = (breadItem.displayName || breadItem.f.name) + ' עם ' + f.name;
+  use(used, { f, g });
+  return mkItem(f, g);
+}
+
+const SELF_USE = ['salad', 'hotveg', 'hotveg_or_salad']; // ממלאים את used בעצמם
+
+function buildFromTemplate(tpl, cal, used, ctx) {
   const items = [];
   const protShare = S.proteinG * cal / S.target;
-  const eggDairy = ALL.filter(f => f.tags.includes('egg') || f.tags.includes('dairy'));
-  const p = pick(eggDairy, used, cal * 0.5, protShare * 0.85, 300);
-  if (p) { items.push(p); use(used, p); }
-  const bkCarb = ALL.filter(f => f.tags.includes('breakfast') || f.tags.includes('bread') || f.tags.includes('cracker'));
-  const cr = pick(bkCarb, used, cal * 0.35, 0, 200);
-  if (cr) { items.push(cr); use(used, cr); }
-  const sal = buildSalad(used);
-  if (sal) {
-    items.push(sal);
-    if (p && p.f.isEgg) {
-      const idx = items.findIndex(x => x.f && x.f.id === p.f.id);
-      if (idx >= 0) items[idx] = { ...items[idx], dispG: items[idx].dispG + ' עם סלט בצד' };
+  let hasProtein = false;
+  for (const s of tpl.slots) {
+    let item = null;
+    if (s.special === 'salad') {
+      item = buildSalad(used);
+    } else if (s.special === 'hotveg') {
+      item = buildSingleVeg(used, true);
+    } else if (s.special === 'hotveg_or_salad') {
+      const ph = Math.random() < 0.4;
+      item = ph ? buildSingleVeg(used, true) : buildSalad(used);
+      if (!item) item = ph ? buildSalad(used) : buildSingleVeg(used, true);
+    } else if (s.special === 'hot_carb') {
+      const getCarbCat = f => f.tags.find(t => t === 'grain' || t === 'starch') || 'other';
+      const allHc = ALL.filter(f => f.tags.includes('hot_carb'));
+      const cats = (ctx && ctx.usedCarbCats) || new Set();
+      const prefHc = allHc.filter(f => !cats.has(getCarbCat(f)));
+      item = pick(prefHc.length ? prefHc : allHc, used, cal * (s.calPct || .4), 0, s.max || 250);
+      if (item) cats.add(getCarbCat(item.f));
+    } else {
+      const pool = ALL.filter(f => s.match(f, used));
+      item = pick(pool, used, cal * (s.calPct || .3), s.protPct ? protShare * s.protPct : 0, s.max || 250);
     }
-  } else {
-    const sv = buildSingleVeg(used, false);
-    if (sv) items.push(sv);
+    if (!item) continue;
+    // ממרח רק כשאין כבר חלבון בארוחה (קוטג'/ביצה/טונה ⇐ אין צורך בממרח)
+    let spreadItem = null;
+    if (s.spread && !item.isSaladGroup && !(s.spread === 'ifAlone' && hasProtein))
+      spreadItem = makeSpread(item, used);
+    items.push(item);
+    if (!SELF_USE.includes(s.special)) use(used, item);
+    if (spreadItem) items.push(spreadItem);
+    if (s.protPct) hasProtein = true;
   }
   return items;
 }
 
-function buildHotMeal(cal, used, addHotVeg, usedCarbCats) {
-  const items = [];
-  const protShare = S.proteinG * cal / S.target;
-  // חלבון עיקרי: בשר/דג בעיקר; קטניות רק אם מסומנות, ~25% מהמקרים, או כשאין בשר/דג זמין (צמחוני)
-  const meatFish = ALL.filter(f => (f.tags.includes('meat') || f.tags.includes('fish')) && !f.tags.includes('tuna'));
-  const legumes  = ALL.filter(f => f.tags.includes('legume'));
-  const includeLeg = legumes.some(f => S.liked.has(f.id)) || Math.random() < 0.25 || !meatFish.some(f => allowed(f) && !used.has(f.id));
-  const hotMeat = includeLeg ? [...meatFish, ...legumes] : meatFish;
-  const m = pick(hotMeat, used, cal * 0.45, protShare * 0.9, 300);
-  if (m) { items.push(m); use(used, m); }
-
-  // גיוון פחמימות: קטגוריה שלא שימשה עוד ביום תקבל עדיפות
-  const getCarbCat = f => f.tags.find(t => t === 'grain' || t === 'starch') || 'other';
-  const allHc = ALL.filter(f => f.tags.includes('hot_carb'));
-  const prefHc = allHc.filter(f => !usedCarbCats.has(getCarbCat(f)));
-  const hcPool = prefHc.length ? prefHc : allHc;
-  const c = pick(hcPool, used, cal * 0.4, 0, 250);
-  if (c) { usedCarbCats.add(getCarbCat(c.f)); items.push(c); use(used, c); }
-  // ירק: ~40% מהמקרים ירק חם (ברוקולי/כרובית/קישוא) במקום סלט
-  const preferHotVeg = Math.random() < 0.4;
-  let veg = preferHotVeg ? buildSingleVeg(used, true) : buildSalad(used);
-  if (!veg) veg = preferHotVeg ? buildSalad(used) : buildSingleVeg(used, true);
-  if (veg) items.push(veg);
-  return items;
+function slotFeasible(s, used) {
+  if (s.optional) return true;
+  if (s.special === 'salad')
+    return ALL.filter(f => f.tags.includes('salad') && !f.tags.includes('salad_only') && allowed(f) && !used.has(f.id)).length >= 2;
+  if (s.special) return true; // hot_carb / hotveg — כמעט תמיד זמינים
+  return ALL.some(f => s.match(f, used) && allowed(f) && !used.has(f.id));
+}
+function tplHasLiked(tpl, used) {
+  return tpl.slots.some(s => !s.special && ALL.some(f => s.match(f, used) && S.liked.has(f.id) && allowed(f)));
+}
+function chooseTemplate(list, used) {
+  const feasible = list.filter(tpl => tpl.slots.every(s => slotFeasible(s, used)));
+  if (!feasible.length) return null;
+  const liked = feasible.filter(tpl => tplHasLiked(tpl, used));
+  const pool = liked.length ? liked : feasible;
+  const total = pool.reduce((a, t) => a + (t.weight || 1), 0);
+  let r = Math.random() * total;
+  for (const t of pool) { r -= (t.weight || 1); if (r <= 0) return t; }
+  return pool[0];
 }
 
-function buildTunaMeal(cal, used) {
-  const items = [];
-  const protShare = S.proteinG * cal / S.target;
-  const tuna = ALL.filter(f => f.tags.includes('tuna') && !tunaUsed(used));
-  const t = pick(tuna, used, cal * 0.4, protShare * 0.8, 160);
-  if (t) { items.push(t); use(used, t); }
-  const bread = ALL.filter(f => f.tags.includes('bread') || f.tags.includes('cracker'));
-  const b = pick(bread, used, cal * 0.3, 0, 130);
-  if (b) { items.push(b); use(used, b); }
-  const sal = buildSalad(used);
-  if (sal) items.push(sal);
-  else { const sv = buildSingleVeg(used, false); if (sv) items.push(sv); }
-  return items;
-}
-
-function buildDinner(cal, used) {
-  const items = [];
-  const protShare = S.proteinG * cal / S.target;
-  const coldBase = ALL.filter(f => (f.tags.includes('tuna') && !tunaUsed(used)) || f.tags.includes('dairy') || f.tags.includes('egg'));
-  const legumesD = ALL.filter(f => f.tags.includes('legume'));
-  const includeLegD = legumesD.some(f => S.liked.has(f.id)) || Math.random() < 0.25 || !coldBase.some(f => allowed(f) && !used.has(f.id));
-  const cold = includeLegD ? [...coldBase, ...legumesD] : coldBase;
-  const p = pick(cold, used, cal * 0.5, protShare * 0.7, 250);
-  if (p) { items.push(p); use(used, p); }
-  const sal = buildSalad(used);
-  if (sal) {
-    items.push(sal);
-    if (p && p.f.isEgg) {
-      const idx = items.findIndex(x => x.f && x.f.id === p.f.id);
-      if (idx >= 0) items[idx] = { ...items[idx], dispG: items[idx].dispG + ' עם סלט בצד' };
-    }
-  } else {
-    const sv = buildSingleVeg(used, false);
-    if (sv) items.push(sv);
-  }
-  if (cal > 280) {
-    const bread = ALL.filter(f => f.tags.includes('bread') || f.tags.includes('cracker'));
-    const b = pick(bread, used, cal * 0.2, 0, 80);
-    if (b) { items.push(b); use(used, b); }
-  }
-  return items;
-}
-
-function buildSnack(cal, used) {
-  const items = [];
-  const d = ALL.filter(f => f.tags.includes('dairy') || f.tags.includes('supplement'));
-  const p = pick(d, used, cal * 0.65, S.proteinG * cal / S.target, 200);
-  if (p) { items.push(p); use(used, p); }
-  const fr = pick(ALL.filter(f => f.tags.includes('fruit') || (f.tags.includes('fat') && !f.tags.includes('oil'))), used, cal * 0.35, 0, 250);
-  if (fr) { items.push(fr); use(used, fr); }
-  else {
-    const cr = pick(ALL.filter(f => f.tags.includes('cracker')), used, cal * 0.3, 0, 54);
-    if (cr) { items.push(cr); use(used, cr); }
-  }
-  return items;
+function buildMeal(type, cal, used, ctx) {
+  const tpl = chooseTemplate(MEAL_TEMPLATES[type], used);
+  return tpl ? buildFromTemplate(tpl, cal, used, ctx) : [];
 }
 
 // ══════════════════════════════════════════
@@ -372,23 +438,11 @@ function buildMenu() {
   const key = (S.noTrain || !S.time) ? 'noTrain' : S.time;
   const mealDefs = MEAL_TIMES[key];
   const used = new Map();
-  const hotCount = { n: 0 };
-  const usedCarbCats = new Set(); // עוקב אחרי קטגוריות פחמימה שכבר שימשו (grain / starch)
+  const ctx = { usedCarbCats: new Set() }; // גיוון קטגוריות פחמימה לאורך היום
 
   const meals = mealDefs.map(def => {
     const budget = Math.round(t * def.pct);
-    let items;
-    if (def.type === 'breakfast') {
-      items = buildBreakfast(budget, used);
-    } else if (def.type === 'hot') {
-      const useTuna = hotCount.n > 0 && Math.random() > 0.65 && !tunaUsed(used);
-      items = useTuna ? buildTunaMeal(budget, used) : buildHotMeal(budget, used, hotCount.n > 0, usedCarbCats);
-      hotCount.n++;
-    } else if (def.type === 'snack') {
-      items = buildSnack(budget, used);
-    } else {
-      items = buildDinner(budget, used);
-    }
+    const items = buildMeal(def.type, budget, used, ctx);
     const totCal = items.reduce((s, x) => s + x.cal, 0);
     const totP   = Math.round(items.reduce((s, x) => s + (x.p   || 0), 0) * 10) / 10;
     const totC   = Math.round(items.reduce((s, x) => s + (x.c   || 0), 0) * 10) / 10;

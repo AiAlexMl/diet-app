@@ -13,9 +13,9 @@
           },
     "6":  {
               "term":  "(picked)",
-              "sourceTitle":  "File:Oven Barbecued Beef Brisket.jpg",
-              "license":  "CC BY-SA 3.0",
-              "artist":  "Home Cooking Secrets"
+              "sourceTitle":  "File:2020-08-09 21 39 35 Ground beef starting to cook on a hot skillet in the Franklin Farm section of Oak Hill, Fairfax County, Virginia.jpg",
+              "license":  "CC BY-SA 4.0",
+              "artist":  "Famartin"
           },
     "9":  {
               "term":  "(picked)",
@@ -49,9 +49,9 @@
           },
     "10":  {
                "term":  "(picked)",
-               "sourceTitle":  "File:Creamed corn with rotini and tuna fish, all cold - Massachusetts.jpg",
-               "license":  "CC0",
-               "artist":  "Daderot"
+               "sourceTitle":  "File:Lata de atún-Albo.jpg",
+               "license":  "CC BY 3.0",
+               "artist":  "Tamorlan"
            },
     "11":  {
                "term":  "(picked)",
@@ -180,16 +180,16 @@
                "artist":  "Glane23"
            },
     "39":  {
-               "term":  "flatbread",
-               "sourceTitle":  "File:Flatbread on counter.jpg",
-               "license":  "CC BY 4.0",
-               "artist":  "Shisma"
+               "term":  "(picked)",
+               "sourceTitle":  "File:PitaPot bread carrier.jpg",
+               "license":  "CC0",
+               "artist":  "NPAPGPAN"
            },
     "40":  {
-               "term":  "naan bread",
-               "sourceTitle":  "File:Naan baked in Tandoor.jpg",
-               "license":  "CC BY-SA 4.0",
-               "artist":  "Ravi Dwivedi"
+               "term":  "(picked)",
+               "sourceTitle":  "File:PitaPot bread carrier.jpg",
+               "license":  "CC0",
+               "artist":  "NPAPGPAN"
            },
     "41":  {
                "term":  "porridge oatmeal bowl",
@@ -204,10 +204,10 @@
                "artist":  "ProjectManhattan"
            },
     "43":  {
-               "term":  "cooked buckwheat",
-               "sourceTitle":  "File:Ajdovi zganci.JPG",
-               "license":  "CC BY-SA 4.0",
-               "artist":  "myself"
+               "term":  "(picked)",
+               "sourceTitle":  "File:Roasted buckwheat Kasha (cooked).jpg",
+               "license":  "CC BY-SA 3.0",
+               "artist":  "FakirNL"
            },
     "44":  {
                "term":  "bulgur",
@@ -222,10 +222,10 @@
                "artist":  "BD2412"
            },
     "46":  {
-               "term":  "crispbread",
-               "sourceTitle":  "File:Knaeckebroed.jpg",
+               "term":  "puffed rice cake",
+               "sourceTitle":  "File:Puffed Rice Cakes.jpg",
                "license":  "Public domain",
-               "artist":  "Cymydog Naakka"
+               "artist":  "BD2412"
            },
     "100":  {
                 "term":  "puffed rice cake",
@@ -312,7 +312,7 @@
                "artist":  "Rjcastillo"
            },
     "62":  {
-               "term":  "spinach",
+               "term":  "(picked)",
                "sourceTitle":  "File:Spinacia oleracea Spinazie bloeiend.jpg",
                "license":  "CC BY-SA 3.0",
                "artist":  "Rasbak"
@@ -372,10 +372,10 @@
                "artist":  "Colin"
            },
     "72":  {
-               "term":  "mushrooms",
-               "sourceTitle":  "File:Dried mushrooms.jpg",
-               "license":  "CC BY-SA 2.5",
-               "artist":  "André Karwath aka Aka"
+               "term":  "(picked)",
+               "sourceTitle":  "File:Cooked champignon mushroom.jpg",
+               "license":  "CC BY-SA 4.0",
+               "artist":  "Nowforever"
            },
     "73":  {
                "term":  "cabbage",
@@ -498,10 +498,10 @@
                "artist":  "Miansari66"
            },
     "92":  {
-               "term":  "peanut butter jar",
-               "sourceTitle":  "File:Three lb peanut butter jar.jpg",
-               "license":  "CC BY-SA 4.0",
-               "artist":  "Twopower332.1938"
+               "term":  "(picked)",
+               "sourceTitle":  "File:PeanutButter.jpg",
+               "license":  "CC BY-SA 3.0",
+               "artist":  "PiccoloNamek at English Wikipedia"
            },
     "93":  {
                "term":  "green olives bowl",
@@ -544,5 +544,17 @@
                 "sourceTitle":  "File:Oatmeal porridge 1-minute with additional ingredients.jpg",
                 "license":  "CC BY-SA 4.0",
                 "artist":  "UserTwoSix"
+            },
+    "107":  {
+                "term":  "(picked)",
+                "sourceTitle":  "File:Granola Honey and Vanilla Top.jpg",
+                "license":  "CC0",
+                "artist":  "Bajinra"
+            },
+    "108":  {
+                "term":  "(picked)",
+                "sourceTitle":  "File:Photo cornflakes.jpg",
+                "license":  "CC0",
+                "artist":  "sferrario1968"
             }
 }
