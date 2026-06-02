@@ -189,48 +189,39 @@ function buildSalad(used) {
   // חייבים לפחות 2 ירקות רגילים כבסיס
   if (regular.length < 2) return null;
 
-  const v1 = regular[0];
-  const v2 = regular[1];
-  // ירק שלישי אופציונלי: ירק salad_only (חסה/כרוב) או ירק רגיל שלישי
+  // רכיבי בסיס: 2 ירקות רגילים + שלישי אופציונלי (salad_only או ירק רגיל שלישי)
   const v3 = extras[0] || regular[2] || null;
+  const comps = [
+    { f: regular[0], g: regular[0].unitG || 120 },
+    { f: regular[1], g: regular[1].unitG || 100 },
+  ];
+  if (v3) comps.push({ f: v3, g: v3.unitG || 80 });
 
-  const g1 = v1.unitG || 120;
-  const g2 = v2.unitG || 100;
-  const g3 = v3 ? (v3.unitG || 80) : 0;
+  // תוספת מלוחה לסלט: אבוקדו/זיתים (אף פעם לא עם פרי!) — אם אהוב או ~30%
+  const exPool = sortByLiked(ALL.filter(f => (f.id === 87 || f.id === 93) && allowed(f) && !used.has(f.id)));
+  if (exPool.length && (S.liked.has(exPool[0].id) || Math.random() < 0.3))
+    comps.push({ f: exPool[0], g: exPool[0].unitG || 50 });
 
   // שמן זית — חובה בסלט (אם מותר לפי העדפות)
   const oil = ALL.find(f => f.id === 86);
   const hasOil = oil && allowed(oil);
   const oilG = hasOil ? 5 : 0;
 
-  const saladCal =
-    Math.round(v1.cal * g1 / 100) +
-    Math.round(v2.cal * g2 / 100) +
-    (v3 ? Math.round(v3.cal * g3 / 100) : 0) +
-    (hasOil ? Math.round(oil.cal * oilG / 100) : 0);
-
-  // שם + כמות לכל פריט — "פלפל אדום (חצי פלפל)" / "עגבנייה בינונית"
-  const fmtPart = (f, g) => {
-    const label = f.unitLabel || `${g}g`;
-    return f.name.includes(' ') ? `${f.name} (${label})` : label;
-  };
-  const parts = [fmtPart(v1, g1), fmtPart(v2, g2)];
-  if (v3) parts.push(fmtPart(v3, g3));
+  const fmtPart = (f, g) => f.unitLabel || `${g}g`;   // ה-unitLabel מתאר במלואו
+  const parts = comps.map(c => fmtPart(c.f, c.g));
   if (hasOil) parts.push('כפית שמן זית');
 
-  use(used, { f: v1, g: g1 });
-  use(used, { f: v2, g: g2 });
-  if (v3) use(used, { f: v3, g: g3 });
+  comps.forEach(c => use(used, c));
   if (hasOil && oil) use(used, { f: oil, g: oilG });
 
-  const fibOf = f => f.fib || 0;
+  const sum = sel => comps.reduce((a, c) => a + (c.f[sel] || 0) * c.g / 100, 0);
   return {
     isSaladGroup: true, label: 'סלט ירק', parts,
-    cal: saladCal,
-    p:   Math.round((v1.p*g1/100 + v2.p*g2/100 + (v3 ? v3.p*g3/100 : 0)) * 10) / 10,
-    c:   Math.round((v1.c*g1/100 + v2.c*g2/100 + (v3 ? v3.c*g3/100 : 0)) * 10) / 10,
-    fat: Math.round((v1.f*g1/100 + v2.f*g2/100 + (v3 ? v3.f*g3/100 : 0) + (hasOil ? oil.f*oilG/100 : 0)) * 10) / 10,
-    fib: Math.round((fibOf(v1)*g1/100 + fibOf(v2)*g2/100 + (v3 ? fibOf(v3)*g3/100 : 0)) * 10) / 10,
+    cal: Math.round(comps.reduce((a, c) => a + c.f.cal * c.g / 100, 0)) + (hasOil ? Math.round(oil.cal * oilG / 100) : 0),
+    p:   Math.round(sum('p') * 10) / 10,
+    c:   Math.round(sum('c') * 10) / 10,
+    fat: Math.round((sum('f') + (hasOil ? oil.f * oilG / 100 : 0)) * 10) / 10,
+    fib: Math.round(sum('fib') * 10) / 10,
   };
 }
 
@@ -259,7 +250,7 @@ const MEAL_TEMPLATES = {
   breakfast: [
     { name:'eggs',        weight:3, slots:[
       { match:_tag('egg'),   calPct:.45, protPct:.85, max:300 },
-      { match:_tag('bread'), calPct:.35, max:120, spread:'ifAlone' },
+      { match:_tag('bread'), calPct:.35, max:120, spread:'ifAlone', pitaOk:true },   // פיתה מותרת כאן (עם חביתה), בעדיפות נמוכה
       { special:'salad', optional:true },
     ]},
     { name:'cheese',      weight:3, slots:[
@@ -269,7 +260,7 @@ const MEAL_TEMPLATES = {
     ]},
     { name:'yogurt_bowl', weight:2, slots:[
       { match:isYogurt,      calPct:.5, protPct:.8, max:250 },
-      { match:f => f.tags.includes('granola') || f.id === 41, calPct:.3, max:60 },
+      { match:_tag('granola'), calPct:.3, max:60, optional:true },   // גרנולה בלבד (לא שיבולת מבושלת)
       { match:_tag('fruit'), calPct:.2, max:200, optional:true },
     ]},
     { name:'porridge',    weight:2, slots:[
@@ -284,7 +275,7 @@ const MEAL_TEMPLATES = {
     { name:'oats_water',  weight:1, slots:[   // צמחוני/טבעוני וגיוון: שיבולת במים
       { match:f => f.id === 41, calPct:.5, max:300 },
       { match:_tag('fruit'), calPct:.3, max:200, optional:true },
-      { match:f => f.tags.includes('fat') && !f.condiment, calPct:.2, max:30, optional:true },
+      { match:_tag('nuts'), calPct:.2, max:30, optional:true },   // אגוזים בלבד
     ]},
   ],
   hot: [
@@ -305,12 +296,12 @@ const MEAL_TEMPLATES = {
   ],
   snack: [
     { name:'dairy_fruit',    weight:3, slots:[
-      { match:f => f.tags.includes('dairy') && !f.drink, calPct:.6, protPct:.85, max:250 },
+      { match:f => isYogurt(f) || f.id === 20 || f.id === 21, calPct:.6, protPct:.85, max:250 },  // קוטג'/יוגורט (לא גבינה לבנה/צהובה — אלו עם לחם/פריכית)
       { match:_tag('fruit'), calPct:.4, max:200, optional:true },
     ]},
     { name:'fruit_nuts',     weight:2, slots:[
       { match:_tag('fruit'), calPct:.55, max:200 },
-      { match:f => f.tags.includes('fat') && !f.condiment, calPct:.45, max:30 },
+      { match:_tag('nuts'), calPct:.45, max:30 },   // אגוזים אמיתיים בלבד (לא אבוקדו/זיתים)
     ]},
     { name:'cracker_cheese', weight:2, slots:[
       { match:isCheese, calPct:.45, protPct:.6, max:120, optional:true },
@@ -329,7 +320,7 @@ const MEAL_TEMPLATES = {
     ]},
     { name:'tuna_bread',   weight:2, slots:[
       { match:(f, u) => f.tags.includes('tuna') && !tunaUsed(u), calPct:.4, protPct:.8, max:160 },
-      { match:_tag('bread'), calPct:.25, max:120, spread:'ifAlone', optional:true },
+      { match:_sliced, calPct:.25, max:120, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
       { special:'salad', optional:true },
     ]},
     { name:'big_salad',    weight:2, slots:[
@@ -391,7 +382,9 @@ function buildFromTemplate(tpl, cal, used, ctx) {
       const wantDip = dips.some(f => S.liked.has(f.id)) || Math.random() < 0.25;
       if (wantDip && dips.length) item = pick(dips, used, cal * (s.calPct || .15), 0, s.max || 50);
     } else {
-      const pool = ALL.filter(f => s.match(f, used));
+      let pool = ALL.filter(f => s.match(f, used));
+      // פיתה בעדיפות נמוכה ורק במשבצת שמסומנת pitaOk (חביתה); אחרת לחם/פריכיות
+      if (pool.some(f => f.pita) && (!s.pitaOk || Math.random() >= 0.3)) pool = pool.filter(f => !f.pita);
       item = pick(pool, used, cal * (s.calPct || .3), s.protPct ? protShare * s.protPct : 0, s.max || 250);
     }
     if (!item) continue;

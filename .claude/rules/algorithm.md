@@ -43,6 +43,10 @@ A **slot**: `{ match(f,used) | special, calPct, protPct?, max, optional?, spread
 - a template may carry `when(used)` (e.g. the `legume` hot template is feasible only when no meat/fish is available — vegetarians/vegans).
 - otherwise `pick()` from `ALL.filter(match)`.
 - `spread:'ifAlone'` → `makeSpread()` adds a condiment (tahini/PB) to a bread/cracker **only if the meal has no protein yet** (so cottage/egg/tuna meals get no spread). The bread's `displayName` shows "עם X"; the spread is a **separate row** with its own grams/calories.
+- **Pita** (39,40, `pita` flag): dropped from bread pools unless the slot has `pitaOk` (only the eggs breakfast bread slot), and even there only ~30% of builds. All other bread slots use the `_sliced` matcher (sliced bread / crackers, no pita).
+- **dairy_fruit** snack pairs fruit only with cottage/yogurt; white/yellow cheese go to `cracker_cheese` / cheese-bread (always with a carb), never alone with fruit.
+- **fruit_nuts** snack / oats nut slot use `nuts` only (almonds/walnuts/cashews) — not avocado/olives (those are salad extras).
+- **yogurt_bowl** topping is **granola only** (cooked oats 41 don't belong in a yogurt bowl); topping is optional so yogurt+fruit still works.
 
 Templates: **breakfast** eggs / cheese / yogurt_bowl / porridge / cornflakes / oats_water; **hot** meat (w3) / legume (w1, veg-only) — **always a cooked meat/fish (or legume) main + carb; no canned tuna here**; **snack** dairy_fruit / fruit_nuts / cracker_cheese / shake; **dinner** cheese_bread / tuna_bread / big_salad (canned tuna lives here).
 
@@ -64,7 +68,8 @@ Legumes for **omnivores**: only a side in a meat meal (`hot_side`) or in `big_sa
 - Requires ≥ 2 **regular** (`salad` tag, not `salad_only`) vegetables as base
 - Optional 3rd veg from `salad_only` pool (lettuce, cabbage, onion) or a 3rd regular veg
 - Olive oil (id:86) always added if permitted — **5g (כפית)**, no daily-use restriction
-- Parts display: `f.name.includes(' ') ? name + ' (' + unitLabel + ')' : unitLabel`
+- Parts display (`fmtPart`): each part shows its `unitLabel` (e.g. "חצי פלפל אדום", "עגבנייה בינונית") — no "name (label)" parentheses; pepper labels include the colour so they stay unambiguous
+- Salad extra: optionally adds **avocado (87) or olives (93)** as a savory salad component (when liked or ~30%) — that's their home, never paired with fruit
 
 ## Portion Helpers
 
