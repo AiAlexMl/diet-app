@@ -252,6 +252,7 @@ function buildSingleVeg(used, hotOk) {
 const _tag = t => f => f.tags.includes(t);
 const isYogurt = f => f.id === 22 || f.id === 23 || f.id === 24;
 const isCheese = f => f.id === 20 || f.id === 21 || f.id === 25 || f.id === 26; // קוטג'/לבנה/צהובה
+const _sliced  = f => f.tags.includes('bread') && !f.pita; // לחם/פריכית, לא פיתה (פיתה רק עם חלבון ממולא)
 
 const MEAL_TEMPLATES = {
   breakfast: [
@@ -262,7 +263,7 @@ const MEAL_TEMPLATES = {
     ]},
     { name:'cheese',      weight:3, slots:[
       { match:isCheese,      calPct:.45, protPct:.85, max:200 },
-      { match:_tag('bread'), calPct:.35, max:120, spread:'ifAlone' },
+      { match:_sliced,       calPct:.35, max:120, spread:'ifAlone' },   // לחם/פריכית, לא פיתה
       { special:'salad', optional:true },
     ]},
     { name:'yogurt_bowl', weight:2, slots:[
@@ -322,7 +323,7 @@ const MEAL_TEMPLATES = {
   dinner: [
     { name:'cheese_bread', weight:3, slots:[
       { match:f => isCheese(f) || f.tags.includes('egg'), calPct:.45, protPct:.8, max:250 },
-      { match:_tag('bread'), calPct:.25, max:120, spread:'ifAlone', optional:true },
+      { match:_sliced, calPct:.25, max:120, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
       { special:'salad', optional:true },
     ]},
     { name:'tuna_bread',   weight:2, slots:[
@@ -333,7 +334,7 @@ const MEAL_TEMPLATES = {
     { name:'big_salad',    weight:2, slots:[
       { special:'salad' },
       { match:f => f.tags.includes('egg') || isCheese(f) || (f.tags.includes('legume') && !f.dip), calPct:.45, protPct:.8, max:250 },
-      { match:_tag('bread'), calPct:.2, max:80, spread:'ifAlone', optional:true },
+      { match:_sliced, calPct:.2, max:80, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
     ]},
   ],
 };

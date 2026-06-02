@@ -73,6 +73,8 @@ All filtering logic is tag-driven:
 - `condiment:true` — olive oil (86), tahini (91), peanut butter (92); never standalone, only via `attachSpread` on bread/cracker
 - `drink:true` — milk (27); only the cornflakes `milk` slot, never a protein
 - `complete:true` — self-contained meal (oatmeal-with-milk 106); its template has no protein slot
+- `dip:true` — hummus-spread (52), tahini (91); side dip in hot meals, excluded from legume main/side
+- `pita:true` — pitas (39, 40); only used as the carb with a fillable protein (egg/tuna). Dairy/cheese & salad meals use sliced bread only (`_sliced` matcher in `app.js`)
 
 ## ID Ranges
 
