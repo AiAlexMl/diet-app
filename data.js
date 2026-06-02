@@ -61,7 +61,7 @@ const DB = {
   "קטניות": [
     { id:50, name:"עדשים מבושלות",      prep:"", p:9.0,  c:20.1, f:0.4, fib:7.9, cal:116, tags:["legume"] },
     { id:51, name:"חומוס מבושל",        prep:"", p:8.9,  c:27.4, f:2.6, fib:7.6, cal:164, tags:["legume"] },
-    { id:52, name:"חומוס ממרח",         prep:"", p:7.9,  c:14.3, f:9.6, fib:6.0, cal:177, tags:["legume"] },
+    { id:52, name:"חומוס ממרח",         prep:"", p:7.9,  c:14.3, f:9.6, fib:6.0, cal:177, tags:["legume"], dip:true },
     { id:53, name:"שעועית לבנה",        prep:"", p:9.7,  c:25.4, f:0.4, fib:6.3, cal:139, tags:["legume"] },
     { id:54, name:"שעועית שחורה",       prep:"", p:8.9,  c:23.7, f:0.5, fib:8.7, cal:132, tags:["legume"] },
     { id:55, name:"אפונה מבושלת",       prep:"", p:5.4,  c:15.6, f:0.2, fib:5.5, cal:84,  tags:["legume"] },
@@ -106,7 +106,7 @@ const DB = {
     { id:88, name:"שקדים",              prep:"", p:21.2, c:21.6, f:49.9,  fib:12.5, cal:579, tags:["fat","nuts"],     unitG:30,  unitLabel:"חופן שקדים" },
     { id:89, name:"אגוזי מלך",          prep:"", p:15.2, c:13.7, f:65.2,  fib:6.7,  cal:654, tags:["fat","nuts"],     unitG:30,  unitLabel:"חופן אגוזים" },
     { id:90, name:"אגוזי קשיו",         prep:"", p:18.2, c:30.2, f:43.8,  fib:3.3,  cal:553, tags:["fat","nuts"],     unitG:30,  unitLabel:"חופן קשיו" },
-    { id:91, name:"טחינה גולמית",       prep:"", p:17.0, c:21.2, f:53.0,  fib:9.3,  cal:595, tags:["fat","sesame"],   unitG:15,  unitLabel:"כף טחינה", condiment:true },
+    { id:91, name:"טחינה גולמית",       prep:"", p:17.0, c:21.2, f:53.0,  fib:9.3,  cal:595, tags:["fat","sesame"],   unitG:15,  unitLabel:"כף טחינה", condiment:true, dip:true },
     { id:92, name:"חמאת בוטנים",        prep:"", p:25.1, c:20.1, f:50.4,  fib:6.0,  cal:588, tags:["fat","peanuts"],  unitG:16,  unitLabel:"כף חמאת בוטנים", condiment:true },
     { id:93, name:"זיתים",              prep:"", p:0.9,  c:5.0,  f:13.0,  fib:3.2,  cal:120, tags:["fat"],            unitG:30,  unitLabel:"חופן זיתים" },
   ],

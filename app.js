@@ -288,19 +288,18 @@ const MEAL_TEMPLATES = {
   hot: [
     { name:'meat',   weight:3, slots:[
       { match:f => (f.tags.includes('meat') || f.tags.includes('fish')) && !f.tags.includes('tuna'), calPct:.45, protPct:.9, max:300 },
+      { special:'hot_side', calPct:.4, max:250 },   // תוספת אחת: דגן או קטנייה (לא שתיהן)
+      { special:'hotveg_or_salad', optional:true },
+      { special:'dip', optional:true },             // ~25%: חומוס/טחינה בצד
+    ]},
+    // קטנייה כעיקרית — רק לצמחוני/טבעוני (אין להם בשר)
+    { name:'legume', weight:1, when:u => !ALL.some(f => (f.tags.includes('meat') || f.tags.includes('fish')) && !f.tags.includes('tuna') && allowed(f) && !u.has(f.id)), slots:[
+      { match:f => f.tags.includes('legume') && !f.dip, calPct:.4, protPct:.9, max:300 },
       { special:'hot_carb', calPct:.4, max:250 },
       { special:'hotveg_or_salad', optional:true },
+      { special:'dip', optional:true },             // ~25%: חומוס/טחינה בצד
     ]},
-    { name:'legume', weight:1, slots:[
-      { match:_tag('legume'), calPct:.4, protPct:.9, max:300 },
-      { special:'hot_carb', calPct:.4, max:250 },
-      { special:'hotveg_or_salad', optional:true },
-    ]},
-    { name:'tuna',   weight:1, slots:[
-      { match:(f, u) => f.tags.includes('tuna') && !tunaUsed(u), calPct:.4, protPct:.8, max:160 },
-      { match:_tag('bread'), calPct:.3, max:130, spread:'ifAlone' },
-      { special:'salad', optional:true },
-    ]},
+    // הערה: אין טונה בארוחה חמה — צהריים = בשר/דג מבושל. טונה זמינה בארוחת ערב (tuna_bread).
   ],
   snack: [
     { name:'dairy_fruit',    weight:3, slots:[
@@ -333,7 +332,7 @@ const MEAL_TEMPLATES = {
     ]},
     { name:'big_salad',    weight:2, slots:[
       { special:'salad' },
-      { match:f => f.tags.includes('egg') || isCheese(f) || f.tags.includes('legume'), calPct:.45, protPct:.8, max:250 },
+      { match:f => f.tags.includes('egg') || isCheese(f) || (f.tags.includes('legume') && !f.dip), calPct:.45, protPct:.8, max:250 },
       { match:_tag('bread'), calPct:.2, max:80, spread:'ifAlone', optional:true },
     ]},
   ],
@@ -370,13 +369,25 @@ function buildFromTemplate(tpl, cal, used, ctx) {
       const ph = Math.random() < 0.4;
       item = ph ? buildSingleVeg(used, true) : buildSalad(used);
       if (!item) item = ph ? buildSalad(used) : buildSingleVeg(used, true);
-    } else if (s.special === 'hot_carb') {
-      const getCarbCat = f => f.tags.find(t => t === 'grain' || t === 'starch') || 'other';
-      const allHc = ALL.filter(f => f.tags.includes('hot_carb'));
-      const cats = (ctx && ctx.usedCarbCats) || new Set();
-      const prefHc = allHc.filter(f => !cats.has(getCarbCat(f)));
-      item = pick(prefHc.length ? prefHc : allHc, used, cal * (s.calPct || .4), 0, s.max || 250);
-      if (item) cats.add(getCarbCat(item.f));
+    } else if (s.special === 'hot_carb' || s.special === 'hot_side') {
+      // hot_side: לפעמים קטנייה כתוספת לצד הבשר (במקום דגן), אחרת דגן חם
+      if (s.special === 'hot_side') {
+        const wantLeg = ALL.some(f => f.tags.includes('legume') && !f.dip && S.liked.has(f.id) && allowed(f)) || Math.random() < 0.25;
+        if (wantLeg) item = pick(ALL.filter(f => f.tags.includes('legume') && !f.dip), used, cal * (s.calPct || .4), 0, s.max || 250);
+      }
+      if (!item) {
+        const getCarbCat = f => f.tags.find(t => t === 'grain' || t === 'starch') || 'other';
+        const allHc = ALL.filter(f => f.tags.includes('hot_carb'));
+        const cats = (ctx && ctx.usedCarbCats) || new Set();
+        const prefHc = allHc.filter(f => !cats.has(getCarbCat(f)));
+        item = pick(prefHc.length ? prefHc : allHc, used, cal * (s.calPct || .4), 0, s.max || 250);
+        if (item) cats.add(getCarbCat(item.f));
+      }
+    } else if (s.special === 'dip') {
+      // ~25% (או אם אהוב): חומוס/טחינה כמטבל בצד — שורה משלו
+      const dips = ALL.filter(f => f.dip && allowed(f) && !used.has(f.id));
+      const wantDip = dips.some(f => S.liked.has(f.id)) || Math.random() < 0.25;
+      if (wantDip && dips.length) item = pick(dips, used, cal * (s.calPct || .15), 0, s.max || 50);
     } else {
       const pool = ALL.filter(f => s.match(f, used));
       item = pick(pool, used, cal * (s.calPct || .3), s.protPct ? protShare * s.protPct : 0, s.max || 250);
@@ -405,7 +416,7 @@ function tplHasLiked(tpl, used) {
   return tpl.slots.some(s => !s.special && ALL.some(f => s.match(f, used) && S.liked.has(f.id) && allowed(f)));
 }
 function chooseTemplate(list, used) {
-  const feasible = list.filter(tpl => tpl.slots.every(s => slotFeasible(s, used)));
+  const feasible = list.filter(tpl => (!tpl.when || tpl.when(used)) && tpl.slots.every(s => slotFeasible(s, used)));
   if (!feasible.length) return null;
   const liked = feasible.filter(tpl => tplHasLiked(tpl, used));
   const pool = liked.length ? liked : feasible;

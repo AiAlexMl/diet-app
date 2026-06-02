@@ -39,19 +39,21 @@ Meals are built from **templates** (`MEAL_TEMPLATES` keyed by `breakfast`/`hot`/
 `buildMeal(type)` → `chooseTemplate()` (keep templates whose required slots are fillable for the diet; prefer ones containing a liked food; weighted-random) → `buildFromTemplate()` fills each slot.
 
 A **slot**: `{ match(f,used) | special, calPct, protPct?, max, optional?, spread? }`.
-- `special`: `'salad'`→`buildSalad`; `'hotveg'`/`'hotveg_or_salad'`→`buildSingleVeg`/(~40% hot veg else salad); `'hot_carb'`→prefers an unused carb category via `ctx.usedCarbCats`.
+- `special`: `'salad'`→`buildSalad`; `'hotveg'`/`'hotveg_or_salad'`→`buildSingleVeg`/(~40% hot veg else salad); `'hot_carb'`→prefers an unused carb category via `ctx.usedCarbCats`; `'hot_side'`→one starchy side that is a **legume** (if liked / ~25%) **or** a `hot_carb` — never both; `'dip'`→optional hummus/tahini side (~25% / if liked), its own row.
+- a template may carry `when(used)` (e.g. the `legume` hot template is feasible only when no meat/fish is available — vegetarians/vegans).
 - otherwise `pick()` from `ALL.filter(match)`.
 - `spread:'ifAlone'` → `makeSpread()` adds a condiment (tahini/PB) to a bread/cracker **only if the meal has no protein yet** (so cottage/egg/tuna meals get no spread). The bread's `displayName` shows "עם X"; the spread is a **separate row** with its own grams/calories.
 
-Templates: **breakfast** eggs / cheese / yogurt_bowl / porridge / cornflakes / oats_water; **hot** meat (w3) / legume (w1) / tuna (w1); **snack** dairy_fruit / fruit_nuts / cracker_cheese / shake; **dinner** cheese_bread / tuna_bread / big_salad.
+Templates: **breakfast** eggs / cheese / yogurt_bowl / porridge / cornflakes / oats_water; **hot** meat (w3) / legume (w1, veg-only) — **always a cooked meat/fish (or legume) main + carb; no canned tuna here**; **snack** dairy_fruit / fruit_nuts / cracker_cheese / shake; **dinner** cheese_bread / tuna_bread / big_salad (canned tuna lives here).
 
 ## Food role flags (enforce realism, set in `data.js`)
 
 - `condiment` (olive oil, tahini, peanut butter) — never standalone; only via `attachSpread` on bread/cracker
 - `drink` (milk) — never a protein; only the `milk` slot in cornflakes template
 - `complete` (oatmeal-with-milk 106) — self-contained breakfast; its template has no protein slot
+- `dip` (hummus-spread 52, tahini 91) — a side dip in hot meals; excluded from legume main/side pools
 
-Legumes are a `hot`/`big_salad` main (so vegetarians/vegans get protein); meat outweighs legume 3:1 for omnivores.
+Legumes for **omnivores**: only a side in a meat meal (`hot_side`) or in `big_salad` — never a standalone hot main. For **vegetarians/vegans** the `legume` hot template is the main (legume + grain + veg), since no meat is available.
 
 ## Tuna rule
 
