@@ -195,7 +195,6 @@ function renderMenu() {
   const dC    = Math.round(meals.reduce((s, m) => s + m.totC, 0));
   const dF    = Math.round(meals.reduce((s, m) => s + m.totF, 0));
   const dFib  = Math.round(meals.reduce((s, m) => s + (m.totFib || 0), 0));
-  const fibTarget = Math.round(dCal / 1000 * 14);  // ~14g סיבים לכל 1000 קק"ל
   const pPct  = Math.round(dP * 4 / dCal * 100);
   const cPct  = Math.round(dC * 4 / dCal * 100);
   const fPct  = 100 - pPct - cPct;
@@ -311,7 +310,7 @@ function renderMenu() {
     </div>
     <div class="fiber-row">
       <span>סיבים תזונתיים</span>
-      <span><strong>${dFib}g</strong> ${dFib < fibTarget ? `<span class="fiber-low">(מומלץ ~${fibTarget}g)</span>` : '✓'}</span>
+      <span><strong>${dFib}g</strong></span>
     </div>
     <div class="tips-box" style="margin-top:12px">
       פעילות אנאירובית מומלצת לשמירת מסת שריר. אירובי יכול לזרז את התהליך אך אינו חובה.

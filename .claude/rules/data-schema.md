@@ -75,6 +75,7 @@ All filtering logic is tag-driven:
 - `complete:true` — self-contained meal (oatmeal-with-milk 106); its template has no protein slot
 - `dip:true` — hummus-spread (52), tahini (91); side dip in hot meals, excluded from legume main/side
 - `pita:true` — pitas (39, 40); only used as the carb with a fillable protein (egg/tuna). Dairy/cheese & salad meals use sliced bread only (`_sliced` matcher in `app.js`)
+- `optIn:true` — niche foods that appear **only if the user marked them liked** (`allowed()` excludes them otherwise). Set on: 6,7,8,11,12,13,14 (ground beef, sirloin, salmon, cod, bori, sea bass, tilapia), 57 (edamame), 63 (chard), 80 (watermelon), 83 (grapefruit)
 
 ## ID Ranges
 

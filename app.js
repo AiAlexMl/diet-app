@@ -87,6 +87,7 @@ function allowed(f) {
   if (f.tags.includes('supplement') && !d.has('supplements')) return false;
   if (f.vegOnly && !d.has('vegan') && !d.has('vegetarian')) return false;
   if (f.containsMilk && (d.has('vegan') || d.has('lactose_free'))) return false;
+  if (f.optIn && !S.liked.has(f.id)) return false;   // מאכלים נישתיים — רק אם סומנו במפורש
   return true;
 }
 
