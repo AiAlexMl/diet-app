@@ -58,6 +58,7 @@ All filtering logic is tag-driven:
 | `fat` | Healthy fats (avocado, nuts, oil) |
 | `oil` | Olive oil (id:86) — added to every salad at **5g (כפית)** |
 | `nuts` / `peanuts` / `sesame` / `soy` | Allergen sub-tags |
+| `gluten` | Contains gluten (wheat/rye/oats-by-cross-contamination) — excluded for `gluten_free`. Set on: 35,36 (pasta), 37,38 (bread/rye), 39,40 (pita), 44 (bulgur), 41,106 (oats), 107 (granola), 108 (cornflakes), 101 (energy bar). **Not** on rice/quinoa/buckwheat/rice-corn-cakes/starch |
 | `supplement` | Protein powder, bars, energy bars — only shown when `supplements` diet selected |
 
 ## Key Constraints
@@ -75,6 +76,7 @@ All filtering logic is tag-driven:
 - `complete:true` — self-contained meal (oatmeal-with-milk 106); its template has no protein slot
 - `dip:true` — hummus-spread (52), tahini (91); side dip in hot meals, excluded from legume main/side
 - `pita:true` — pitas (39, 40); only used as the carb with a fillable protein (egg/tuna). Dairy/cheese & salad meals use sliced bread only (`_sliced` matcher in `app.js`)
+- `gfOnly:true` — gluten-free-only items shown **only when `gluten_free` selected** (mirrors `vegOnly`): GF bread (109), GF pasta (110). Checked in `allowed()`
 - `optIn:true` — niche foods that appear **only if the user marked them liked** (`allowed()` excludes them otherwise). Set on: 6,7,8,11,12,13,14 (ground beef, sirloin, salmon, cod, bori, sea bass, tilapia), 57 (edamame), 63 (chard), 80 (watermelon), 83 (grapefruit)
 
 ## ID Ranges
@@ -84,7 +86,7 @@ All filtering logic is tag-driven:
 | 2–14 | חלבון מן החי — meat (2–7), fish (8–14) |
 | 15–17 | ביצים — M (id:15, 53g), L (id:16, 63g), XL (id:17, 73g) |
 | 20–27 | מוצרי חלב |
-| 33–46, 106–108 | דגנים — grains/bread/crackers; 41 oatmeal (water), 106 oatmeal (milk), 107 granola, 108 cornflakes |
+| 33–46, 106–110 | דגנים — grains/bread/crackers; 41 oatmeal (water), 106 oatmeal (milk), 107 granola, 108 cornflakes, 109 GF bread, 110 GF pasta |
 | 47–49 | ירקות עמילניים |
 | 50–57 | קטניות |
 | 60–74 | ירקות |
@@ -93,4 +95,4 @@ All filtering logic is tag-driven:
 | 96–101 | תוספים |
 | 100 | פריכיות אורז קטנות (4g/piece) — in דגנים |
 
-## Next available IDs: 18–19, 28–32, 109+
+## Next available IDs: 18–19, 28–32, 111+

@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════
 //  ui.js — ממשק משתמש: ניווט, רינדור, אירועים
-//  גרסה 1.0 | Diat Application
+//  גרסה 1.0 | Diet Application
 // ══════════════════════════════════════════
 
 let likeCat  = Object.keys(DB)[0];
@@ -317,7 +317,8 @@ function renderMenu() {
     </div>
   </div>
   <div class="nav-btns" style="margin-top:12px">
-    <button class="btn-primary" onclick="resetApp()">בנה תפריט חדש ←</button>
+    <button class="btn-primary" onclick="renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
+    <button class="btn-secondary" onclick="resetApp()">התחל מחדש (איפוס)</button>
   </div>`;
 
   document.getElementById('menu-output').innerHTML = html;

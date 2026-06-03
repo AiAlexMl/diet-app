@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════
 //  app.js — לוגיקה ואלגוריתם
-//  גרסה 1.0 | Diat Application
+//  גרסה 1.0 | Diet Application
 // ══════════════════════════════════════════
 
 // ── מצב האפליקציה ──
@@ -84,6 +84,8 @@ function allowed(f) {
                             f.tags.includes('dairy')|| f.tags.includes('egg'))) return false;
   if (d.has('vegetarian') && (f.tags.includes('meat') || f.tags.includes('fish'))) return false;
   if (d.has('lactose_free') && f.tags.includes('dairy')) return false;
+  if (d.has('gluten_free') && f.tags.includes('gluten')) return false;   // ללא גלוטן — מחריג חיטה/שיפון/שיבולת שועל וכו'
+  if (f.gfOnly && !d.has('gluten_free')) return false;   // פריטים ייעודיים ללא גלוטן — רק למשתמשי GF
   if (f.tags.includes('supplement') && !d.has('supplements')) return false;
   if (f.vegOnly && !d.has('vegan') && !d.has('vegetarian')) return false;
   if (f.containsMilk && (d.has('vegan') || d.has('lactose_free'))) return false;
@@ -245,6 +247,9 @@ const _tag = t => f => f.tags.includes(t);
 const isYogurt = f => f.id === 22 || f.id === 23 || f.id === 24;
 const isCheese = f => f.id === 20 || f.id === 21 || f.id === 25 || f.id === 26; // קוטג'/לבנה/צהובה
 const _sliced  = f => f.tags.includes('bread') && !f.pita; // לחם/פריכית, לא פיתה (פיתה רק עם חלבון ממולא)
+// האם יש חלבון מן החי זמין למשתמש (ביצה/בשר/דג/חלב)? אם כן — קטנייה אינה ה"חלבון" בסלט
+const hasAnimalProtein = () => ALL.some(f =>
+  (f.tags.includes('egg') || f.tags.includes('meat') || f.tags.includes('fish') || f.tags.includes('dairy')) && allowed(f));
 
 const MEAL_TEMPLATES = {
   breakfast: [
@@ -276,6 +281,12 @@ const MEAL_TEMPLATES = {
       { match:f => f.id === 41, calPct:.5, max:300 },
       { match:_tag('fruit'), calPct:.3, max:200, optional:true },
       { match:_tag('nuts'), calPct:.2, max:30, optional:true },   // אגוזים בלבד
+    ]},
+    // טבעוני (ובפרט טבעוני+ללא גלוטן): לחם/פריכית עם ממרח + פרי/אגוזים — רק כשאין ביצה/חלב זמינים
+    { name:'bread_spread', weight:1, when:u => !ALL.some(f => (f.tags.includes('egg') || f.tags.includes('dairy')) && allowed(f) && !u.has(f.id)), slots:[
+      { match:_sliced, calPct:.5, max:120, spread:'ifAlone' },
+      { match:_tag('fruit'), calPct:.3, max:200, optional:true },
+      { match:_tag('nuts'), calPct:.2, max:30, optional:true },
     ]},
   ],
   hot: [
@@ -325,7 +336,8 @@ const MEAL_TEMPLATES = {
     ]},
     { name:'big_salad',    weight:2, slots:[
       { special:'salad' },
-      { match:f => f.tags.includes('egg') || isCheese(f) || (f.tags.includes('legume') && !f.dip), calPct:.45, protPct:.8, max:250 },
+      // חלבון: ביצה/גבינה (מן החי). קטנייה רק כשאין למשתמש חלבון מן החי (טבעוני) — שעועית אינה "מנת חלבון" לאוכלי-כול
+      { match:f => f.tags.includes('egg') || isCheese(f) || (f.tags.includes('legume') && !f.dip && !hasAnimalProtein()), calPct:.45, protPct:.8, max:250 },
       { match:_sliced, calPct:.2, max:80, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
     ]},
   ],
@@ -427,6 +439,66 @@ function buildMeal(type, cal, used, ctx) {
 }
 
 // ══════════════════════════════════════════
+//  יישור קלורי ליעד (±8%) — reconcile
+// ══════════════════════════════════════════
+const CAL_TOL = 0.08;
+
+// עדכון פריט לכמות חדשה (גרמים): מעגל מאקרו ומעדכן תווית כמות
+function reG(it, g) {
+  it.g = g;
+  it.dispG = `${g}g`;
+  it.cal = Math.round(it.f.cal * g / 100);
+  it.p   = Math.round(it.f.p   * g / 10) / 10;
+  it.c   = Math.round(it.f.c   * g / 10) / 10;
+  it.fat = Math.round(it.f.f   * g / 100);
+  it.fib = Math.round((it.f.fib || 0) * g / 10) / 10;
+}
+
+function recalcMeal(m) {
+  m.totCal = m.items.reduce((s, x) => s + x.cal, 0);
+  m.totP   = Math.round(m.items.reduce((s, x) => s + (x.p   || 0), 0) * 10) / 10;
+  m.totC   = Math.round(m.items.reduce((s, x) => s + (x.c   || 0), 0) * 10) / 10;
+  m.totF   = Math.round(m.items.reduce((s, x) => s + (x.fat || 0), 0) * 10) / 10;
+  m.totFib = Math.round(m.items.reduce((s, x) => s + (x.fib || 0), 0) * 10) / 10;
+}
+
+// יישור הסך-הכול הקלורי ליעד ע"י כיוונון פריטים גמישים (פחמימות תחילה, חלבון רק אם צריך).
+// פריטים בעלי "כמות טבעית" (פרוסה/בננה/קופסה/ביצה/פריכייה) לא מכווננים — התווית נשארת נכונה.
+function reconcile(meals) {
+  const elastic = it => !it.isSaladGroup && !it.f.condiment && !it.f.isEgg &&
+    !it.f.unitLabel && !it.f.tags.includes('cracker') && it.f.id !== 20 && it.f.id !== 21;
+  const isCarb = it => it.f.tags.includes('hot_carb') || it.f.tags.includes('grain') || it.f.tags.includes('starch');
+
+  for (let pass = 0; pass < 4; pass++) {
+    const dCal = meals.reduce((s, m) => s + m.totCal, 0);
+    if (dCal >= S.target * (1 - CAL_TOL) && dCal <= S.target * (1 + CAL_TOL)) break;
+    const delta = S.target - dCal;
+    const grow = delta > 0;
+
+    const all = [];
+    meals.forEach(m => m.items.forEach(it => { if (elastic(it)) all.push(it); }));
+    const hasRoom = arr => arr.some(it => {
+      const max = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999);
+      const min = it.f.unitG || 30;
+      return grow ? it.g < max : it.g > min;
+    });
+    let pool = all.filter(isCarb);
+    if (!hasRoom(pool)) pool = all;          // אין מרווח בפחמימות → מערב גם חלבון
+    if (!pool.length || !hasRoom(pool)) break;
+
+    const poolCal = pool.reduce((s, it) => s + it.cal, 0) || 1;
+    pool.forEach(it => {
+      let g = Math.round((it.cal + delta * (it.cal / poolCal)) / it.f.cal * 100);
+      if (it.f.unitG) g = Math.round(g / it.f.unitG) * it.f.unitG;
+      const max = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999);
+      g = Math.max(it.f.unitG || 30, Math.min(g, max));
+      reG(it, g);
+    });
+    meals.forEach(recalcMeal);
+  }
+}
+
+// ══════════════════════════════════════════
 //  בניית תפריט מלא
 // ══════════════════════════════════════════
 function buildMenu() {
@@ -476,5 +548,6 @@ function buildMenu() {
     }
   }
 
+  reconcile(meals);   // יישור הסך-הכול הקלורי ליעד (±8%)
   return meals;
 }

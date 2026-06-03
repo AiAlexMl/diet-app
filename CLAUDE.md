@@ -1,4 +1,4 @@
-# CLAUDE.md — Diat Application
+# CLAUDE.md — Diet Application
 
 ## Running the App
 
@@ -22,6 +22,8 @@ Detailed rules are in `.claude/rules/`:
 - **Carb floor**: target raised so protein + fat + 100g carbs all fit (`S.carbWarning` set)
 - **BMI warnings**: cut+BMI<20 / bulk+BMI≥30 → shown live on screen 0 and in final menu
 - **Disclaimer**: overlay on load (`closeDisclaimer()`)
+- **Calorie accuracy**: `reconcile(meals)` runs last in `buildMenu()` — nudges elastic grams-based carbs (then protein) so the daily total lands within **±8%** (`CAL_TOL`) of `S.target`; natural-portion items (slice/banana/container/egg/cracker) are never rescaled
+- **Gluten-free**: `allowed()` excludes `gluten`-tagged foods (wheat/rye bread, pasta, pita, bulgur, granola, cornflakes, oats) and shows `gfOnly` items (GF bread 109, GF pasta 110) only when `gluten_free` is selected
 
 ## Menu Logic Notes (app.js / data.js)
 
@@ -42,7 +44,7 @@ Detailed rules are in `.claude/rules/`:
 | 2–14 | חלבון מן החי (meat/fish) |
 | 15–17 | ביצים (M/L/XL) |
 | 20–27 | מוצרי חלב |
-| 33–46, 100 | דגנים + פריכיות |
+| 33–46, 100, 106–110 | דגנים + פריכיות (109 לחם ללא גלוטן, 110 פסטה ללא גלוטן) |
 | 47–49 | ירקות עמילניים |
 | 50–57 | קטניות |
 | 60–74 | ירקות |

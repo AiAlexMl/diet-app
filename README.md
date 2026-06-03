@@ -1,10 +1,10 @@
-# Diat Application — בונה תפריט תזונה
+# Diet Application — בונה תפריט תזונה
 גרסה 1.0
 
 ## מבנה הפרויקט
 
 ```
-DiatApp/
+DietApp/
 ├── index.html     — מבנה HTML, 5 מסכים
 ├── style.css      — כל העיצוב
 ├── data.js        — מאגר מזון (99 מוצרים) + תבניות שעות

@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════
 //  data.js — מאגר המזון
-//  גרסה 1.0 | Diat Application
+//  גרסה 1.0 | Diet Application
 // ══════════════════════════════════════════
 //  fib = סיבים תזונתיים g/100g (ערכים מקורבים, מבוסס USDA)
 
@@ -36,22 +36,24 @@ const DB = {
   "דגנים": [
     { id:33, name:"אורז לבן מבושל",     prep:"", p:2.7, c:28.2, f:0.3, fib:0.4, cal:130, tags:["grain","hot_carb"] },
     { id:34, name:"אורז מלא מבושל",     prep:"", p:2.6, c:23.5, f:0.9, fib:1.8, cal:112, tags:["grain","hot_carb"] },
-    { id:35, name:"פסטה מבושלת",        prep:"", p:5.8, c:31.0, f:0.9, fib:1.8, cal:158, tags:["grain","hot_carb"] },
-    { id:36, name:"פסטה מלאה מבושלת",  prep:"", p:5.3, c:23.2, f:1.0, fib:4.5, cal:124, tags:["grain","hot_carb"] },
-    { id:37, name:"לחם מלא",            prep:"", p:3.5, c:13.0, f:1.1, fib:7.0, cal:80,  tags:["grain","bread"], unitG:30,  unitLabel:"פרוסה אחת" },
-    { id:38, name:"לחם שיפון",          prep:"", p:2.7, c:15.6, f:1.1, fib:5.8, cal:82,  tags:["grain","bread"], unitG:30,  unitLabel:"פרוסה אחת" },
-    { id:39, name:"פיתה מלאה",          prep:"", p:8.5, c:48.0, f:1.5, fib:6.0, cal:239, tags:["grain","bread"], unitG:65,  unitLabel:"פיתה אחת", pita:true },
-    { id:40, name:"פיתה לבנה",          prep:"", p:7.5, c:52.0, f:1.2, fib:2.2, cal:255, tags:["grain","bread"], unitG:65,  unitLabel:"פיתה אחת", pita:true },
-    { id:41, name:"שיבולת שועל במים",   prep:"מבושל", p:2.5, c:12.0, f:1.5, fib:1.7, cal:71,  tags:["grain","breakfast"] },
-    { id:106,name:"שיבולת שועל בחלב",   prep:"מבושל", p:4.8, c:15.0, f:3.8, fib:1.6, cal:116, tags:["grain","breakfast"], containsMilk:true, complete:true },
-    { id:107,name:"גרנולה",             prep:"", p:9.0, c:64.0, f:15.0, fib:7.0, cal:450, tags:["grain","granola"], unitG:45, unitLabel:"מנה (45g)" },
-    { id:108,name:"קורנפלקס",           prep:"", p:7.0, c:84.0, f:0.4, fib:3.0, cal:357, tags:["grain","cereal"],  unitG:30, unitLabel:"מנה (30g)" },
+    { id:35, name:"פסטה מבושלת",        prep:"", p:5.8, c:31.0, f:0.9, fib:1.8, cal:158, tags:["grain","hot_carb","gluten"] },
+    { id:36, name:"פסטה מלאה מבושלת",  prep:"", p:5.3, c:23.2, f:1.0, fib:4.5, cal:124, tags:["grain","hot_carb","gluten"] },
+    { id:37, name:"לחם מלא",            prep:"", p:3.5, c:13.0, f:1.1, fib:7.0, cal:80,  tags:["grain","bread","gluten"], unitG:30,  unitLabel:"פרוסה אחת" },
+    { id:38, name:"לחם שיפון",          prep:"", p:2.7, c:15.6, f:1.1, fib:5.8, cal:82,  tags:["grain","bread","gluten"], unitG:30,  unitLabel:"פרוסה אחת" },
+    { id:39, name:"פיתה מלאה",          prep:"", p:8.5, c:48.0, f:1.5, fib:6.0, cal:239, tags:["grain","bread","gluten"], unitG:65,  unitLabel:"פיתה אחת", pita:true },
+    { id:40, name:"פיתה לבנה",          prep:"", p:7.5, c:52.0, f:1.2, fib:2.2, cal:255, tags:["grain","bread","gluten"], unitG:65,  unitLabel:"פיתה אחת", pita:true },
+    { id:41, name:"שיבולת שועל במים",   prep:"מבושל", p:2.5, c:12.0, f:1.5, fib:1.7, cal:71,  tags:["grain","breakfast","gluten"] },
+    { id:106,name:"שיבולת שועל בחלב",   prep:"מבושל", p:4.8, c:15.0, f:3.8, fib:1.6, cal:116, tags:["grain","breakfast","gluten"], containsMilk:true, complete:true },
+    { id:107,name:"גרנולה",             prep:"", p:9.0, c:64.0, f:15.0, fib:7.0, cal:450, tags:["grain","granola","gluten"], unitG:45, unitLabel:"מנה (45g)" },
+    { id:108,name:"קורנפלקס",           prep:"", p:7.0, c:84.0, f:0.4, fib:3.0, cal:357, tags:["grain","cereal","gluten"],  unitG:30, unitLabel:"מנה (30g)" },
     { id:42, name:"קינואה מבושלת",      prep:"", p:4.4, c:21.3, f:1.9, fib:2.8, cal:120, tags:["grain","hot_carb"] },
     { id:43, name:"כוסמת מבושלת",       prep:"", p:3.4, c:20.0, f:0.6, fib:2.7, cal:92,  tags:["grain","hot_carb"] },
-    { id:44, name:"בורגול מבושל",       prep:"", p:3.1, c:18.6, f:0.2, fib:4.5, cal:83,  tags:["grain","hot_carb"] },
+    { id:44, name:"בורגול מבושל",       prep:"", p:3.1, c:18.6, f:0.2, fib:4.5, cal:83,  tags:["grain","hot_carb","gluten"] },
     { id:45, name:"פריכיות אורז גדולות", prep:"", p:7.8, c:80.7, f:3.5, fib:3.5, cal:384, tags:["grain","bread","cracker"], unitG:9,  unitLabel:"פריכייה אחת" },
     { id:46, name:"פריכיות תירס",       prep:"", p:8.5, c:79.0, f:3.5, fib:4.0, cal:384, tags:["grain","bread","cracker"], unitG:9,  unitLabel:"פריכייה אחת" },
     { id:100,name:"פריכיות אורז קטנות", prep:"", p:7.8, c:80.7, f:3.5, fib:3.5, cal:384, tags:["grain","bread","cracker"], unitG:4,  unitLabel:"פריכייה קטנה" },
+    { id:109,name:"לחם ללא גלוטן",       prep:"", p:4.0, c:20.0, f:3.0, fib:2.5, cal:120, tags:["grain","bread"], unitG:30, unitLabel:"פרוסה אחת", gfOnly:true },
+    { id:110,name:"פסטה ללא גלוטן מבושלת", prep:"", p:3.5, c:25.0, f:0.6, fib:1.5, cal:120, tags:["grain","hot_carb"], gfOnly:true },
   ],
   "ירקות עמילניים": [
     { id:47, name:"בטטה",               prep:"אפויה", p:2.0, c:21.0, f:0.1, fib:3.0, cal:90,  tags:["starch","hot_carb"], unitG:150, unitLabel:"בטטה בינונית" },
@@ -115,7 +117,7 @@ const DB = {
     { id:97, name:"אבקת חלבון צמחי",    prep:"", p:70.0, c:8.0, f:6.0, fib:3.0, cal:360, tags:["supplement"], unitG:30, unitLabel:"סקופ אחד (30g)" },
     { id:98, name:"קזאין",              prep:"", p:72.0, c:9.0, f:4.5, fib:1.0, cal:370, tags:["supplement"], unitG:30, unitLabel:"סקופ אחד (30g)" },
     { id:99, name:"בר חלבון",           prep:"", p:21.0, c:20.0,f:6.0, fib:5.0, cal:190, tags:["supplement"], unitG:60, unitLabel:"בר אחד (60g)" },
-    { id:101,name:"חטיף אנרגיה",       prep:"", p:9.0,  c:64.0,f:7.0, fib:4.0, cal:380, tags:["supplement"], unitG:65, unitLabel:"חטיף אחד (65g)" },
+    { id:101,name:"חטיף אנרגיה",       prep:"", p:9.0,  c:64.0,f:7.0, fib:4.0, cal:380, tags:["supplement","gluten"], unitG:65, unitLabel:"חטיף אחד (65g)" },
   ],
 };
 

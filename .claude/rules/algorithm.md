@@ -5,6 +5,10 @@ paths:
 
 # Macro & Menu Algorithm
 
+## Diet/allergy filter (`allowed`)
+
+Excludes by avoided-set, allergy tags, and diet: vegan/vegetarian/lactose; **`gluten_free` excludes `gluten`-tagged foods**; `gfOnly` items appear only for GF users; `supplement`/`vegOnly`/`containsMilk`/`optIn` gating as documented in `data-schema.md`.
+
 ## Macro Calculation (`calcMacro`)
 
 - **BMR**: Harris-Benedict 1919
@@ -31,6 +35,14 @@ paths:
 3. Selects `MEAL_TIMES` schedule based on `S.time` / `S.noTrain`
 4. For each meal calls `buildMeal(def.type, budget, used, ctx)`; shares a `used` Map (grams per food ID) and `ctx.usedCarbCats` for hot-carb variety
 5. After all meals: if no fruit was used and `target > 1200`, injects one fruit into the snack
+6. **`reconcile(meals)`** (runs last) — closes the gap between the daily total and `S.target`
+
+## Calorie reconciliation (`reconcile`)
+
+The build is bottom-up (per-item rounding to `unitG`, `maxDay`/`maxMeal`/`max` clamps, skipped `optional` slots), so the raw total drifts from target. `reconcile(meals)` (≤4 passes) brings it within **±8%** (`CAL_TOL`):
+- **Elastic items** = shown in grams (no `unitLabel`, not egg/cracker/cottage/condiment/salad-group) — i.e. cooked grains/starch + animal proteins + plain legumes.
+- Distributes the calorie delta across **carbs first** (`hot_carb`/`grain`/`starch`), falling back to protein items only when carb headroom (between `unitG||30` floor and `min(maxMeal, maxDay)`) is exhausted — so protein stays near `S.proteinG`.
+- `reG(it, g)` re-rounds an item's macros + `dispG`; `recalcMeal(m)` re-sums meal totals. Natural-portion items are never rescaled (labels stay truthful).
 
 ## Meal Templates (the realism mechanism)
 
@@ -48,7 +60,9 @@ A **slot**: `{ match(f,used) | special, calPct, protPct?, max, optional?, spread
 - **fruit_nuts** snack / oats nut slot use `nuts` only (almonds/walnuts/cashews) — not avocado/olives (those are salad extras).
 - **yogurt_bowl** topping is **granola only** (cooked oats 41 don't belong in a yogurt bowl); topping is optional so yogurt+fruit still works.
 
-Templates: **breakfast** eggs / cheese / yogurt_bowl / porridge / cornflakes / oats_water; **hot** meat (w3) / legume (w1, veg-only) — **always a cooked meat/fish (or legume) main + carb; no canned tuna here**; **snack** dairy_fruit / fruit_nuts / cracker_cheese / shake; **dinner** cheese_bread / tuna_bread / big_salad (canned tuna lives here).
+Templates: **breakfast** eggs / cheese / yogurt_bowl / porridge / cornflakes / oats_water / bread_spread (vegan-gated: bread+spread+fruit/nuts, `when` no egg/dairy — covers vegan & vegan+GF whose oats are gluten-excluded); **hot** meat (w3) / legume (w1, veg-only) — **always a cooked meat/fish (or legume) main + carb; no canned tuna here**; **snack** dairy_fruit / fruit_nuts / cracker_cheese / shake; **dinner** cheese_bread / tuna_bread / big_salad (canned tuna lives here).
+
+**`big_salad` protein** = egg/cheese (animal). A legume satisfies it **only when the user has no animal protein available** (`!hasAnimalProtein()` — no allowed egg/meat/fish/dairy), i.e. vegans. For omnivores/vegetarians, beans are never "the protein" of a salad meal (they get egg/cheese); vegan dinners stay feasible via legume/tofu.
 
 ## Food role flags (enforce realism, set in `data.js`)
 
