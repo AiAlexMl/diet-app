@@ -360,10 +360,10 @@
                "artist":  "Joydeep"
            },
     "70":  {
-               "term":  "zucchini",
-               "sourceTitle":  "File:Calabacín, Múnich, Alemania, 2013-03-30, DD 01.JPG",
-               "license":  "CC BY-SA 3.0",
-               "artist":  "Diego Delso"
+               "term":  "grilled zucchini",
+               "sourceTitle":  "File:Grilled zucchini.jpg",
+               "license":  "CC BY 2.0",
+               "artist":  "Jeremy Keith"
            },
     "71":  {
                "term":  "onion",
@@ -439,9 +439,9 @@
            },
     "102":  {
                 "term":  "nectarine",
-                "sourceTitle":  "File:Autumn Red peaches.jpg",
-                "license":  "Public domain",
-                "artist":  "Jack Dykinga, USDA"
+                "sourceTitle":  "File:Nectarines 1.jpg",
+                "license":  "CC BY-SA 2.0",
+                "artist":  "travel oriented"
             },
     "103":  {
                 "term":  "peach",
