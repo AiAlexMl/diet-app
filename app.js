@@ -477,6 +477,17 @@ function reBread(it, count) {
   it.fib = Math.round((it.f.fib || 0) * g / 10) / 10;
 }
 
+// כיוונון פריכיות לפי מספר יחידות (2–6, דרך crackerPortion) — פחמימה מרכזית בללא-גלוטן
+function reCracker(it, targetG) {
+  const c = crackerPortion(targetG, it.f.unitG || 9);
+  it.g = c.g; it.dispG = c.dispG;
+  it.cal = Math.round(it.f.cal * c.g / 100);
+  it.p   = Math.round(it.f.p   * c.g / 10) / 10;
+  it.c   = Math.round(it.f.c   * c.g / 10) / 10;
+  it.fat = Math.round(it.f.f   * c.g / 100);
+  it.fib = Math.round((it.f.fib || 0) * c.g / 10) / 10;
+}
+
 function recalcMeal(m) {
   m.totCal = m.items.reduce((s, x) => s + x.cal, 0);
   m.totP   = Math.round(m.items.reduce((s, x) => s + (x.p   || 0), 0) * 10) / 10;
@@ -555,21 +566,26 @@ function reconcile(meals) {
       continue;
     }
     const delta = S.target - dCal, grow = delta > 0;
-    // לחם פרוס הוא מנוף פחמימה נוסף (לפי מספר פרוסות) — חשוב כי בוקר/ערב לרוב חסרי פחמימה-בגרמים
-    const isBread = it => it.f && it.f.tags.includes('bread') && !it.f.tags.includes('cracker') && !it.f.pita && it.f.unitG;
-    const maxOf = it => isBread(it) ? (it.f.unitG || 30) * 4 : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 400);
-    const minOf = it => it.f.unitG || 30;
+    // לחם פרוס (1–4 פרוסות) ופריכיות (2–6) הם מנופי פחמימה נוספים — חיוני כי בוקר/ערב
+    // לרוב חסרי פחמימה-בגרמים, ובללא-גלוטן הפריכיות הן הפחמימה המרכזית.
+    const isBread   = it => it.f && it.f.tags.includes('bread') && !it.f.tags.includes('cracker') && !it.f.pita && it.f.unitG;
+    const isCracker = it => it.f && it.f.tags.includes('cracker') && it.f.unitG;
+    const isCount   = it => isBread(it) || isCracker(it);
+    const maxOf = it => isBread(it) ? it.f.unitG * 4 : isCracker(it) ? it.f.unitG * 6 : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 400);
+    const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
     const grams = items().filter(it => it.f && !it.f.isEgg && !it.f.condiment && !it.isSaladGroup &&
-      !it.f.tags.includes('cracker') && it.f.id !== 20 && it.f.id !== 21 && (!it.f.unitLabel || isBread(it)));
+      it.f.id !== 20 && it.f.id !== 21 && (!it.f.unitLabel || isCount(it)));
     const hasRoom = arr => arr.some(it => grow ? it.g < maxOf(it) : it.g > minOf(it));
-    let pool = grams.filter(it => isCarb(it) || isBread(it));
+    let pool = grams.filter(it => isCarb(it) || isCount(it));
     if (!hasRoom(pool)) pool = grams;          // אין מרווח בפחמימות → מערב גם חלבון
     if (!pool.length || !hasRoom(pool)) break;
     const poolCal = pool.reduce((s, it) => s + it.cal, 0) || 1;
     pool.forEach(it => {
       const targetCal = it.cal + delta * (it.cal / poolCal);
-      if (isBread(it)) reBread(it, Math.round(targetCal / (it.f.cal * (it.f.unitG || 30) / 100)));
-      else reG(it, clampG(it, Math.round(targetCal / it.f.cal * 100)));
+      const targetG = targetCal / it.f.cal * 100;
+      if (isBread(it))        reBread(it, Math.round(targetCal / (it.f.cal * it.f.unitG / 100)));
+      else if (isCracker(it)) reCracker(it, targetG);
+      else                    reG(it, clampG(it, Math.round(targetG)));
     });
     meals.forEach(recalcMeal);
   }
