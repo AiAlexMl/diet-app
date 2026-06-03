@@ -42,7 +42,8 @@ Renders in order:
 3. `S.carbWarning` → yellow `.bmi-warning` banner (ℹ️)
 4. Morning training tip (if applicable)
 5. Meal cards
-6. Daily summary card
+6. Daily summary card (calories/protein/carbs/fat + macro % bars + **fiber row**, number only)
+7. Two nav buttons: **"תפריט נוסף עם אותן העדפות"** → `renderMenu()` (rebuild with same `S`) and **"התחל מחדש (איפוס)"** → `resetApp()`
 
 **Food row name priority:**
 1. `it.displayName` if set — eggs: "חביתה מביצה אחת (L)"
@@ -54,13 +55,10 @@ Renders in order:
 
 **Empty meal** — if `m.items.length === 0`, renders `.empty-meal-note` message instead.
 
-## Reset (`resetApp`)
+## Regenerate vs. Reset (menu screen buttons)
 
-Called from "בנה תפריט חדש" button in menu screen. Clears:
-- `S.liked`, `S.avoided`, `S.diet`, `S.allergy`
-- `S.goal` → `'maintain'`, `S.time` → `null`, `S.noTrain` → `false`
-
-Resets all chip/toggle/time-card UI classes, count displays, noTrain button text, then calls `goTo(0)`.
+- **"תפריט נוסף עם אותן העדפות"** → `renderMenu()` again: rebuilds a fresh menu keeping all of `S` (likes/avoids/diet/goal/time). Variety comes from the shuffles in `pick()`/`buildSalad`.
+- **"התחל מחדש (איפוס)"** → `resetApp()`: clears `S.liked`, `S.avoided`, `S.diet`, `S.allergy`; `S.goal`→`'maintain'`, `S.time`→`null`, `S.noTrain`→`false`; resets all chip/toggle/time-card UI, count displays, noTrain button text; then `goTo(0)`.
 
 ## Disclaimer Overlay
 

@@ -69,7 +69,7 @@ Templates: **breakfast** eggs / cheese / yogurt_bowl / porridge / cornflakes / o
 
 ## Food role flags (enforce realism, set in `data.js`)
 
-- `condiment` (olive oil, tahini, peanut butter) — never standalone; only via `attachSpread` on bread/cracker
+- `condiment` (olive oil, tahini, peanut butter) — never standalone; only via `makeSpread` on bread/cracker
 - `drink` (milk) — never a protein; only the `milk` slot in cornflakes template
 - `complete` (oatmeal-with-milk 106) — self-contained breakfast; its template has no protein slot
 - `dip` (hummus-spread 52, tahini 91) — a side dip in hot meals; excluded from legume main/side pools
@@ -109,4 +109,4 @@ Liked foods always outrank non-liked (liked group comes first); both groups are 
 ```
 - `displayName` set only for eggs: "חביתה מביצה אחת (L)"; `dispG` is `''`
 - All other items: `displayName` is `undefined`; `dispG` holds the portion string
-- `fib` — fiber grams for the served portion (`f.fib || 0`); meals sum it to `totFib`, daily total shown in summary with a `~14g/1000kcal` target hint
+- `fib` — fiber grams for the served portion (`f.fib || 0`); meals sum it to `totFib`, daily total shown in the summary (number only, no target hint)

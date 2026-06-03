@@ -27,11 +27,12 @@ Detailed rules are in `.claude/rules/`:
 
 ## Menu Logic Notes (app.js / data.js)
 
-- **Liked foods**: `pick()` puts liked first (shuffled for variety); legumes and fats are in the protein/snack pools so liked items there actually appear (and vegetarians get protein)
+- **Meal templates** (the realism engine): every meal is built from a coherent template (`MEAL_TEMPLATES` keyed breakfast/hot/snack/dinner) via `buildMeal`→`chooseTemplate`→`buildFromTemplate` — not free category-mixing. Food role flags (`condiment`/`drink`/`complete`/`dip`/`pita`/`gfOnly`/`optIn`) keep combos realistic. See `algorithm.md`
+- **Liked foods**: `pick()` puts liked first (both groups shuffled for variety)
 - **Tuna**: `tunaUsed()` — one tuna type per menu, max one can
-- **Hot veg**: `buildHotMeal` serves a hot vegetable ~40% of the time instead of salad (gives broccoli etc. a chance)
+- **Hot veg**: the hot meal's `hotveg_or_salad` slot serves a hot vegetable ~40% of the time instead of salad (gives broccoli etc. a chance)
 - **Morning workout**: post-workout meal is `breakfast` type (not a hot meal)
-- **Fiber**: `fib` per item; daily total shown in summary vs `~14g/1000kcal` target
+- **Fiber**: `fib` per item; daily total shown in the summary (number only, no target hint)
 
 ## Product Images
 

@@ -71,7 +71,7 @@ All filtering logic is tag-driven:
 - `halfLabel` — used for cottage cheese half-container display (ids 20–21 only)
 - `vegOnly:true` — only allowed for vegan/vegetarian diets (e.g., tofu id 56). Checked in `allowed()`
 - `containsMilk:true` — excluded for vegan/lactose_free (e.g., oatmeal-with-milk id 106). Checked in `allowed()`
-- `condiment:true` — olive oil (86), tahini (91), peanut butter (92); never standalone, only via `attachSpread` on bread/cracker
+- `condiment:true` — olive oil (86), tahini (91), peanut butter (92); never standalone, only via `makeSpread` on bread/cracker
 - `drink:true` — milk (27); only the cornflakes `milk` slot, never a protein
 - `complete:true` — self-contained meal (oatmeal-with-milk 106); its template has no protein slot
 - `dip:true` — hummus-spread (52), tahini (91); side dip in hot meals, excluded from legume main/side
