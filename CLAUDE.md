@@ -22,7 +22,7 @@ Detailed rules are in `.claude/rules/`:
 - **Carb floor**: target raised so protein + fat + 100g carbs all fit (`S.carbWarning` set)
 - **BMI warnings**: cut+BMI<20 / bulk+BMI≥30 → shown live on screen 0 and in final menu
 - **Disclaimer**: overlay on load (`closeDisclaimer()`)
-- **Calorie accuracy**: `reconcile(meals)` runs last in `buildMenu()` — nudges elastic grams-based carbs (then protein) so the daily total lands within **±8%** (`CAL_TOL`) of `S.target`; natural-portion items (slice/banana/container/egg/cracker) are never rescaled
+- **Macro accuracy**: `reconcile(meals)` runs last in `buildMenu()` as a 3-stage pass — protein **±10%** (resize meat/legume grams, egg size/count), fat **±25%** *approx* (salad-oil lever only, present items), calories **±8%** (carbs absorb the rest). Natural-portion items (slice/banana/container/cracker) are never rescaled
 - **Gluten-free**: `allowed()` excludes `gluten`-tagged foods (wheat/rye bread, pasta, pita, bulgur, granola, cornflakes, oats) and shows `gfOnly` items (GF bread 109, GF pasta 110) only when `gluten_free` is selected
 
 ## Menu Logic Notes (app.js / data.js)

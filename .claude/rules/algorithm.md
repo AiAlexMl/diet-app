@@ -35,14 +35,17 @@ Excludes by avoided-set, allergy tags, and diet: vegan/vegetarian/lactose; **`gl
 3. Selects `MEAL_TIMES` schedule based on `S.time` / `S.noTrain`
 4. For each meal calls `buildMeal(def.type, budget, used, ctx)`; shares a `used` Map (grams per food ID) and `ctx.usedCarbCats` for hot-carb variety
 5. After all meals: if no fruit was used and `target > 1200`, injects one fruit into the snack
-6. **`reconcile(meals)`** (runs last) — closes the gap between the daily total and `S.target`
+6. **`reconcile(meals)`** (runs last) — adjusts the menu so the daily macros land near target
 
-## Calorie reconciliation (`reconcile`)
+## Macro reconciliation (`reconcile`) — 3 stages
 
-The build is bottom-up (per-item rounding to `unitG`, `maxDay`/`maxMeal`/`max` clamps, skipped `optional` slots), so the raw total drifts from target. `reconcile(meals)` (≤4 passes) brings it within **±8%** (`CAL_TOL`):
-- **Elastic items** = shown in grams (no `unitLabel`, not egg/cracker/cottage/condiment/salad-group) — i.e. cooked grains/starch + animal proteins + plain legumes.
-- Distributes the calorie delta across **carbs first** (`hot_carb`/`grain`/`starch`), falling back to protein items only when carb headroom (between `unitG||30` floor and `min(maxMeal, maxDay)`) is exhausted — so protein stays near `S.proteinG`.
-- `reG(it, g)` re-rounds an item's macros + `dispG`; `recalcMeal(m)` re-sums meal totals. Natural-portion items are never rescaled (labels stay truthful).
+The build is bottom-up (per-item rounding to `unitG`, `maxDay`/`maxMeal`/`max` clamps, skipped `optional` slots), so raw totals drift. `reconcile(meals)` runs an outer loop (≤3) of three stages so protein & fat land near target and carbs absorb the rest of the calories. Tolerances: `PROT_TOL=0.10`, `FAT_TOL=0.25`, `CAL_TOL=0.08`.
+
+- **Stage 1 — protein → ±10% of `S.proteinG`.** Lever = grams-elastic protein items (`isProt`: meat/fish/legume with no `unitLabel`, not `dip`) **and eggs**. Distributes the protein delta by current-protein share; meats/legumes via `reG`+`clampG` (snap `unitG`, floor `unitG||30`, ceil `min(maxMeal, maxDay, 400)`), eggs via `adjustEgg(it, targetG)` which picks the nearest size (15/16/17 = 53/63/73 g) × count (1–2). Dairy proteins (cottage/yogurt/cheese) are **not** levers (fixed natural portions), so the meat/egg absorbs the delta.
+- **Stage 2 — fat → ±25% of `S.fatG` (approximate).** Only lever is **salad olive-oil** (`_oilG`, 0–15 g, label-safe and ~1 g fat per gram). Distributed across all salads, then `recalcSalad`. Other fat foods (nuts/avocado/cheese) have fixed natural-portion labels so are **not** tuned — fat is best-effort/coarse by design.
+- **Stage 3 — calories → ±8% of `S.target`.** Distributes the calorie delta across grams-elastic **carbs** (`hot_carb`/`grain`/`starch`, no `unitLabel`) — near-pure carbs, so this barely disturbs Stages 1–2 — falling back to other elastic items only if carb headroom is exhausted.
+
+Helpers: `reG(it,g)` re-rounds macros + grams `dispG`; `recalcSalad(sg)` rebuilds a salad group from `_comps`/`_oilG`; `recalcMeal(m)` re-sums meal totals. Natural-portion items (slice/banana/container/cracker) are never rescaled (labels stay truthful). `buildSalad` returns via `recalcSalad` and keeps `_comps`/`_oil`/`_oilG` so the oil stays tunable.
 
 ## Meal Templates (the realism mechanism)
 
