@@ -384,9 +384,9 @@ function buildFromTemplate(tpl, cal, used, ctx) {
       item = ph ? buildSingleVeg(used, true) : buildSalad(used);
       if (!item) item = ph ? buildSalad(used) : buildSingleVeg(used, true);
     } else if (s.special === 'hot_carb' || s.special === 'hot_side') {
-      // hot_side: לפעמים קטנייה כתוספת לצד הבשר (במקום דגן), אחרת דגן חם
+      // hot_side: קטנייה כתוספת לצד הבשר רק אם המשתמש אוהב אותה; אחרת דגן חם (גמיש, חשוב לדיוק קלורי)
       if (s.special === 'hot_side') {
-        const wantLeg = ALL.some(f => f.tags.includes('legume') && !f.dip && S.liked.has(f.id) && allowed(f)) || Math.random() < 0.25;
+        const wantLeg = ALL.some(f => f.tags.includes('legume') && !f.dip && S.liked.has(f.id) && allowed(f));
         if (wantLeg) item = pick(ALL.filter(f => f.tags.includes('legume') && !f.dip), used, cal * (s.calPct || .4), 0, s.max || 250);
       }
       if (!item) {
@@ -678,13 +678,15 @@ function reconcile(meals) {
     const isBread   = it => it.f && it.f.tags.includes('bread') && !it.f.tags.includes('cracker') && !it.f.pita && it.f.unitG;
     const isCracker = it => it.f && it.f.tags.includes('cracker') && it.f.unitG;
     const isCount   = it => isBread(it) || isCracker(it);
-    const maxOf = it => isBread(it) ? it.f.unitG * 4 : isCracker(it) ? it.f.unitG * 6 : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 350);
+    const maxOf = it => isBread(it) ? it.f.unitG * 4 : isCracker(it) ? it.f.unitG * 6 : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 450);
     const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
     const grams = items().filter(it => it.f && !it.f.isEgg && !it.f.condiment && !it.isSaladGroup &&
       it.f.id !== 20 && it.f.id !== 21 && (!it.f.unitLabel || isCount(it)));
     const hasRoom = arr => arr.some(it => grow ? it.g < maxOf(it) : it.g > minOf(it));
+    // שלב הקלוריות נוגע *רק* בפחמימות (דגן/לחם/פריכיות). חלבון בבעלות שלב 1 בלבד —
+    // כך לא מנפחים חלבון מעבר ליעד כדי למלא קלוריות. אם הפחמימות מוצו → מקבלים תת-השגה קלורית.
+    const CARBCAP = 450;   // לדגן בגרמים מותר יותר (בולק אוכל הרבה); חלבון נשאר עד 350 (clampG)
     let pool = grams.filter(it => isCarb(it) || isCount(it));
-    if (!hasRoom(pool)) pool = grams;          // אין מרווח בפחמימות → מערב גם חלבון
     if (!pool.length || !hasRoom(pool)) break;
     const poolCal = pool.reduce((s, it) => s + it.cal, 0) || 1;
     pool.forEach(it => {
@@ -692,7 +694,8 @@ function reconcile(meals) {
       const targetG = targetCal / it.f.cal * 100;
       if (isBread(it))        reBread(it, Math.round(targetCal / (it.f.cal * it.f.unitG / 100)));
       else if (isCracker(it)) reCracker(it, targetG);
-      else                    reG(it, clampG(it, Math.round(targetG)));
+      else { const cap = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, CARBCAP);
+             reG(it, Math.max(it.f.unitG || 30, Math.min(Math.round(targetG), cap))); }
     });
     meals.forEach(recalcMeal);
   }
