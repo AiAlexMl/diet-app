@@ -18,7 +18,7 @@ Excludes by avoided-set, allergy tags, and diet: vegan/vegetarian/lactose; **`gl
   - maintain: RMR
   - bulk: RMR + 300
   - Floor: `Math.max(target, female ? 1200 : 1500)`
-- **Protein**: `weight × 2g`; if BMI ≥ 30, uses lean-body proxy (`25 × height_m²`) instead
+- **Protein**: `weight × 2g` (**vegans: × 1.6g** — hard to reach 2 from plants); if BMI ≥ 30, uses lean-body proxy (`25 × height_m²`) instead
 - **Fat floor**: `max(25g men / 40g women, 20% of target ÷ 9)`
 - **Carb floor**: if `protein×4 + fat×9 + 400 > target`, target is raised to fit — sets `S.carbWarning`
 - **Carbs**: `(target − protein×4 − fat×9) / 4`

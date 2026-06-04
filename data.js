@@ -69,6 +69,7 @@ const DB = {
     { id:55, name:"אפונה מבושלת",       prep:"", p:5.4,  c:15.6, f:0.2, fib:5.5, cal:84,  tags:["legume"] },
     { id:56, name:"טופו",               prep:"אפוי", p:17.3, c:2.8, f:8.7, fib:0.9, cal:144, tags:["legume","soy"], vegOnly:true },
     { id:57, name:"אדממה",              prep:"", p:11.9, c:8.9,  f:5.2, fib:5.2, cal:121, tags:["legume","soy"], optIn:true },
+    { id:58, name:"סייטן",              prep:"מוקפץ/אפוי", p:24.0, c:4.0, f:1.5, fib:0.6, cal:130, tags:["legume","gluten"], vegOnly:true },
   ],
   "ירקות": [
     { id:60, name:"ברוקולי",            prep:"מאודה",  p:2.4, c:7.2,  f:0.4, fib:2.6, cal:35, tags:["veg","hot_veg"],    unitG:80,  unitLabel:"כוס פרחים" },

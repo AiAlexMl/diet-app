@@ -52,10 +52,11 @@ function calcMacro() {
            : S.rmr;
   S.target = Math.max(S.target, S.gender === 'female' ? 1200 : 1500);
 
-  // חלבון — לפי BMI, רצפה לנשים על שומן
+  // חלבון — לפי BMI, רצפה לנשים על שומן. טבעונים: 1.6g/ק"ג (קשה להגיע ל-2 מצמחי); אחרים: 2g/ק"ג
   const bmi = S.weight / (S.height / 100) ** 2;
   const pw  = bmi >= 30 ? 25 * (S.height / 100) ** 2 : S.weight;
-  S.proteinG = Math.round(Math.min(S.weight, pw) * 2);
+  const pf  = S.diet.has('vegan') ? 1.6 : 2;
+  S.proteinG = Math.round(Math.min(S.weight, pw) * pf);
   S.fatG     = Math.max(S.gender === 'female' ? 40 : 25,
                         Math.round(S.target * 0.2 / 9));
   const macroFloor = S.proteinG * 4 + S.fatG * 9 + 100 * 4;
@@ -177,7 +178,7 @@ function recalcSalad(sg) {
   const comps = sg._comps, oil = sg._oil, oilG = sg._oilG || 0;
   const fmtPart = (f, g) => f.unitLabel || `${g}g`;
   const parts = comps.map(c => fmtPart(c.f, c.g));
-  if (oil && oilG > 0) parts.push(oilG === 5 ? 'כפית שמן זית' : `${oilG}g שמן זית`);
+  if (oil && oilG > 0) parts.push(oilG === 5 ? 'כפית שמן זית' : `${oilG / 5} כפיות שמן זית`);
   sg.parts = parts;
   const sum = sel => comps.reduce((a, c) => a + (c.f[sel] || 0) * c.g / 100, 0);
   sg.cal = Math.round(comps.reduce((a, c) => a + c.f.cal * c.g / 100, 0)) + (oil && oilG ? Math.round(oil.cal * oilG / 100) : 0);
@@ -555,13 +556,14 @@ function adjustFat(meals) {
   const dF = meals.reduce((s, m) => s + m.totF, 0);
   let delta = S.fatG - dF;                        // חיובי = להוסיף שומן
   if (Math.abs(delta) <= S.fatG * FAT_TOL) return;
+  const snapOil = g => Math.max(0, Math.min(10, Math.round(g / 5) * 5));   // 0/1/2 כפיות
 
   if (delta > 0) {
-    // 1) שמן סלט (גרם שמן = גרם שומן)
+    // 1) שמן סלט (גרם שמן = גרם שומן), בכפיות שלמות
     items.filter(it => it.isSaladGroup && it._oil).forEach(sg => {
       if (delta <= 0) return;
       const before = sg._oilG || 0;
-      sg._oilG = Math.max(0, Math.min(15, Math.round(before + delta)));
+      sg._oilG = snapOil(before + delta);
       delta -= (sg._oilG - before); recalcSalad(sg);
     });
     // 2) אגוזים קיימים (גרם אגוז = f% שומן)
@@ -602,7 +604,7 @@ function adjustFat(meals) {
     items.filter(it => it.isSaladGroup && it._oil && it._oilG > 0).forEach(sg => {
       if (need <= 0) return;
       const before = sg._oilG;
-      sg._oilG = Math.max(0, Math.round(before - need));
+      sg._oilG = snapOil(before - need);
       need -= (before - sg._oilG); recalcSalad(sg);
     });
     items.filter(it => it.f && it.f.tags.includes('nuts') && it.g > 10).forEach(it => {
