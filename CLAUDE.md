@@ -22,7 +22,7 @@ Detailed rules are in `.claude/rules/`:
 - **Carb floor**: target raised so protein + fat + 100g carbs all fit (`S.carbWarning` set)
 - **BMI warnings**: cut+BMI<20 / bulk+BMI≥30 → shown live on screen 0 and in final menu
 - **Disclaimer**: overlay on load (`closeDisclaimer()`)
-- **Macro accuracy**: `reconcile(meals)` runs last in `buildMenu()` as a 3-stage pass — protein **±10%** (resize meat/legume grams, egg size/count), fat **±25%** *approx* (salad-oil lever only, present items), calories **±8%** (carbs absorb the rest). Natural-portion items (slice/banana/container/cracker) are never rescaled
+- **Macro accuracy**: hot meals are built last against the **remaining** calorie budget; each meal uses a **best-of-4 retry** (`buildMealBest`) scored by calorie-fit **+ a lean-fat preference** (this is the main fat control); then `reconcile(meals)` runs a 3-stage pass — protein (meat/legume grams, egg size/count), fat (`adjustFat`: lean-ify swaps tuna-oil→water/cottage5→3/yogurt5→0, salad-oil, nuts, inject-to-snack, fatty→lean protein), calories (carbs/bread/crackers). ≤350 g/item cap. **Measured**: cal ~±5%, fat ~±6–8%, protein ~±10% (omnivore). Inherent limits: vegan protein < 2 g/kg; fat stays high if all liked proteins are fatty
 - **Gluten-free**: `allowed()` excludes `gluten`-tagged foods (wheat/rye bread, pasta, pita, bulgur, granola, cornflakes, oats) and shows `gfOnly` items (GF bread 109, GF pasta 110) only when `gluten_free` is selected
 
 ## Menu Logic Notes (app.js / data.js)

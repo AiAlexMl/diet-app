@@ -446,12 +446,31 @@ function buildMeal(type, cal, used, ctx) {
   return tpl ? buildFromTemplate(tpl, cal, used, ctx) : [];
 }
 
+// "החלפת ארוחה שמתאימה": בונים ~3 פעמים (תבניות אקראיות) ובוחרים את הקרובה ביותר לתקציב הקלורי,
+// כדי לדייק בלי לנפח מנה בודדת. עובדים על עותק של used ומאמצים את ניצולי הזוכה.
+function buildMealBest(type, budget, used, ctx) {
+  const expFat = S.fatG * budget / Math.max(S.target, 1);   // חלק השומן הצפוי לארוחה
+  let best = null, bestUsed = null, bestScore = Infinity;
+  for (let i = 0; i < 4; i++) {
+    const u = new Map(used);
+    const items = buildMeal(type, budget, u, ctx);
+    if (!items.length) continue;
+    const cal = items.reduce((s, x) => s + x.cal, 0);
+    const fat = items.reduce((s, x) => s + (x.fat || 0), 0);
+    // ניקוד: קרבה לתקציב קלורי + עדיפות לבנייה רזה (כדי לרסן שומן מהמקור)
+    const score = Math.abs(cal - budget) / Math.max(budget, 1) + 0.6 * Math.max(0, fat - expFat) / Math.max(expFat, 8);
+    if (score < bestScore) { bestScore = score; best = items; bestUsed = u; }
+  }
+  if (bestUsed) { used.clear(); bestUsed.forEach((v, k) => used.set(k, v)); }
+  return best || [];
+}
+
 // ══════════════════════════════════════════
 //  יישור מאקרו ליעד — reconcile (חלבון ±10% → שומן ±25% → קלוריות ±8%)
 // ══════════════════════════════════════════
-const CAL_TOL  = 0.08;
-const PROT_TOL = 0.10;
-const FAT_TOL  = 0.25;
+const CAL_TOL  = 0.04;
+const PROT_TOL = 0.07;
+const FAT_TOL  = 0.08;
 
 // עדכון פריט לכמות חדשה (גרמים): מעגל מאקרו ומעדכן תווית כמות
 function reG(it, g) {
@@ -470,6 +489,17 @@ function reBread(it, count) {
   const g = count * (it.f.unitG || 30);
   it.g = g;
   it.dispG = count === 1 ? (it.f.unitLabel || 'פרוסה אחת') : `${count} פרוסות`;
+  it.cal = Math.round(it.f.cal * g / 100);
+  it.p   = Math.round(it.f.p   * g / 10) / 10;
+  it.c   = Math.round(it.f.c   * g / 10) / 10;
+  it.fat = Math.round(it.f.f   * g / 100);
+  it.fib = Math.round((it.f.fib || 0) * g / 10) / 10;
+}
+
+// כיוונון אגוזים בגרמים (10–40) — מנוף שומן עדין; תווית בגרמים ("15g שקדים")
+function reNuts(it, g) {
+  g = Math.max(10, Math.min(40, Math.round(g)));
+  it.g = g; it.dispG = `${g}g`;
   it.cal = Math.round(it.f.cal * g / 100);
   it.p   = Math.round(it.f.p   * g / 10) / 10;
   it.c   = Math.round(it.f.c   * g / 10) / 10;
@@ -517,8 +547,89 @@ function adjustEgg(it, targetG) {
   it.fib = Math.round((best.ef.fib || 0) * it.g / 10) / 10;
 }
 
-// יישור מאקרו ב-3 שלבים: (1) חלבון ±10% (2) שומן ±25% — מקורב, רק פריטים קיימים
-// (3) פחמימות → קלוריות ±8%. פריטים בעלי "כמות טבעית" (פרוסה/בננה/קופסה/פריכייה) לא משתנים.
+// כיוונון שומן (שלב 2): שמן סלט → אגוזים קיימים → הוספת אגוזים לנשנוש → החלפת חלבון שמן ברזה.
+// שמן זית = 100% שומן (רציף), ולכן השומן מתכוונן עדין; ההחלפה לרזה פותרת "שומן תקוע גבוה".
+function adjustFat(meals) {
+  const items = meals.flatMap(m => m.items);
+  const usedIds = new Set(items.map(it => it.f && it.f.id));
+  const dF = meals.reduce((s, m) => s + m.totF, 0);
+  let delta = S.fatG - dF;                        // חיובי = להוסיף שומן
+  if (Math.abs(delta) <= S.fatG * FAT_TOL) return;
+
+  if (delta > 0) {
+    // 1) שמן סלט (גרם שמן = גרם שומן)
+    items.filter(it => it.isSaladGroup && it._oil).forEach(sg => {
+      if (delta <= 0) return;
+      const before = sg._oilG || 0;
+      sg._oilG = Math.max(0, Math.min(15, Math.round(before + delta)));
+      delta -= (sg._oilG - before); recalcSalad(sg);
+    });
+    // 2) אגוזים קיימים (גרם אגוז = f% שומן)
+    items.filter(it => it.f && it.f.tags.includes('nuts')).forEach(it => {
+      if (delta <= 0 || !it.f.f) return;
+      const before = it.fat;
+      reNuts(it, it.g + delta / (it.f.f / 100));
+      delta -= (it.fat - before);
+    });
+    // 3) אם עדיין חסר ואין אגוזים כלל — מנת אגוזים קטנה לנשנוש (בית הגיוני לאגוזים)
+    if (delta > S.fatG * FAT_TOL && !items.some(it => it.f && it.f.tags.includes('nuts'))) {
+      const snack = meals.find(m => m.type === 'snack') || meals[meals.length - 1];
+      const cand = [88, 89, 90].map(id => ALL.find(f => f.id === id)).filter(f => f && allowed(f) && !usedIds.has(f.id));
+      const nut = cand.find(f => S.liked.has(f.id)) || cand[0];
+      if (snack && nut && nut.f) {
+        const it = mkItem(nut, nut.unitG || 30);
+        reNuts(it, delta / (nut.f / 100));
+        snack.items.push(it);
+      }
+    }
+  } else {
+    let need = -delta;                            // גרם שומן להוריד
+    // 0) החלפה לגרסה רזה ששומרת חלבון/מנה: טונה בשמן→במים, קוטג' 5%→3%, יוגורט 5%→0% (יש לזה הכי הרבה תשואה)
+    const LEANER = { 9: 10, 20: 21, 24: 23 };
+    items.forEach(it => {
+      if (need <= 0 || !it.f || !(it.f.id in LEANER)) return;
+      const lean = ALL.find(f => f.id === LEANER[it.f.id]);
+      if (!lean || !allowed(lean) || usedIds.has(lean.id)) return;
+      const before = it.fat, lf = lean;
+      it.f = lf;
+      it.cal = Math.round(lf.cal * it.g / 100);
+      it.p   = Math.round(lf.p   * it.g / 10) / 10;
+      it.c   = Math.round(lf.c   * it.g / 10) / 10;
+      it.fat = Math.round(lf.f   * it.g / 100);
+      it.fib = Math.round((lf.fib || 0) * it.g / 10) / 10;
+      need -= (before - it.fat);
+    });
+    items.filter(it => it.isSaladGroup && it._oil && it._oilG > 0).forEach(sg => {
+      if (need <= 0) return;
+      const before = sg._oilG;
+      sg._oilG = Math.max(0, Math.round(before - need));
+      need -= (before - sg._oilG); recalcSalad(sg);
+    });
+    items.filter(it => it.f && it.f.tags.includes('nuts') && it.g > 10).forEach(it => {
+      if (need <= 0 || !it.f.f) return;
+      const before = it.fat;
+      reNuts(it, it.g - need / (it.f.f / 100));
+      need -= (before - it.fat);
+    });
+    // החלפת חלבון שמן ברזה (משמר חלבון, חותך שומן) — רק אם עדיין מעל הסבולת
+    if (need > S.fatG * FAT_TOL) {
+      const prot = items.filter(it => it.f && !it.f.isEgg && !it.f.unitLabel &&
+        (it.f.tags.includes('meat') || it.f.tags.includes('fish')));
+      const fattest = prot.sort((a, b) => b.f.f - a.f.f)[0];
+      if (fattest && fattest.f.f > 5) {
+        const tag = fattest.f.tags.includes('fish') ? 'fish' : 'meat';
+        const lean = ALL.filter(f => f.tags.includes(tag) && !f.tags.includes('tuna') &&
+          allowed(f) && !usedIds.has(f.id) && f.f < fattest.f.f && f.p > 0)
+          .sort((a, b) => a.f - b.f)[0];
+        if (lean) { const protG = fattest.p; fattest.f = lean; reG(fattest, Math.round(protG / lean.p * 100)); }
+      }
+    }
+  }
+  meals.forEach(recalcMeal);
+}
+
+// יישור מאקרו ב-3 שלבים: (1) חלבון ±7% (2) שומן ±8% (3) פחמימות → קלוריות ±4%.
+// פריטים בעלי "כמות טבעית" (פרוסה/בננה/קופסה/פריכייה) לא משתנים בשלב הקלוריות.
 function reconcile(meals) {
   const items = () => meals.flatMap(m => m.items);
   const isCarb = it => it.f && !it.f.unitLabel &&
@@ -527,11 +638,11 @@ function reconcile(meals) {
     (it.f.isEgg || ((it.f.tags.includes('meat') || it.f.tags.includes('fish') || it.f.tags.includes('legume')) && !it.f.unitLabel));
   const clampG = (it, g) => {
     if (it.f.unitG) g = Math.round(g / it.f.unitG) * it.f.unitG;
-    const max = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 400);   // תקרת מנה לשפיות
+    const max = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 350);   // תקרת מנה לשפיות
     return Math.max(it.f.unitG || 30, Math.min(g, max));
   };
 
-  for (let outer = 0; outer < 3; outer++) {
+  for (let outer = 0; outer < 6; outer++) {
     // ── שלב 1: חלבון → ±10% ──
     const dP = meals.reduce((s, m) => s + m.totP, 0);
     if (Math.abs(dP - S.proteinG) > S.proteinG * PROT_TOL) {
@@ -547,22 +658,16 @@ function reconcile(meals) {
       meals.forEach(recalcMeal);
     }
 
-    // ── שלב 2: שומן → ±25% (מקורב) ע"י כיוונון שמן הסלט בלבד (מנוף חלק ובטוח-תווית) ──
-    const dF = meals.reduce((s, m) => s + m.totF, 0);
-    if (Math.abs(dF - S.fatG) > S.fatG * FAT_TOL) {
-      const salads = items().filter(it => it.isSaladGroup && it._oil);
-      if (salads.length) {
-        const per = (S.fatG - dF) / salads.length;   // שמן = 100% שומן ⇒ גרם שמן ≈ גרם שומן
-        salads.forEach(sg => { sg._oilG = Math.max(0, Math.min(15, Math.round((sg._oilG || 0) + per))); recalcSalad(sg); });
-        meals.forEach(recalcMeal);
-      }
-    }
+    // ── שלב 2: שומן → ±8% (שמן → אגוזים → הוספה לנשנוש → החלפת חלבון שמן ברזה) ──
+    adjustFat(meals);
 
-    // ── שלב 3: קלוריות → ±8% ע"י פחמימות (וכמוצא אחרון גם חלבון) ──
+    // ── שלב 3: קלוריות → ±4% ע"י פחמימות (וכמוצא אחרון גם חלבון) ──
     const dCal = meals.reduce((s, m) => s + m.totCal, 0);
     if (dCal >= S.target * (1 - CAL_TOL) && dCal <= S.target * (1 + CAL_TOL)) {
       const dP2 = meals.reduce((s, m) => s + m.totP, 0);
-      if (Math.abs(dP2 - S.proteinG) <= S.proteinG * PROT_TOL) break;   // קלוריות+חלבון בטווח
+      const dF2 = meals.reduce((s, m) => s + m.totF, 0);
+      if (Math.abs(dP2 - S.proteinG) <= S.proteinG * PROT_TOL &&
+          Math.abs(dF2 - S.fatG)     <= S.fatG     * FAT_TOL) break;   // קלוריות+חלבון+שומן בטווח
       continue;
     }
     const delta = S.target - dCal, grow = delta > 0;
@@ -571,7 +676,7 @@ function reconcile(meals) {
     const isBread   = it => it.f && it.f.tags.includes('bread') && !it.f.tags.includes('cracker') && !it.f.pita && it.f.unitG;
     const isCracker = it => it.f && it.f.tags.includes('cracker') && it.f.unitG;
     const isCount   = it => isBread(it) || isCracker(it);
-    const maxOf = it => isBread(it) ? it.f.unitG * 4 : isCracker(it) ? it.f.unitG * 6 : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 400);
+    const maxOf = it => isBread(it) ? it.f.unitG * 4 : isCracker(it) ? it.f.unitG * 6 : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 350);
     const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
     const grams = items().filter(it => it.f && !it.f.isEgg && !it.f.condiment && !it.isSaladGroup &&
       it.f.id !== 20 && it.f.id !== 21 && (!it.f.unitLabel || isCount(it)));
@@ -611,16 +716,17 @@ function buildMenu() {
   const used = new Map();
   const ctx = { usedCarbCats: new Set() }; // גיוון קטגוריות פחמימה לאורך היום
 
-  const meals = mealDefs.map(def => {
-    const budget = Math.round(t * def.pct);
-    const items = buildMeal(def.type, budget, used, ctx);
-    const totCal = items.reduce((s, x) => s + x.cal, 0);
-    const totP   = Math.round(items.reduce((s, x) => s + (x.p   || 0), 0) * 10) / 10;
-    const totC   = Math.round(items.reduce((s, x) => s + (x.c   || 0), 0) * 10) / 10;
-    const totF   = Math.round(items.reduce((s, x) => s + (x.fat || 0), 0) * 10) / 10;
-    const totFib = Math.round(items.reduce((s, x) => s + (x.fib || 0), 0) * 10) / 10;
-    return { ...def, budget, items, totCal, totP, totC, totF, totFib };
-  });
+  // בונים קודם את הארוחות הפחות-גמישות (לא-חמות, יחידות טבעיות), ואז את החמות (בשר+פחמימה
+  // בגרמים) לפי התקציב שנותר — כך הגמישות מכוונת ישר ליעד היומי. הסדר לתצוגה נשמר.
+  const meals = mealDefs.map(def => ({ ...def, budget: Math.round(t * def.pct), items: [] }));
+  const buildInto = (m, budget) => { m.budget = budget; m.items = buildMealBest(m.type, budget, used, ctx); recalcMeal(m); };
+
+  meals.filter(m => m.type !== 'hot').forEach(m => buildInto(m, m.budget));
+  const hot = meals.filter(m => m.type === 'hot');
+  const usedCal = meals.filter(m => m.type !== 'hot').reduce((s, m) => s + m.totCal, 0);
+  const remaining = Math.max(0, t - usedCal);
+  const hotPctSum = hot.reduce((s, m) => s + m.pct, 0) || 1;
+  hot.forEach(m => buildInto(m, Math.round(remaining * m.pct / hotPctSum)));
 
   // ערובת פרי: אם לא נכנס אף פרי ליום והקלוריות מאפשרות — מוסיפים לנשנוש (או לאחרונה)
   const fruitIds = new Set(ALL.filter(f => f.tags.includes('fruit')).map(f => f.id));
