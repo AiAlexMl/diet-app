@@ -114,6 +114,17 @@ function crackerPortion(targetG, unitW) {
   return { g: n * unitW, dispG: `${n} פריכיות (${n * unitW}g)` };
 }
 
+// קובע cal/p/c/fat/fib על פריט לפי המזון f וכמות g (ערכי המזון תמיד ל-100g). משמש בכל מקום
+// שבונה/מעדכן כמות — מונע שכפול של נוסחת המאקרו.
+function setMacros(it, f, g) {
+  it.cal = Math.round(f.cal * g / 100);
+  it.p   = Math.round(f.p   * g / 10) / 10;
+  it.c   = Math.round(f.c   * g / 10) / 10;
+  it.fat = Math.round(f.f   * g / 100);
+  it.fib = Math.round((f.fib || 0) * g / 10) / 10;
+  return it;
+}
+
 function mkItem(f, g) {
   let dispG, displayName;
   if (f.isEgg) {
@@ -130,14 +141,7 @@ function mkItem(f, g) {
   } else {
     dispG = `${g}g`;
   }
-  return {
-    f, g, dispG, displayName,
-    cal: Math.round(f.cal * g / 100),
-    p:   Math.round(f.p   * g / 10) / 10,
-    c:   Math.round(f.c   * g / 10) / 10,
-    fat: Math.round(f.f   * g / 100),
-    fib: Math.round((f.fib || 0) * g / 10) / 10,
-  };
+  return setMacros({ f, g, dispG, displayName }, f, g);
 }
 
 // ══════════════════════════════════════════
@@ -467,56 +471,31 @@ function buildMealBest(type, budget, used, ctx) {
 }
 
 // ══════════════════════════════════════════
-//  יישור מאקרו ליעד — reconcile (חלבון ±10% → שומן ±25% → קלוריות ±8%)
+//  יישור מאקרו ליעד — reconcile (חלבון ±7% → שומן ±8% → קלוריות ±4%)
 // ══════════════════════════════════════════
 const CAL_TOL  = 0.04;
 const PROT_TOL = 0.07;
 const FAT_TOL  = 0.08;
 
-// עדכון פריט לכמות חדשה (גרמים): מעגל מאקרו ומעדכן תווית כמות
-function reG(it, g) {
-  it.g = g;
-  it.dispG = `${g}g`;
-  it.cal = Math.round(it.f.cal * g / 100);
-  it.p   = Math.round(it.f.p   * g / 10) / 10;
-  it.c   = Math.round(it.f.c   * g / 10) / 10;
-  it.fat = Math.round(it.f.f   * g / 100);
-  it.fib = Math.round((it.f.fib || 0) * g / 10) / 10;
-}
-
-// כיוונון לחם פרוס לפי מספר פרוסות (1–4) — תווית אמת ("פרוסה אחת" / "N פרוסות")
-function reBread(it, count) {
-  count = Math.max(1, Math.min(4, count || 1));
-  const g = count * (it.f.unitG || 30);
-  it.g = g;
-  it.dispG = count === 1 ? (it.f.unitLabel || 'פרוסה אחת') : `${count} פרוסות`;
-  it.cal = Math.round(it.f.cal * g / 100);
-  it.p   = Math.round(it.f.p   * g / 10) / 10;
-  it.c   = Math.round(it.f.c   * g / 10) / 10;
-  it.fat = Math.round(it.f.f   * g / 100);
-  it.fib = Math.round((it.f.fib || 0) * g / 10) / 10;
-}
-
-// כיוונון אגוזים בגרמים (10–40) — מנוף שומן עדין; תווית בגרמים ("15g שקדים")
-function reNuts(it, g) {
-  g = Math.max(10, Math.min(40, Math.round(g)));
+// המנופים שבהם reconcile מכוונן כמויות. כולם מעדכנים g + dispG (תווית אמת) + מאקרו (setMacros).
+function reG(it, g) {            // כמות חופשית בגרמים (דגן/בשר/דג/קטנייה)
   it.g = g; it.dispG = `${g}g`;
-  it.cal = Math.round(it.f.cal * g / 100);
-  it.p   = Math.round(it.f.p   * g / 10) / 10;
-  it.c   = Math.round(it.f.c   * g / 10) / 10;
-  it.fat = Math.round(it.f.f   * g / 100);
-  it.fib = Math.round((it.f.fib || 0) * g / 10) / 10;
+  setMacros(it, it.f, g);
 }
-
-// כיוונון פריכיות לפי מספר יחידות (2–6, דרך crackerPortion) — פחמימה מרכזית בללא-גלוטן
-function reCracker(it, targetG) {
+function reBread(it, count) {    // לחם פרוס לפי מספר פרוסות (1–4): "פרוסה אחת" / "N פרוסות"
+  count = Math.max(1, Math.min(4, count || 1));
+  it.g = count * (it.f.unitG || 30);
+  it.dispG = count === 1 ? (it.f.unitLabel || 'פרוסה אחת') : `${count} פרוסות`;
+  setMacros(it, it.f, it.g);
+}
+function reNuts(it, g) {         // אגוזים בגרמים (10–40) — מנוף שומן עדין; תווית "15g שקדים"
+  it.g = Math.max(10, Math.min(40, Math.round(g))); it.dispG = `${it.g}g`;
+  setMacros(it, it.f, it.g);
+}
+function reCracker(it, targetG) {  // פריכיות לפי מספר יחידות (2–6, דרך crackerPortion)
   const c = crackerPortion(targetG, it.f.unitG || 9);
   it.g = c.g; it.dispG = c.dispG;
-  it.cal = Math.round(it.f.cal * c.g / 100);
-  it.p   = Math.round(it.f.p   * c.g / 10) / 10;
-  it.c   = Math.round(it.f.c   * c.g / 10) / 10;
-  it.fat = Math.round(it.f.f   * c.g / 100);
-  it.fib = Math.round((it.f.fib || 0) * c.g / 10) / 10;
+  setMacros(it, it.f, c.g);
 }
 
 function recalcMeal(m) {
@@ -541,11 +520,7 @@ function adjustEgg(it, targetG) {
   const size = best.ef.name.replace('ביצה ', '');
   const e = eggDisplay(best.g, best.ef.unitG, size);
   it.g = e.g; it.displayName = e.label; it.dispG = '';
-  it.cal = Math.round(best.ef.cal * it.g / 100);
-  it.p   = Math.round(best.ef.p   * it.g / 10) / 10;
-  it.c   = Math.round(best.ef.c   * it.g / 10) / 10;
-  it.fat = Math.round(best.ef.f   * it.g / 100);
-  it.fib = Math.round((best.ef.fib || 0) * it.g / 10) / 10;
+  setMacros(it, best.ef, it.g);
 }
 
 // כיוונון שומן (שלב 2): שמן סלט → אגוזים קיימים → הוספת אגוזים לנשנוש → החלפת חלבון שמן ברזה.
@@ -592,13 +567,8 @@ function adjustFat(meals) {
       if (need <= 0 || !it.f || !(it.f.id in LEANER)) return;
       const lean = ALL.find(f => f.id === LEANER[it.f.id]);
       if (!lean || !allowed(lean) || usedIds.has(lean.id)) return;
-      const before = it.fat, lf = lean;
-      it.f = lf;
-      it.cal = Math.round(lf.cal * it.g / 100);
-      it.p   = Math.round(lf.p   * it.g / 10) / 10;
-      it.c   = Math.round(lf.c   * it.g / 10) / 10;
-      it.fat = Math.round(lf.f   * it.g / 100);
-      it.fib = Math.round((lf.fib || 0) * it.g / 10) / 10;
+      const before = it.fat;
+      it.f = lean; setMacros(it, lean, it.g);   // אותה כמות, מזון רזה יותר
       need -= (before - it.fat);
     });
     items.filter(it => it.isSaladGroup && it._oil && it._oilG > 0).forEach(sg => {
