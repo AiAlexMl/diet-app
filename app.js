@@ -564,7 +564,7 @@ function adjustFat(meals) {
     // 0) החלפה לגרסה רזה ששומרת חלבון/מנה: טונה בשמן→במים, קוטג' 5%→3%, יוגורט 5%→0% (יש לזה הכי הרבה תשואה)
     const LEANER = { 9: 10, 20: 21, 24: 23 };
     items.forEach(it => {
-      if (need <= 0 || !it.f || !(it.f.id in LEANER)) return;
+      if (need <= 0 || !it.f || !(it.f.id in LEANER) || S.liked.has(it.f.id)) return;   // לא מחליפים מאכל אהוב
       const lean = ALL.find(f => f.id === LEANER[it.f.id]);
       if (!lean || !allowed(lean) || usedIds.has(lean.id)) return;
       const before = it.fat;
@@ -585,8 +585,8 @@ function adjustFat(meals) {
     });
     // החלפת חלבון שמן ברזה (משמר חלבון, חותך שומן) — רק אם עדיין מעל הסבולת
     if (need > S.fatG * FAT_TOL) {
-      const prot = items.filter(it => it.f && !it.f.isEgg && !it.f.unitLabel &&
-        (it.f.tags.includes('meat') || it.f.tags.includes('fish')));
+      const prot = items.filter(it => it.f && !it.f.isEgg && !it.f.unitLabel && !S.liked.has(it.f.id) &&
+        (it.f.tags.includes('meat') || it.f.tags.includes('fish')));   // לא מחליפים חלבון אהוב
       const fattest = prot.sort((a, b) => b.f.f - a.f.f)[0];
       if (fattest && fattest.f.f > 5) {
         const tag = fattest.f.tags.includes('fish') ? 'fish' : 'meat';

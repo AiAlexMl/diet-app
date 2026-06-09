@@ -7,7 +7,7 @@
 const DB = {
   "חלבון מן החי": [
     { id:2,  name:"חזה עוף אפוי",        prep:"אפוי בתנור", p:32.0, c:0.0,  f:4.2,  fib:0,   cal:175, tags:["meat"] },
-    { id:3,  name:"חזה עוף מטוגן",       prep:"מטוגן",      p:33.4, c:0.5,  f:4.7,  fib:0,   cal:187, tags:["meat"] },
+    { id:3,  name:"שניצל עוף",           prep:"מטוגן",      p:22.0, c:14.0, f:15.0, fib:1.0, cal:275, tags:["meat","gluten"] },
     { id:4,  name:"שוק עוף",             prep:"אפוי",       p:28.5, c:0.0,  f:11.2, fib:0,   cal:216, tags:["meat"] },
     { id:5,  name:"חזה הודו",            prep:"מבושל/אפוי", p:29.9, c:0.0,  f:3.5,  fib:0,   cal:157, tags:["meat"] },
     { id:6,  name:"בשר בקר טחון",        prep:"מבושל",      p:26.0, c:0.0,  f:8.0,  fib:0,   cal:175, tags:["meat"], optIn:true },
