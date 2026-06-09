@@ -18,6 +18,7 @@ const S = {
   bmr: 0, rmr: 0, target: 0, proteinG: 0, fatG: 0, carbG: 0,
   bmiWarning: null,
   carbWarning: null,
+  menuWarning: null,    // מוצג כשאי אפשר לעמוד ביעד עם ההעדפות (גלישה קלורית בלתי-פתירה)
 };
 
 // ── ALL foods flat array (מאוחד מ-DB) ──
@@ -669,6 +670,29 @@ function reconcile(meals) {
     });
     meals.forEach(recalcMeal);
   }
+
+  // פתרון אי-היתכנות: אם הקלוריות עדיין גולשות מעל הסבולת (העדפות שמנות/חלבון דליל על יעד נמוך)
+  // והפחמימות מוצו — מכווצים חלבון (מנה קטנה יותר, גם אהוב — לא החלפה) עד רצפת 1.6 ג/ק"ג.
+  // אם עדיין גולש → אזהרה למשתמש שלא ניתן לבנות תפריט מדויק בתנאים אלה.
+  let dCalF = meals.reduce((s, m) => s + m.totCal, 0);
+  if (dCalF > S.target * (1 + CAL_TOL)) {
+    const prot = meals.flatMap(m => m.items).filter(it => it.f && !it.f.isEgg && !it.f.unitLabel &&
+      (it.f.tags.includes('meat') || it.f.tags.includes('fish') || it.f.tags.includes('legume')));
+    const protCal = prot.reduce((s, it) => s + it.cal, 0);
+    const shrinkP = prot.reduce((s, it) => s + it.p, 0);
+    if (prot.length && protCal > 0) {
+      const protFloor = S.proteinG * (S.diet.has('vegan') ? 1 : 0.8);   // ~1.6 ג/ק"ג
+      const dP = meals.reduce((s, m) => s + m.totP, 0);
+      const maxRemoveP = Math.max(0, dP - protFloor);
+      const floorFactor = shrinkP > 0 ? Math.max(0, 1 - maxRemoveP / shrinkP) : 1;
+      const factor = Math.max(1 - (dCalF - S.target) / protCal, floorFactor);   // לא מתחת לרצפת החלבון
+      prot.forEach(it => reG(it, clampG(it, Math.round(it.g * factor))));
+      meals.forEach(recalcMeal);
+      dCalF = meals.reduce((s, m) => s + m.totCal, 0);
+    }
+    if (dCalF > S.target * (1 + CAL_TOL))
+      S.menuWarning = 'עם ההעדפות והיעד הנוכחיים קשה לעמוד בדיוק ביעד הקלורי — חלק מהמאכלים שסומנו עשירים בשומן או דלים בחלבון. ניסינו לאזן; כדי לדייק כדאי להסיר חלק מהמאכלים השמנים המועדפים או להתאים מעט את יעד הקלוריות.';
+  }
 }
 
 // ══════════════════════════════════════════
@@ -685,9 +709,10 @@ function buildMenu() {
     ? `BMI שלך הוא ${bmi.toFixed(1)} — גבוה. בתפריט מסה עם BMI כזה מומלץ להתייעץ עם תזונאי או רופא לפני שמתחילים.`
     : null;
 
+  S.menuWarning = null;
   const t = S.target;
   const key = (S.noTrain || !S.time) ? 'noTrain' : S.time;
-  const mealDefs = MEAL_TIMES[key];
+  const mealDefs = mealPlan(key, t);
   const used = new Map();
   const ctx = { usedCarbCats: new Set() }; // גיוון קטגוריות פחמימה לאורך היום
 
@@ -722,6 +747,20 @@ function buildMenu() {
     }
   }
 
-  reconcile(meals);   // יישור הסך-הכול הקלורי ליעד (±8%)
+  reconcile(meals);   // יישור מאקרו ליעד
   return meals;
+}
+
+// תבנית ארוחות לפי זמן אימון + תוספת נשנושים ליעד קלורי גבוה (מסה) — כדי לפזר את התקציב
+// על יותר ארוחות ולא לדחוס מנות ענק (מפתחי גוף אוכלים 5–6 ארוחות).
+function mealPlan(key, target) {
+  const defs = MEAL_TIMES[key].map(d => ({ ...d }));
+  const extra = target > 3100 ? 3 : target > 2600 ? 2 : target > 2300 ? 1 : 0;
+  const slots = [{ time: '10:30' }, { time: '16:00' }, { time: '21:30' }];
+  for (let i = 0; i < extra; i++)
+    defs.push({ label: 'נשנוש נוסף', icon: 'coffee', time: slots[i].time, pct: 0.13, tag: null, type: 'snack', big: false });
+  defs.sort((a, b) => a.time.localeCompare(b.time));
+  const sum = defs.reduce((s, d) => s + d.pct, 0) || 1;
+  defs.forEach(d => d.pct /= sum);
+  return defs;
 }

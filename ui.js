@@ -223,6 +223,14 @@ function renderMenu() {
     </div>`;
   }
 
+  // אזהרת אי-התאמה: לא ניתן לעמוד ביעד הקלורי עם ההעדפות הנוכחיות
+  if (S.menuWarning) {
+    html += `<div class="bmi-warning" style="background:#fffbeb;border-color:#fde68a;border-right-color:#f59e0b;color:#78350f">
+      <span class="bmi-warning-icon">ℹ️</span>
+      <span>${S.menuWarning}</span>
+    </div>`;
+  }
+
   // הערה לאימון בוקר
   if (S.time === 'morning') {
     html += `<div class="tips-box" style="margin-bottom:10px">

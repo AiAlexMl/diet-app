@@ -40,6 +40,7 @@ Renders in order:
 1. Menu header (goal label + training label)
 2. `S.bmiWarning` → orange `.bmi-warning` banner (⚠️)
 3. `S.carbWarning` → yellow `.bmi-warning` banner (ℹ️)
+3b. `S.menuWarning` → yellow `.bmi-warning` banner (ℹ️) — target unreachable with current likes/goal
 4. Morning training tip (if applicable)
 5. Meal cards
 6. Daily summary card (calories/protein/carbs/fat + macro % bars + **fiber row**, number only)

@@ -26,6 +26,9 @@ Pure client-side web app (HTML + CSS + vanilla JS), Hebrew RTL. No build step, n
 - **Runtime flags**:
   - `bmiWarning` (string | null) — set by `buildMenu()` when cut+BMI<20 or bulk+BMI≥30
   - `carbWarning` (string | null) — set by `calcMacro()` when target was raised to meet macro floor
+  - `menuWarning` (string | null) — set by `reconcile()` when calories can't meet the target even after shrinking protein to the 1.6 g/kg floor (fatty/plant-only protein on a low target)
+
+The meal **count is dynamic**: `mealPlan(key, target)` adds 1–3 snacks for high (bulk) targets, so a day can have 4–7 meals.
 
 ## Key UI Functions (ui.js)
 
