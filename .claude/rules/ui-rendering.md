@@ -59,7 +59,14 @@ Renders in order:
 ## Regenerate vs. Reset (menu screen buttons)
 
 - **"תפריט נוסף עם אותן העדפות"** → `renderMenu()` again: rebuilds a fresh menu keeping all of `S` (likes/avoids/diet/goal/time). Variety comes from the shuffles in `pick()`/`buildSalad`.
-- **"התחל מחדש (איפוס)"** → `resetApp()`: clears `S.liked`, `S.avoided`, `S.diet`, `S.allergy`; `S.goal`→`'maintain'`, `S.time`→`null`, `S.noTrain`→`false`; resets all chip/toggle/time-card UI, count displays, noTrain button text; then `goTo(0)`.
+- **"התחל מחדש (איפוס)"** → `resetApp()`: clears `S.liked`, `S.avoided`, `S.diet`, `S.allergy`; `S.goal`→`'maintain'`, `S.time`→`null`, `S.noTrain`→`false`; resets all chip/toggle/time-card UI, count displays, noTrain button text; clears `localStorage['dietai-state']`; then `goTo(0)`.
+
+## Persistence & Safety helpers (ui.js)
+
+- `saveState()` / `loadState()` — localStorage persistence of all user inputs/selections (see `architecture.md`). Every mutator calls `saveState()`.
+- `esc(s)` — HTML-escapes every dynamic string injected via innerHTML (food names, labels, dispG, salad parts). Mandatory for any future DB-sourced text (sponsored products, coach branding) — XSS guard.
+- `readNum(id)` / `NUM_LIMITS` — clamps age/height/weight to valid ranges (HTML min/max doesn't block typed input); on `change` the input value itself is snapped back.
+- `bmiWarnText()` (defined in app.js) — the single source for BMI warning copy, used by both the live screen-0 box and the menu banner.
 
 ## Disclaimer Overlay
 

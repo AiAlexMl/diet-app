@@ -22,17 +22,18 @@ Detailed rules are in `.claude/rules/`:
 - **Carb floor**: target raised so protein + fat + 100g carbs all fit (`S.carbWarning` set)
 - **BMI warnings**: cut+BMI<20 / bulk+BMI≥30 → shown live on screen 0 and in final menu
 - **Disclaimer**: overlay on load (`closeDisclaimer()`)
-- **Macro accuracy**: hot meals are built last against the **remaining** calorie budget; each meal uses a **best-of-4 retry** (`buildMealBest`) scored by calorie-fit **+ a lean-fat preference** (this is the main fat control); then `reconcile(meals)` runs a 3-stage pass — Stage 1 protein (meat/legume grams, egg size/count), Stage 2 fat (`adjustFat`: lean-ify swaps tuna-oil→water/cottage5→3/yogurt5→0, salad-oil, nuts, inject-to-snack, fatty→lean protein), Stage 3 calories (**carbs only** — never inflates protein). High targets get **extra snacks** (`mealPlan`, 4–7 meals) to avoid huge portions; on a low target that can't fit, protein shrinks to a **1.6 g/kg floor** then `S.menuWarning` is shown. **Measured**: protein ~±3%, fat ~±4%, calories ~±4% (bulk ~−5%, GF-bulk ~−8%). Inherent limits: vegan protein < 1.6 g/kg; fat stays high if all liked proteins are fatty
-- **Gluten-free**: `allowed()` excludes `gluten`-tagged foods (wheat/rye bread, pasta, pita, bulgur, granola, cornflakes, oats) and shows `gfOnly` items (GF bread 109, GF pasta 110) only when `gluten_free` is selected
+- **Macro accuracy**: best-of-4 meal builds (lean-fat preference) + 3-stage `reconcile()` (protein → fat → carbs-only calories), extra snacks for high targets, 1.6 g/kg protein floor + `S.menuWarning` on infeasible low targets. **Full mechanics + measured accuracy: `.claude/rules/algorithm.md`**
+- **Gluten-free**: `allowed()` excludes `gluten`-tagged foods; `gfOnly` items (109, 110) shown only when `gluten_free` selected
+- **Kosher**: no meat+dairy in the same meal (`kosherOk` in `buildFromTemplate`); fish+dairy allowed
 
 ## Menu Logic Notes (app.js / data.js)
 
-- **Meal templates** (the realism engine): every meal is built from a coherent template (`MEAL_TEMPLATES` keyed breakfast/hot/snack/dinner) via `buildMeal`→`chooseTemplate`→`buildFromTemplate` — not free category-mixing. Food role flags (`condiment`/`drink`/`complete`/`dip`/`pita`/`gfOnly`/`optIn`) keep combos realistic. See `algorithm.md`
-- **Liked foods**: `pick()` puts liked first (both groups shuffled for variety)
-- **Tuna**: `tunaUsed()` — one tuna type per menu, max one can
-- **Hot veg**: the hot meal's `hotveg_or_salad` slot serves a hot vegetable ~40% of the time instead of salad (gives broccoli etc. a chance)
-- **Morning workout**: post-workout meal is `breakfast` type (not a hot meal)
-- **Fiber**: `fib` per item; daily total shown in the summary (number only, no target hint)
+- **Meal templates** (the realism engine): every meal is built from a coherent template (`MEAL_TEMPLATES`) via `buildMeal`→`chooseTemplate`→`buildFromTemplate` — not free category-mixing. Food role flags keep combos realistic. See `algorithm.md`
+- **Liked foods**: `pick()` puts liked first (both groups shuffled for variety); liked foods are never lean-swapped away
+- **One-type rules**: one tuna type per menu (max one can), one cottage type (3% or 5%)
+- **Truthful unit labels**: `plural` field foods are snapped to whole units — "3 תמרים", never "תמר אחד" hiding 72g
+- **State persists** to `localStorage['dietai-state']` (restored on load; cleared by reset). All dynamic text rendered via `esc()` (XSS guard for future DB content)
+- **Fiber**: `fib` per item; daily total shown in the summary (number only)
 
 ## Product Images
 

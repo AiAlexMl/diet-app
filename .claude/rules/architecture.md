@@ -30,6 +30,10 @@ Pure client-side web app (HTML + CSS + vanilla JS), Hebrew RTL. No build step, n
 
 The meal **count is dynamic**: `mealPlan(key, target)` adds 1–3 snacks for high (bulk) targets, so a day can have 4–7 meals.
 
+## State Persistence (ui.js)
+
+All user inputs/selections persist to `localStorage['dietai-state']` (Sets serialized as arrays): `saveState()` is called from every mutator (toggles, setters, input listeners); `loadState()` runs once at ui.js load (before the first `updateMacroDisplay()`) — restores `S` **and** syncs the DOM (inputs, chips, buttons, time cards, counts). `resetApp()` clears the key. Everything is try/catch-wrapped — blocked localStorage (private mode) degrades to no persistence. This is the future migration path to Supabase `profiles`.
+
 ## Key UI Functions (ui.js)
 
 | Function | Description |

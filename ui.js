@@ -13,6 +13,57 @@ const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // ══════════════════════════════════════════
+//  שמירת מצב — רענון דף לא מאבד את ההעדפות (והבסיס ל-profiles של Supabase בהמשך)
+// ══════════════════════════════════════════
+const STATE_KEY = 'dietai-state';
+
+function saveState() {
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify({
+      gender: S.gender, goal: S.goal, age: S.age, height: S.height, weight: S.weight,
+      diet: [...S.diet], allergy: [...S.allergy], time: S.time, noTrain: S.noTrain,
+      liked: [...S.liked], avoided: [...S.avoided],
+    }));
+  } catch (e) { /* localStorage חסום (מצב פרטי) — ממשיכים בלי שמירה */ }
+}
+
+function loadState() {
+  let d;
+  try { d = JSON.parse(localStorage.getItem(STATE_KEY)); } catch (e) { return; }
+  if (!d) return;
+  try {
+    S.gender = d.gender === 'female' ? 'female' : 'male';
+    S.goal   = ['cut', 'maintain', 'bulk'].includes(d.goal) ? d.goal : 'maintain';
+    ['age', 'height', 'weight'].forEach(k => {
+      if (d[k]) { S[k] = d[k]; document.getElementById(k).value = d[k]; }
+    });
+    S.diet    = new Set(d.diet || []);
+    S.allergy = new Set(d.allergy || []);
+    S.time    = d.time || null;
+    S.liked   = new Set(d.liked || []);
+    S.avoided = new Set(d.avoided || []);
+
+    // סנכרון UI למצב המשוחזר
+    document.getElementById('male-btn').classList.toggle('active', S.gender === 'male');
+    document.getElementById('female-btn').classList.toggle('active', S.gender === 'female');
+    ['cut', 'maintain', 'bulk'].forEach(x =>
+      document.getElementById(x + '-btn').classList.toggle('active', S.goal === x));
+    document.querySelectorAll('.chip').forEach(el => {
+      const v = el.dataset.val;
+      el.classList.toggle('active', S.diet.has(v));
+      el.classList.toggle('active-danger', S.allergy.has(v));
+    });
+    if (d.noTrain) { S.noTrain = false; toggleNoTrain(); }   // toggleNoTrain מעדכן גם את ה-UI
+    else if (S.time) {
+      const card = document.querySelector(`.time-card[data-val="${S.time}"]`);
+      if (card) setTime(card);
+    }
+    document.getElementById('like-count').textContent  = S.liked.size;
+    document.getElementById('avoid-count').textContent = S.avoided.size;
+  } catch (e) { /* מצב פגום — מתעלמים וממשיכים מאפס */ }
+}
+
+// ══════════════════════════════════════════
 //  ניווט בין מסכים
 // ══════════════════════════════════════════
 function goTo(n) {
@@ -43,6 +94,7 @@ function setGender(g) {
   document.getElementById('male-btn').classList.toggle('active',   g === 'male');
   document.getElementById('female-btn').classList.toggle('active', g === 'female');
   updateMacroDisplay();
+  saveState();
 }
 
 function setGoal(g) {
@@ -50,6 +102,7 @@ function setGoal(g) {
   ['cut','maintain','bulk'].forEach(x => document.getElementById(x + '-btn').classList.remove('active'));
   document.getElementById(g + '-btn').classList.add('active');
   updateMacroDisplay();
+  saveState();
 }
 
 // טווחים חוקיים לקלט (min/max של ה-HTML לא חוסמים הקלדה ידנית)
@@ -78,9 +131,10 @@ function updateMacroDisplay() {
 
 ['age','height','weight'].forEach(id => {
   const el = document.getElementById(id);
-  el.addEventListener('input', updateMacroDisplay);
+  el.addEventListener('input', () => { updateMacroDisplay(); saveState(); });
   el.addEventListener('change', () => { el.value = readNum(id); });   // החזרת ערך חורג לטווח בסיום ההקלדה
 });
+loadState();          // שחזור העדפות מביקור קודם (אם יש)
 updateMacroDisplay();
 
 // ══════════════════════════════════════════
@@ -90,12 +144,14 @@ function toggleDiet(el) {
   const v = el.dataset.val;
   S.diet.has(v) ? S.diet.delete(v) : S.diet.add(v);
   el.classList.toggle('active', S.diet.has(v));
+  saveState();
 }
 
 function toggleAllergy(el) {
   const v = el.dataset.val;
   S.allergy.has(v) ? S.allergy.delete(v) : S.allergy.add(v);
   el.classList.toggle('active-danger', S.allergy.has(v));
+  saveState();
 }
 
 function setTime(el) {
@@ -111,6 +167,7 @@ function setTime(el) {
   const n = document.getElementById('time-note');
   n.style.display = 'block';
   n.textContent = notes[S.time];
+  saveState();
 }
 
 function toggleNoTrain() {
@@ -127,6 +184,7 @@ function toggleNoTrain() {
   } else {
     n.style.display = 'none';
   }
+  saveState();
 }
 
 // ══════════════════════════════════════════
@@ -170,6 +228,7 @@ function toggleFood(mode, id) {
   card.querySelector('.fc-icon').textContent =
     mode === 'like' ? (on ? '❤️' : '🤍') : (on ? '🚫' : '✓');
   updateTabBadges(mode);
+  saveState();
 }
 
 function updateTabBadges(mode) {
@@ -370,6 +429,7 @@ function resetApp() {
   document.getElementById('time-note').style.display = 'none';
   document.getElementById('like-count').textContent  = '0';
   document.getElementById('avoid-count').textContent = '0';
+  try { localStorage.removeItem(STATE_KEY); } catch (e) {}
 
   goTo(0);
 }
