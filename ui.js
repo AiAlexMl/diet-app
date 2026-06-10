@@ -7,6 +7,11 @@ let likeCat  = Object.keys(DB)[0];
 let avoidCat = Object.keys(DB)[0];
 const CATS   = Object.keys(DB);
 
+// escape ל-HTML עבור כל טקסט שמוזרק ל-innerHTML. היום data.js סטטי, אבל ברגע ששמות
+// (מוצר ממומן / מאמן) יגיעו ממסד נתונים — בלי זה יש XSS. לעטוף כל שדה דינמי.
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 // ══════════════════════════════════════════
 //  ניווט בין מסכים
 // ══════════════════════════════════════════
@@ -47,32 +52,35 @@ function setGoal(g) {
   updateMacroDisplay();
 }
 
+// טווחים חוקיים לקלט (min/max של ה-HTML לא חוסמים הקלדה ידנית)
+const NUM_LIMITS = { age: [15, 60, 28], height: [140, 220, 178], weight: [40, 200, 80] };
+function readNum(id) {
+  const [lo, hi, def] = NUM_LIMITS[id];
+  const v = +document.getElementById(id).value;
+  return v ? Math.min(hi, Math.max(lo, v)) : def;
+}
+
 function updateMacroDisplay() {
-  S.age    = +document.getElementById('age').value    || 28;
-  S.height = +document.getElementById('height').value || 178;
-  S.weight = +document.getElementById('weight').value || 80;
+  S.age    = readNum('age');
+  S.height = readNum('height');
+  S.weight = readNum('weight');
   calcMacro();
   document.getElementById('bmr-disp').textContent    = S.bmr.toLocaleString();
   document.getElementById('rmr-disp').textContent    = S.rmr.toLocaleString();
   document.getElementById('target-disp').textContent = S.target.toLocaleString();
   document.getElementById('rmr-box').style.display   = 'flex';
 
-  const bmi = S.weight / (S.height / 100) ** 2;
+  const warn = bmiWarnText();
   const warnBox = document.getElementById('bmi-warn-box');
-  if (S.goal === 'cut' && bmi < 20) {
-    warnBox.textContent = `BMI שלך הוא ${bmi.toFixed(1)} — נמוך. חיטוב במשקל זה עלול לגרום לנזק בריאותי. מומלץ לשקול שמירה או בניית מסה.`;
-    warnBox.style.display = 'block';
-  } else if (S.goal === 'bulk' && bmi >= 30) {
-    warnBox.textContent = `BMI שלך הוא ${bmi.toFixed(1)} — גבוה. בתפריט מסה מומלץ להתייעץ עם תזונאי או רופא לפני שמתחילים.`;
-    warnBox.style.display = 'block';
-  } else {
-    warnBox.style.display = 'none';
-  }
+  warnBox.textContent = warn || '';
+  warnBox.style.display = warn ? 'block' : 'none';
 }
 
-['age','height','weight'].forEach(id =>
-  document.getElementById(id).addEventListener('input', updateMacroDisplay)
-);
+['age','height','weight'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', updateMacroDisplay);
+  el.addEventListener('change', () => { el.value = readNum(id); });   // החזרת ערך חורג לטווח בסיום ההקלדה
+});
 updateMacroDisplay();
 
 // ══════════════════════════════════════════
@@ -141,8 +149,8 @@ function renderGrid(mode) {
     return `<div class="food-card${on ? (mode === 'like' ? ' liked' : ' avoided') : ''}"
                  onclick="toggleFood('${mode}',${f.id})" id="${mode}-${f.id}">
       <div class="fc-icon">${mode === 'like' ? (on ? '❤️' : '🤍') : (on ? '🚫' : '✓')}</div>
-      <div class="fc-name">${f.name}</div>
-      ${f.prep ? `<div class="fc-prep">${f.prep}</div>` : ''}
+      <div class="fc-name">${esc(f.name)}</div>
+      ${f.prep ? `<div class="fc-prep">${esc(f.prep)}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -217,7 +225,7 @@ function renderMenu() {
 
   // אזהרת פחמימות נמוכות
   if (S.carbWarning) {
-    html += `<div class="bmi-warning" style="background:#fffbeb;border-color:#fde68a;border-right-color:#f59e0b;color:#78350f">
+    html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
       <span>${S.carbWarning}</span>
     </div>`;
@@ -225,7 +233,7 @@ function renderMenu() {
 
   // אזהרת אי-התאמה: לא ניתן לעמוד ביעד הקלורי עם ההעדפות הנוכחיות
   if (S.menuWarning) {
-    html += `<div class="bmi-warning" style="background:#fffbeb;border-color:#fde68a;border-right-color:#f59e0b;color:#78350f">
+    html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
       <span>${S.menuWarning}</span>
     </div>`;
@@ -245,7 +253,7 @@ function renderMenu() {
 
     html += `<div class="meal-card">
       <div class="meal-header">
-        <div class="meal-title">${m.label} ${tagH}</div>
+        <div class="meal-title">${esc(m.label)} ${tagH}</div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="meal-time">${m.time}</span>
           <span class="meal-cal">${m.totCal} קל׳</span>
@@ -260,12 +268,12 @@ function renderMenu() {
       if (it.isSaladGroup) {
         html += `<div class="salad-row">
           <div class="salad-header">
-            <span class="food-row-name">${it.label}</span>
+            <span class="food-row-name">${esc(it.label)}</span>
             <div class="food-row-right">
               <span class="food-row-cal">${it.cal} קל׳</span>
             </div>
           </div>
-          <div class="salad-items">${it.parts.join(' + ')}</div>
+          <div class="salad-items">${it.parts.map(esc).join(' + ')}</div>
         </div>`;
       } else {
         const rowName = (() => {
@@ -275,11 +283,11 @@ function renderMenu() {
           return it.f.name.includes(firstWord) ? it.f.name : `${it.f.name} ${it.f.prep}`;
         })();
         const imgSrc = it.f.img || `images/${it.f.id}.jpg`;
-        const thumb = `<span class="food-thumb"><img src="${imgSrc}" alt="${it.f.name}" loading="lazy" onerror="this.parentElement.style.display='none'"></span>`;
+        const thumb = `<span class="food-thumb"><img src="${esc(imgSrc)}" alt="${esc(it.f.name)}" loading="lazy" onerror="this.parentElement.style.display='none'"></span>`;
         html += `<div class="food-row">
-          <span class="food-row-name">${thumb}${rowName}</span>
+          <span class="food-row-name">${thumb}${esc(rowName)}</span>
           <div class="food-row-right">
-            ${it.dispG ? `<span class="food-row-amount">${it.dispG}</span>` : ''}
+            ${it.dispG ? `<span class="food-row-amount">${esc(it.dispG)}</span>` : ''}
             <span class="food-row-cal">${it.cal} קל׳</span>
           </div>
         </div>`;

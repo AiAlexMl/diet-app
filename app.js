@@ -155,10 +155,11 @@ function pick(pool, used, calT, protT, maxG) {
     ...shuffle(pool.filter(f => !S.liked.has(f.id) && allowed(f) && !used.has(f.id))),
   ];
   for (const f of sorted) {
-    let lim = maxG;
-    if (f.maxDay) { const a = used.get(f.id) || 0; lim = Math.min(lim, f.maxDay - a); }
-    if (f.maxMeal) lim = Math.min(lim, f.maxMeal);
-    if (lim < 20) continue;
+    let lim = maxG, hard = Infinity;   // hard = תקרה קשיחה (maxDay/maxMeal); maxG הוא רק יעד גודל רך
+    if (f.maxDay) { const a = used.get(f.id) || 0; hard = Math.min(hard, f.maxDay - a); }
+    if (f.maxMeal) hard = Math.min(hard, f.maxMeal);
+    lim = Math.min(lim, hard);
+    if (lim < 20 || hard < (f.unitG || 40)) continue;   // אין מקום למנת מינימום — רצפת ה-clamp הייתה חורגת מהתקרה הקשיחה
     let g = protT > 0 && f.p > 0
       ? Math.round(protT / f.p * 100)
       : Math.round(calT / f.cal * 100);
@@ -698,16 +699,19 @@ function reconcile(meals) {
 // ══════════════════════════════════════════
 //  בניית תפריט מלא
 // ══════════════════════════════════════════
+// נוסח יחיד לאזהרת BMI — משמש גם בתפריט (buildMenu) וגם באזהרה החיה במסך 0 (ui.js)
+function bmiWarnText() {
+  const bmi = S.weight / (S.height / 100) ** 2;
+  if (S.goal === 'cut' && bmi < 20)
+    return `BMI שלך הוא ${bmi.toFixed(1)} — נמוך. חיטוב במשקל זה עלול לגרום לנזק בריאותי ולפגיעה במסת השריר. מומלץ לשקול שמירה או בניית מסה.`;
+  if (S.goal === 'bulk' && bmi >= 30)
+    return `BMI שלך הוא ${bmi.toFixed(1)} — גבוה. בתפריט מסה עם BMI כזה מומלץ להתייעץ עם תזונאי או רופא לפני שמתחילים.`;
+  return null;
+}
+
 function buildMenu() {
   calcMacro();
-
-  // אזהרת BMI נמוך מדי לחיטוב
-  const bmi = S.weight / (S.height / 100) ** 2;
-  S.bmiWarning = (S.goal === 'cut' && bmi < 20)
-    ? `BMI שלך הוא ${bmi.toFixed(1)} — נמוך. חיטוב במשקל זה עלול לגרום לנזק בריאותי ולפגיעה במסת השריר. מומלץ לשקול שמירה או בניית מסה.`
-    : (S.goal === 'bulk' && bmi >= 30)
-    ? `BMI שלך הוא ${bmi.toFixed(1)} — גבוה. בתפריט מסה עם BMI כזה מומלץ להתייעץ עם תזונאי או רופא לפני שמתחילים.`
-    : null;
+  S.bmiWarning = bmiWarnText();
 
   S.menuWarning = null;
   const t = S.target;
@@ -737,13 +741,8 @@ function buildMenu() {
     const fr = pick(ALL.filter(f => f.tags.includes('fruit')), used, 120, 0, 250);
     if (fr) {
       use(used, fr);
-      const meal = meals[idx];
-      meal.items.push(fr);
-      meal.totCal += fr.cal;
-      meal.totP = Math.round((meal.totP + (fr.p   || 0)) * 10) / 10;
-      meal.totC = Math.round((meal.totC + (fr.c   || 0)) * 10) / 10;
-      meal.totF = Math.round((meal.totF + (fr.fat || 0)) * 10) / 10;
-      meal.totFib = Math.round((meal.totFib + (fr.fib || 0)) * 10) / 10;
+      meals[idx].items.push(fr);
+      recalcMeal(meals[idx]);
     }
   }
 
