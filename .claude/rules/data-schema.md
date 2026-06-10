@@ -7,7 +7,7 @@ paths:
 
 Each item in `DB`:
 ```js
-{ id, name, prep, p, c, f, fib, cal, tags[], unitG?, unitLabel?, maxDay?, maxMeal?, isEgg?, halfLabel? }
+{ id, name, prep, p, c, f, fib, cal, tags[], unitG?, unitLabel?, plural?, maxDay?, maxMeal?, isEgg?, halfLabel? }
 ```
 
 `p` = protein g/100g, `c` = carbs g/100g, `f` = fat g/100g, `fib` = fiber g/100g, `cal` = kcal/100g.
@@ -66,7 +66,8 @@ All filtering logic is tag-driven:
 - `maxDay` — caps total grams per day (tracked in `used` Map in `buildMenu`)
 - `maxMeal` — caps grams per single meal
 - `unitG` — snaps serving to nearest multiple; also the minimum serving. For crackers this is the weight per piece (4g or 9g)
-- `unitLabel` — human-readable portion description shown in menu
+- `unitLabel` — human-readable portion description shown in menu (for ONE unit)
+- `plural` — Hebrew plural unit label ("תפוחי אדמה בינוניים", "תמרים", "פרוסות"). When present with `unitG`, `mkItem()` snaps the portion to whole units and shows "N {plural}" — **labels never lie about quantity**. Set on breads/pitas (37–40, 109), yogurts (22–24), yellow cheese (26 — unitG now 15 = one slice), unit fruits (75–79, 81, 102–105), starches (47–49). White cheese (25) has no unitLabel anymore — shows real grams
 - `isEgg:true` — triggers `eggDisplay(g, unitG, size)` in `mkItem()`; displayed as "חביתה מביצה אחת (L)" etc.
 - `halfLabel` — used for cottage cheese half-container display (ids 20–21 only)
 - `vegOnly:true` — only allowed for vegan/vegetarian diets (tofu id 56, seitan id 58 — note seitan also carries `gluten`, so GF vegans don't get it). Checked in `allowed()`

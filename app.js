@@ -142,6 +142,12 @@ function mkItem(f, g) {
     const c = cottagePortion(g); g = c.g; dispG = c.dispG;
   } else if (f.tags.includes('cracker')) {
     const c = crackerPortion(g, f.unitG || 9); g = c.g; dispG = c.dispG;
+  } else if (f.plural && f.unitG) {
+    // פריט יחידות (פרי/לחם/עמילני/גביע) — מצמידים ליחידות שלמות והתווית אומרת אמת:
+    // "תמר אחד" לא יסתיר 72g, "גביע (170g)" לא יסתיר 250g
+    const n = Math.max(1, Math.round(g / f.unitG));
+    g = n * f.unitG;
+    dispG = n === 1 ? f.unitLabel : `${n} ${f.plural}`;
   } else if (f.unitLabel) {
     dispG = f.unitLabel;
   } else {
@@ -513,6 +519,13 @@ function reCracker(it, targetG) {  // פריכיות לפי מספר יחידו�
   it.g = c.g; it.dispG = c.dispG;
   setMacros(it, it.f, c.g);
 }
+function reUnit(it, count) {     // ירק עמילני לפי יחידות שלמות (1–3, תקרת CARBCAP): "2 תפוחי אדמה בינוניים"
+  const maxN = Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG)));
+  count = Math.max(1, Math.min(maxN, count || 1));
+  it.g = count * it.f.unitG;
+  it.dispG = count === 1 ? it.f.unitLabel : `${count} ${it.f.plural}`;
+  setMacros(it, it.f, it.g);
+}
 
 function recalcMeal(m) {
   m.totCal = m.items.reduce((s, x) => s + x.cal, 0);
@@ -663,8 +676,11 @@ function reconcile(meals) {
     // לרוב חסרי פחמימה-בגרמים, ובללא-גלוטן הפריכיות הן הפחמימה המרכזית.
     const isBread   = it => it.f && it.f.tags.includes('bread') && !it.f.tags.includes('cracker') && !it.f.pita && it.f.unitG;
     const isCracker = it => it.f && it.f.tags.includes('cracker') && it.f.unitG;
-    const isCount   = it => isBread(it) || isCracker(it);
-    const maxOf = it => isBread(it) ? it.f.unitG * 4 : isCracker(it) ? it.f.unitG * 6 : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 450);
+    const isUnitCarb = it => it.f && it.f.plural && it.f.unitG && it.f.tags.includes('starch');   // בטטה/תפו"א/תירס — 1–3 יחידות
+    const isCount   = it => isBread(it) || isCracker(it) || isUnitCarb(it);
+    const maxOf = it => isBread(it) ? it.f.unitG * 4 : isCracker(it) ? it.f.unitG * 6
+      : isUnitCarb(it) ? Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG))) * it.f.unitG
+      : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 450);
     const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
     const grams = items().filter(it => it.f && !it.f.isEgg && !it.f.condiment && !it.isSaladGroup &&
       it.f.id !== 20 && it.f.id !== 21 && (!it.f.unitLabel || isCount(it)));
@@ -680,6 +696,7 @@ function reconcile(meals) {
       const targetG = targetCal / it.f.cal * 100;
       if (isBread(it))        reBread(it, Math.round(targetCal / (it.f.cal * it.f.unitG / 100)));
       else if (isCracker(it)) reCracker(it, targetG);
+      else if (isUnitCarb(it)) reUnit(it, Math.round(targetCal / (it.f.cal * it.f.unitG / 100)));
       else { const cap = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, CARBCAP);
              reG(it, Math.max(it.f.unitG || 30, Math.min(Math.round(targetG), cap))); }
     });
