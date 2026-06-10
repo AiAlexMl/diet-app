@@ -28,6 +28,11 @@ const ALL = Object.values(DB).flat();
 const TUNA_IDS = new Set(ALL.filter(f => f.tags.includes('tuna')).map(f => f.id));
 const tunaUsed = used => [...TUNA_IDS].some(id => used.has(id));
 
+// ── קוטג': סוג אחד בלבד לתפריט (3% או 5%, לא שניהם) — נאכף בסינון של pick ──
+const COTTAGE_IDS = [20, 21];
+const variantBlocked = (f, used) =>
+  COTTAGE_IDS.includes(f.id) && COTTAGE_IDS.some(id => id !== f.id && used.has(id));
+
 // ערבוב (Fisher-Yates) — לגיוון בחירת מאכלים מועדפים
 const shuffle = arr => {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -150,9 +155,10 @@ function mkItem(f, g) {
 // ══════════════════════════════════════════
 function pick(pool, used, calT, protT, maxG) {
   // מועדפים ראשונים, אחריהם השאר — שתי הקבוצות בסדר אקראי לגיוון
+  const ok = f => allowed(f) && !used.has(f.id) && !variantBlocked(f, used);
   const sorted = [
-    ...shuffle(pool.filter(f => S.liked.has(f.id) && allowed(f) && !used.has(f.id))),
-    ...shuffle(pool.filter(f => !S.liked.has(f.id) && allowed(f) && !used.has(f.id))),
+    ...shuffle(pool.filter(f => S.liked.has(f.id) && ok(f))),
+    ...shuffle(pool.filter(f => !S.liked.has(f.id) && ok(f))),
   ];
   for (const f of sorted) {
     let lim = maxG, hard = Infinity;   // hard = תקרה קשיחה (maxDay/maxMeal); maxG הוא רק יעד גודל רך
@@ -375,9 +381,16 @@ function makeSpread(breadItem, used) {
 
 const SELF_USE = ['salad', 'hotveg', 'hotveg_or_salad']; // ממלאים את used בעצמם
 
+// כשרות: בלי בשר וחלב באותה ארוחה (דג+חלב מותר — טונה+קוטג' נשאר). התבניות ממילא
+// לא מערבבות, אבל זו ערובה מפורשת שתחזיק גם מול תבניות עתידיות.
+const kosherOk = (f, mealTags) => !S.diet.has('kosher') ||
+  !((f.tags.includes('dairy') && mealTags.has('meat')) ||
+    (f.tags.includes('meat')  && mealTags.has('dairy')));
+
 function buildFromTemplate(tpl, cal, used, ctx) {
   const items = [];
   const protShare = S.proteinG * cal / S.target;
+  const mealTags = new Set();   // תגי הפריטים שכבר בארוחה — לאכיפת כשרות
   let hasProtein = false;
   for (const s of tpl.slots) {
     let item = null;
@@ -405,16 +418,17 @@ function buildFromTemplate(tpl, cal, used, ctx) {
       }
     } else if (s.special === 'dip') {
       // ~25% (או אם אהוב): חומוס/טחינה כמטבל בצד — שורה משלו
-      const dips = ALL.filter(f => f.dip && allowed(f) && !used.has(f.id));
+      const dips = ALL.filter(f => f.dip && allowed(f) && !used.has(f.id) && kosherOk(f, mealTags));
       const wantDip = dips.some(f => S.liked.has(f.id)) || Math.random() < 0.25;
       if (wantDip && dips.length) item = pick(dips, used, cal * (s.calPct || .15), 0, s.max || 50);
     } else {
-      let pool = ALL.filter(f => s.match(f, used));
+      let pool = ALL.filter(f => s.match(f, used) && kosherOk(f, mealTags));
       // פיתה בעדיפות נמוכה ורק במשבצת שמסומנת pitaOk (חביתה); אחרת לחם/פריכיות
       if (pool.some(f => f.pita) && (!s.pitaOk || Math.random() >= 0.3)) pool = pool.filter(f => !f.pita);
       item = pick(pool, used, cal * (s.calPct || .3), s.protPct ? protShare * s.protPct : 0, s.max || 250);
     }
     if (!item) continue;
+    if (item.f) item.f.tags.forEach(t => mealTags.add(t));   // עדכון תגי הארוחה (סלט = ירקות בלבד, לא רלוונטי לכשרות)
     // ממרח רק כשאין כבר חלבון בארוחה (קוטג'/ביצה/טונה ⇐ אין צורך בממרח)
     let spreadItem = null;
     if (s.spread && !item.isSaladGroup && !(s.spread === 'ifAlone' && hasProtein))

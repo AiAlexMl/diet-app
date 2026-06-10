@@ -85,6 +85,14 @@ Legumes for **omnivores**: only a side in a meat meal (`hot_side`) or in `big_sa
 
 `tunaUsed(used)` gates all tuna pools: only one tuna type per menu, capped at one can (`maxDay:160`).
 
+## Cottage rule
+
+`variantBlocked(f, used)` (checked inside `pick()`): only one cottage type per menu — 3% (21) or 5% (20), never both. The `LEANER` swap (20→21) is safe: it replaces in place and already checks `usedIds`.
+
+## Kosher rule
+
+`kosherOk(f, mealTags)` (checked in `buildFromTemplate` on the generic-slot and dip pools): when `kosher` is selected, a meal never mixes `meat` and `dairy` (fish+dairy stays allowed — tuna+cottage is fine). `mealTags` accumulates the tags of items already in the meal. Templates never mix the two anyway — this is an explicit guarantee that survives future templates. The `adjustFat` swaps are same-category (meat→meat, fish→fish, dairy→dairy) so they can't break it.
+
 ## `buildSalad` Rules
 
 - Requires ≥ 2 **regular** (`salad` tag, not `salad_only`) vegetables as base
