@@ -363,9 +363,13 @@ function renderMenu() {
   if (!S.target) { alert('יש למלא פרטים אישיים'); goTo(0); return; }
 
   const meals = buildMenu();
+  const treatMeal = meals.find(m => m.type === 'treat');
   DAY = {
     date: todayStr(), target: S.target,
     meals, eaten: meals.map(() => false),
+    note: treatMeal && treatMeal.items[0]
+      ? `התפריט נבנה סביב הפינוק שביקשת ✓ — ${treatMeal.items[0].f.name} (${treatMeal.totCal} קק"ל) הוקצה מתוך היעד היומי, ושאר הארוחות הותאמו בהתאם.`
+      : null,
     warn: { bmi: S.bmiWarning, carb: S.carbWarning, menu: S.menuWarning },
     gLabel: { cut: 'חיטוב', maintain: 'שמירה', bulk: 'מסה' }[S.goal],
     tLabel: S.noTrain || !S.time ? 'ללא אימון'
