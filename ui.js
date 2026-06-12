@@ -69,7 +69,7 @@ function loadState() {
 const DAY_KEY = 'shapeat-day';
 let DAY = null;   // { date, target, meals(live), eaten[], warn{bmi,carb,menu}, gLabel, tLabel }
 
-const FOOD_BY_ID = Object.fromEntries(ALL.map(f => [f.id, f]));
+const FOOD_BY_ID = Object.fromEntries([...ALL, ...TREATS].map(f => [f.id, f]));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // פריט → נתונים שטוחים (בלי refs); משחזרים את f לפי id (תקף גם אחרי adjustEgg/lean-swap)
@@ -388,6 +388,12 @@ function renderDay() {
   </div>
   <div class="day-progress" id="day-progress"></div>`;
 
+  // כפתור פינוק: הוספה או הסרה (התפריט נבנה מחדש סביב הפינוק)
+  const hasTreat = meals.some(m => m.type === 'treat');
+  html += `<div class="treat-bar">` + (hasTreat
+    ? `<button class="btn-treat on" onclick="removeTreat()">✕ הסר את הפינוק</button>`
+    : `<button class="btn-treat" onclick="openTreatPicker()">🍫 בא לי פינוק היום</button>`) + `</div>`;
+
   // אזהרת BMI
   if (DAY.warn.bmi) {
     html += `<div class="bmi-warning">
@@ -424,11 +430,11 @@ function renderDay() {
       ? `<span class="meal-tag ${m.tag === 'pre' ? 'tag-pre' : 'tag-post'}">${m.tag === 'pre' ? 'לפני אימון' : 'אחרי אימון'}</span>`
       : '';
 
-    html += `<div class="meal-card${DAY.eaten[mi] ? ' meal-eaten' : ''}" id="meal-card-${mi}">
+    html += `<div class="meal-card${DAY.eaten[mi] ? ' meal-eaten' : ''}${m.type === 'treat' ? ' treat-card' : ''}" id="meal-card-${mi}">
       <div class="meal-header">
-        <div class="meal-title">${esc(m.label)} ${tagH}</div>
+        <div class="meal-title">${m.type === 'treat' ? '🍫 ' : ''}${esc(m.label)} ${tagH}</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="meal-time">${m.time}</span>
+          ${m.time ? `<span class="meal-time">${m.time}</span>` : ''}
           <span class="meal-cal">${m.totCal} קל׳</span>
         </div>
       </div>`;
@@ -509,13 +515,60 @@ function renderDay() {
     </div>
   </div>
   <div class="nav-btns" style="margin-top:12px">
-    <button class="btn-primary" onclick="renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
+    <button class="btn-primary" onclick="if (confirmRebuild()) renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
     <button class="btn-secondary" onclick="resetApp()">התחל מחדש (איפוס)</button>
   </div>`;
 
   document.getElementById('menu-output').innerHTML = html;
   updateDayProgress();
   goTo(4);
+}
+
+// ══════════════════════════════════════════
+//  בורר פינוקים — התפריט נבנה מחדש סביב הפינוק שנבחר
+// ══════════════════════════════════════════
+// אם כבר סומנו ארוחות היום — בנייה מחדש תאפס אותן; מבקשים אישור
+function confirmRebuild() {
+  if (DAY && DAY.eaten && DAY.eaten.some(Boolean))
+    return confirm('בניית תפריט חדש תאפס את סימוני "אכלתי" של היום. להמשיך?');
+  return true;
+}
+
+function openTreatPicker() {
+  closeTreatPicker();
+  const ov = document.createElement('div');
+  ov.className = 'picker-overlay';
+  ov.id = 'treat-picker';
+  ov.innerHTML = `<div class="picker-box">
+    <div class="picker-title">מה בא לך היום? 🍫</div>
+    <div class="picker-sub">התפריט ייבנה מחדש כך שהפינוק נכנס ביעד היומי</div>
+    <div class="picker-list">` + TREATS.map(tr =>
+      `<div class="picker-item" onclick="chooseTreat(${tr.id})">
+        <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
+        <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>
+      </div>`).join('') + `</div>
+    <button class="btn-secondary picker-cancel" onclick="closeTreatPicker()">ביטול</button>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) closeTreatPicker(); });
+  document.body.appendChild(ov);
+}
+
+function closeTreatPicker() {
+  const el = document.getElementById('treat-picker');
+  if (el) el.remove();
+}
+
+function chooseTreat(id) {
+  closeTreatPicker();
+  if (!confirmRebuild()) return;
+  S.treat = id;
+  renderMenu();
+}
+
+function removeTreat() {
+  if (!confirmRebuild()) return;
+  S.treat = null;
+  renderMenu();
 }
 
 // ══════════════════════════════════════════

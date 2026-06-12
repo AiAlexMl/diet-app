@@ -19,6 +19,7 @@ const S = {
   bmiWarning: null,
   carbWarning: null,
   menuWarning: null,    // מוצג כשאי אפשר לעמוד ביעד עם ההעדפות (גלישה קלורית בלתי-פתירה)
+  treat: null,          // id מתוך TREATS — פינוק מתוכנן שהתפריט נבנה סביבו
 };
 
 // ── ALL foods flat array (מאוחד מ-DB) ──
@@ -745,6 +746,23 @@ function buildMenu() {
   S.bmiWarning = bmiWarnText();
 
   S.menuWarning = null;
+
+  // פינוק מתוכנן: מקצים את התקציב שלו מראש — התפריט נבנה ומיושר סביב מה שנשאר.
+  // calcMacro רץ בכל בנייה, אז ההפחתה כאן זמנית מטבעה (משוחזר בסוף הפונקציה לתצוגה).
+  const fullTarget = S.target;
+  let treatMeal = null;
+  if (S.treat) {
+    const tf = TREATS.find(x => x.id === S.treat);
+    if (tf) {
+      const it = mkItem(tf, tf.unitG);
+      S.target  = Math.max(800, S.target - it.cal);
+      S.fatG    = Math.max(20, S.fatG - Math.round(it.fat));
+      S.carbG   = Math.max(50, S.carbG - Math.round(it.c));
+      treatMeal = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items: [it] };
+      recalcMeal(treatMeal);
+    }
+  }
+
   const t = S.target;
   const key = (S.noTrain || !S.time) ? 'noTrain' : S.time;
   const mealDefs = mealPlan(key, t);
@@ -777,7 +795,10 @@ function buildMenu() {
     }
   }
 
-  reconcile(meals);   // יישור מאקרו ליעד
+  reconcile(meals);   // יישור מאקרו ליעד (מול היעד המוקטן אם יש פינוק)
+
+  S.target = fullTarget;                    // שחזור היעד המלא לתצוגה ולפס ההתקדמות
+  if (treatMeal) meals.push(treatMeal);     // הפינוק מוצג ככרטיס משלו, מחוץ ל-reconcile
   return meals;
 }
 

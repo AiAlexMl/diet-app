@@ -122,6 +122,21 @@ const DB = {
   ],
 };
 
+// ── פינוקים (ids 200+) — לא חלק מה-DB ולא מופיעים במסכי הבחירה ──
+// ערכים ל-100g כמו בשאר המאגר; unitG = גודל המנה. משמשים את כפתור הפינוק ואת "אכלתי משהו אחר".
+const TREATS = [
+  { id:200, name:"קפה הפוך",        prep:"", p:1.7,  c:2.5,  f:1.4,  fib:0,   cal:25,  tags:["treat"], unitG:240, unitLabel:"כוס" },
+  { id:201, name:"קולה זירו",       prep:"", p:0,    c:0,    f:0,    fib:0,   cal:0,   tags:["treat"], unitG:330, unitLabel:"פחית" },
+  { id:202, name:"קולה",            prep:"", p:0,    c:10.6, f:0,    fib:0,   cal:42,  tags:["treat"], unitG:330, unitLabel:"פחית" },
+  { id:203, name:"בירה",            prep:"", p:0.5,  c:3.6,  f:0,    fib:0,   cal:43,  tags:["treat"], unitG:330, unitLabel:"בקבוק" },
+  { id:204, name:"חטיף שוקולד",     prep:"", p:7.0,  c:55.0, f:30.0, fib:2.0, cal:530, tags:["treat"], unitG:50,  unitLabel:"חטיף" },
+  { id:205, name:"גלידה",           prep:"", p:3.5,  c:24.0, f:10.0, fib:0.5, cal:200, tags:["treat"], unitG:100, unitLabel:"2 כדורים" },
+  { id:206, name:"משולש פיצה",      prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:130, unitLabel:"משולש" },
+  { id:207, name:"המבורגר",         prep:"", p:13.0, c:20.0, f:11.0, fib:1.2, cal:230, tags:["treat"], unitG:250, unitLabel:"מנה" },
+  { id:208, name:"שווארמה בפיתה",   prep:"", p:11.0, c:14.0, f:7.0,  fib:1.0, cal:160, tags:["treat"], unitG:450, unitLabel:"מנה" },
+  { id:209, name:"פלאפל בפיתה",     prep:"", p:6.0,  c:18.0, f:5.0,  fib:2.5, cal:135, tags:["treat"], unitG:400, unitLabel:"מנה" },
+];
+
 // תבניות שעות ארוחות לפי זמן אימון
 const MEAL_TIMES = {
   noTrain: [
