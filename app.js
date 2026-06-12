@@ -845,18 +845,10 @@ function rebalanceDay(meals, eaten) {
   const isLockedIdx = i => eaten[i] || meals[i].type === 'treat';
   const open = meals.map((m, i) => ({ m, i })).filter(x => !isLockedIdx(x.i) && !x.m.removed);
   const lockedMeals = meals.filter((m, i) => isLockedIdx(i) && !m.removed);
+  const isWorkout = x => !!x.m.tag;   // ארוחת לפני/אחרי אימון — מוגנת: לא נמחקת ולא מאבדת את החלבון
 
   const sum = sel => lockedMeals.reduce((s, m) => s + (m[sel] || 0), 0);
   const tR = S.target - sum('totCal');
-
-  // מדרגה 3: חצה את היעד היומי — מסירים את הארוחות הפתוחות, בלי "ארוחות עונשין"
-  if (tR <= 0) {
-    open.forEach(x => { x.m.removed = true; x.m.items = []; recalcMeal(x.m); });
-    return {
-      note: `חצית את היעד היומי (+${Math.abs(Math.round(tR))} קק"ל). זה קורה — מחר מתחילים דף חדש 💪 אם רעבים: ירקות חופשיים ומים.`,
-      partialWarn: null,
-    };
-  }
 
   // used מהפריטים הנעולים — כדי שהבנייה מחדש לא תחזור על אותם מאכלים
   const used = new Map();
@@ -864,20 +856,61 @@ function rebalanceDay(meals, eaten) {
     if (it.isSaladGroup) (it._comps || []).forEach(c => c.f && used.set(c.f.id, (used.get(c.f.id) || 0) + c.g));
     else if (it.f && it.f.id > 0) used.set(it.f.id, (used.get(it.f.id) || 0) + it.g);
   }));
+  const ctx = { usedCarbCats: new Set() };
 
-  // מדרגה 2: יתרה קטנה — נשנוש קל אחד במקום כל ההמשך
+  // נשנוש חלבון לארוחת אימון מוגנת: תבנית snack, ואם יצאה דלת-חלבון — חלבון ישיר
+  // (גבינה/יוגורט/ביצה/בשר/דג/קטנייה — מכסה גם טבעונים וגם ימים שבהם החלב כבר נוצל)
+  const proteinSnack = budget => {
+    let items = buildMealBest('snack', budget, used, ctx);
+    if (items.reduce((s, it) => s + (it.p || 0), 0) < 8) {
+      const pool = ALL.filter(f => isCheese(f) || isYogurt(f) || f.tags.includes('egg') ||
+        f.tags.includes('meat') || f.tags.includes('fish') || (f.tags.includes('legume') && !f.dip));
+      const pr = pick(pool, used, budget, 12, 250);
+      if (pr) { use(used, pr); items = [pr]; }
+    }
+    return items;
+  };
+
+  // מדרגה 3: חצה את היעד היומי — מסירים את הארוחות הפתוחות, בלי "ארוחות עונשין".
+  // חריג: ארוחות אימון נשארות כנשנוש חלבון קל — שימור שריר גובר על חריגה קלורית קטנה.
+  if (tR <= 0) {
+    let keptWorkout = false;
+    open.forEach(x => {
+      if (isWorkout(x)) {
+        x.m.items = proteinSnack(180);
+        recalcMeal(x.m);
+        keptWorkout = true;
+      } else {
+        x.m.removed = true; x.m.items = []; recalcMeal(x.m);
+      }
+    });
+    return {
+      note: keptWorkout
+        ? `חצית את היעד היומי (+${Math.abs(Math.round(tR))} קק"ל). זה קורה — ובכל זאת השארנו ארוחת חלבון קלה סביב האימון: עליה לא מוותרים 💪 מחר מתחילים דף חדש.`
+        : `חצית את היעד היומי (+${Math.abs(Math.round(tR))} קק"ל). זה קורה — מחר מתחילים דף חדש 💪 אם רעבים: ירקות חופשיים ומים.`,
+      partialWarn: null,
+    };
+  }
+
+  // מדרגה 2: יתרה קטנה — נשארות רק ארוחות האימון (עם חלבון), או נשנוש קל אחד אם אין אימון
   if (tR < 300) {
-    open.forEach((x, k) => {
-      if (k === 0) {
-        const fr = pick(ALL.filter(f => f.tags.includes('fruit') || f.tags.includes('veg')), used, Math.max(tR, 80), 0, 250);
-        x.m.items = fr ? [fr] : [];
-        x.m.label = 'נשנוש קל';
+    const keepers = open.filter(isWorkout).length ? open.filter(isWorkout) : open.slice(0, 1);
+    const each = Math.max(Math.round(tR / keepers.length), 120);
+    open.forEach(x => {
+      if (keepers.includes(x)) {
+        x.m.items = isWorkout(x) ? proteinSnack(each) : buildMealBest('snack', each, used, ctx);
+        if (!isWorkout(x)) x.m.label = 'נשנוש קל';
         recalcMeal(x.m);
       } else {
         x.m.removed = true; x.m.items = []; recalcMeal(x.m);
       }
     });
-    return { note: 'היום כמעט מלא — השארנו לך ארוחה קלה להמשך. מחר חוזרים למסלול 💪', partialWarn: null };
+    return {
+      note: keepers.some(isWorkout)
+        ? 'היום כמעט מלא — השארנו ארוחת חלבון קלה סביב האימון. מחר חוזרים למסלול 💪'
+        : 'היום כמעט מלא — השארנו לך ארוחה קלה להמשך. מחר חוזרים למסלול 💪',
+      partialWarn: null,
+    };
   }
 
   // מדרגה 1: בנייה מחדש מלאה של ההמשך מול היעדים שנותרו (אותו מנוע: buildMealBest + reconcile)
@@ -890,14 +923,16 @@ function rebalanceDay(meals, eaten) {
     S.carbG    = Math.max(20, S.carbG - Math.round(sum('totC')));
     S.menuWarning = null;
 
-    const ctx = { usedCarbCats: new Set() };
     const openMeals = open.map(x => x.m);
 
     // התאמת מספר הארוחות ליתרה (דו-כיווני, אותו עיקרון כמו mealPlan):
     // יתרה גדולה → נשנושים נוספים (לא לנפח מנות); יתרה קטנה → מורידים ארוחות מהסוף
-    // (לארוחה יש גודל מינימלי — אחרת ההמשך גולש מעל היעד).
+    // (לארוחה יש גודל מינימלי). ארוחות אימון (tag) לעולם לא מוסרות.
     while (openMeals.length > 1 && tR / openMeals.length < 260) {
-      const drop = openMeals.pop();
+      let di = openMeals.length - 1;
+      while (di >= 0 && openMeals[di].tag) di--;   // מאתרים את האחרונה שאינה ארוחת אימון
+      if (di < 0) break;                            // נשארו רק ארוחות אימון — לא נוגעים
+      const drop = openMeals.splice(di, 1)[0];
       drop.removed = true; drop.items = []; recalcMeal(drop);
     }
     const perMeal = tR / Math.max(openMeals.length, 1);
