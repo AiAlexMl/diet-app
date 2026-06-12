@@ -966,6 +966,17 @@ function rebalanceDay(meals, eaten) {
   } finally {
     Object.assign(S, saved);
   }
+
+  // אזהרת אי-ההתאמה הכללית מנוסחת לבניית תפריט מלא ("הסר מאכלים מועדפים...") — באמצע יום
+  // הסיבה האמיתית היא יתרה צפופה. מחליפים בהודעה הקשרית עם החריגה הצפויה במספרים.
+  if (partialWarn) {
+    const total = meals.filter(m => !m.removed).reduce((s, m) => s + m.totCal, 0);
+    const over = total - S.target;
+    partialWarn = over > S.target * 0.04
+      ? `שים לב: אחרי העדכון נשארה יתרה צפופה, והיום צפוי לחרוג בכ-${Math.round(over)} קק"ל מהיעד. זה בסדר — מחר חוזרים למסלול 💪`
+      : null;   // בפועל בטווח — אין צורך באזהרה
+  }
+
   return {
     note: 'ההמשך עודכן סביב מה שאכלת ✓ — השינוי תקף להיום בלבד; מחר חוזרים לתפריט הרגיל.',
     partialWarn,
