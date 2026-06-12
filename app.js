@@ -755,12 +755,19 @@ function buildMenu() {
   // פינוק מתוכנן: מקצים את התקציב שלו מראש — התפריט נבנה ומיושר סביב מה שנשאר.
   // calcMacro רץ בכל בנייה, אז ההפחתה כאן זמנית מטבעה (משוחזר בסוף הפונקציה לתצוגה).
   const fullTarget = S.target;
-  let treatMeal = null;
+  let treatMeal = null, treatWarn = null;
   if (S.treat) {
     const tf = TREATS.find(x => x.id === S.treat);
     if (tf) {
       const it = mkItem(tf, tf.unitG);
-      S.target  = Math.max(800, S.target - it.cal);
+      const reduced = S.target - it.cal;
+      if (reduced < 800) {
+        // הפינוק גדול מכדי להיכנס ביעד: לא בונים יום מתחת ל-800 קק"ל (safety) — מתריעים על החריגה
+        treatWarn = `הגזמנו קצת 🙂 הפינוק שבחרת (${tf.name}, ${it.cal} קק"ל) גדול ביחס ליעד היומי — גם עם ארוחות מינימליות היום יחרוג בכ-${800 + it.cal - S.target} קק"ל. אפשר לבחור פינוק קטן יותר, או ליהנות היום ולחזור למסלול מחר.`;
+      } else if (it.cal > S.target * 0.25) {
+        treatWarn = `שים לב: הפינוק תופס כ-${Math.round(it.cal / S.target * 100)}% מהיעד היומי — שאר הארוחות קוצצו בהתאם.`;
+      }
+      S.target  = Math.max(800, reduced);
       S.fatG    = Math.max(20, S.fatG - Math.round(it.fat));
       S.carbG   = Math.max(50, S.carbG - Math.round(it.c));
       treatMeal = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items: [it] };
@@ -804,6 +811,7 @@ function buildMenu() {
 
   S.target = fullTarget;                    // שחזור היעד המלא לתצוגה ולפס ההתקדמות
   if (treatMeal) meals.push(treatMeal);     // הפינוק מוצג ככרטיס משלו, מחוץ ל-reconcile
+  if (treatWarn) S.menuWarning = treatWarn; // אזהרת פינוק גוברת על אזהרות כלליות — היא הסיבה הישירה
   return meals;
 }
 
