@@ -147,7 +147,9 @@ function mkItem(f, g) {
   } else if (f.plural && f.unitG) {
     // פריט יחידות (פרי/לחם/עמילני/גביע) — מצמידים ליחידות שלמות והתווית אומרת אמת:
     // "תמר אחד" לא יסתיר 72g, "גביע (170g)" לא יסתיר 250g
-    const n = Math.max(1, Math.round(g / f.unitG));
+    let n = Math.max(1, Math.round(g / f.unitG));
+    if (f.tags.includes('bread') && !f.tags.includes('cracker'))
+      n = Math.min(n, f.pita ? 1 : 2);   // ריאליזם: עד 2 פרוסות לחם / פיתה אחת לארוחה
     g = n * f.unitG;
     dispG = n === 1 ? f.unitLabel : `${n} ${f.plural}`;
   } else if (f.unitLabel) {
@@ -284,12 +286,12 @@ const MEAL_TEMPLATES = {
   breakfast: [
     { name:'eggs',        weight:3, slots:[
       { match:_tag('egg'),   calPct:.45, protPct:.85, max:300 },
-      { match:_tag('bread'), calPct:.35, max:120, spread:'ifAlone', pitaOk:true },   // פיתה מותרת כאן (עם חביתה), בעדיפות נמוכה
+      { match:_tag('bread'), calPct:.35, max:65, spread:'ifAlone', pitaOk:true },   // פיתה מותרת כאן (עם חביתה), בעדיפות נמוכה
       { special:'salad', optional:true },
     ]},
     { name:'cheese',      weight:3, slots:[
       { match:isCheese,      calPct:.45, protPct:.85, max:200 },
-      { match:_sliced,       calPct:.35, max:120, spread:'ifAlone' },   // לחם/פריכית, לא פיתה
+      { match:_sliced,       calPct:.35, max:65, spread:'ifAlone' },   // לחם/פריכית, לא פיתה
       { special:'salad', optional:true },
     ]},
     { name:'yogurt_bowl', weight:2, slots:[
@@ -313,7 +315,7 @@ const MEAL_TEMPLATES = {
     ]},
     // טבעוני (ובפרט טבעוני+ללא גלוטן): לחם/פריכית עם ממרח + פרי/אגוזים — רק כשאין ביצה/חלב זמינים
     { name:'bread_spread', weight:1, when:u => !ALL.some(f => (f.tags.includes('egg') || f.tags.includes('dairy')) && allowed(f) && !u.has(f.id)), slots:[
-      { match:_sliced, calPct:.5, max:120, spread:'ifAlone' },
+      { match:_sliced, calPct:.5, max:65, spread:'ifAlone' },
       { match:_tag('fruit'), calPct:.3, max:200, optional:true },
       { match:_tag('nuts'), calPct:.2, max:30, optional:true },
     ]},
@@ -355,19 +357,19 @@ const MEAL_TEMPLATES = {
   dinner: [
     { name:'cheese_bread', weight:3, slots:[
       { match:f => isCheese(f) || f.tags.includes('egg'), calPct:.45, protPct:.8, max:250 },
-      { match:_sliced, calPct:.25, max:120, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
+      { match:_sliced, calPct:.25, max:65, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
       { special:'salad', optional:true },
     ]},
     { name:'tuna_bread',   weight:2, slots:[
       { match:(f, u) => f.tags.includes('tuna') && !tunaUsed(u), calPct:.4, protPct:.8, max:160 },
-      { match:_sliced, calPct:.25, max:120, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
+      { match:_sliced, calPct:.25, max:65, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
       { special:'salad', optional:true },
     ]},
     { name:'big_salad',    weight:2, slots:[
       { special:'salad' },
       // חלבון: ביצה/גבינה (מן החי). קטנייה רק כשאין למשתמש חלבון מן החי (טבעוני) — שעועית אינה "מנת חלבון" לאוכלי-כול
       { match:f => f.tags.includes('egg') || isCheese(f) || (f.tags.includes('legume') && !f.dip && !hasAnimalProtein()), calPct:.45, protPct:.8, max:250 },
-      { match:_sliced, calPct:.2, max:80, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
+      { match:_sliced, calPct:.2, max:65, spread:'ifAlone', optional:true },   // לחם פרוס, לא פיתה
     ]},
   ],
 };
@@ -506,8 +508,8 @@ function reG(it, g) {            // כמות חופשית בגרמים (דגן/�
   it.g = g; it.dispG = `${g}g`;
   setMacros(it, it.f, g);
 }
-function reBread(it, count) {    // לחם פרוס לפי מספר פרוסות (1–4): "פרוסה אחת" / "N פרוסות"
-  count = Math.max(1, Math.min(4, count || 1));
+function reBread(it, count) {    // לחם פרוס לפי מספר פרוסות (1–2): "פרוסה אחת" / "2 פרוסות"
+  count = Math.max(1, Math.min(2, count || 1));
   it.g = count * (it.f.unitG || 30);
   it.dispG = count === 1 ? (it.f.unitLabel || 'פרוסה אחת') : `${count} פרוסות`;
   setMacros(it, it.f, it.g);
@@ -682,7 +684,7 @@ function reconcile(meals) {
     const isCracker = it => it.f && it.f.tags.includes('cracker') && it.f.unitG;
     const isUnitCarb = it => it.f && it.f.plural && it.f.unitG && it.f.tags.includes('starch');   // בטטה/תפו"א/תירס — 1–3 יחידות
     const isCount   = it => isBread(it) || isCracker(it) || isUnitCarb(it);
-    const maxOf = it => isBread(it) ? it.f.unitG * 4 : isCracker(it) ? it.f.unitG * 6
+    const maxOf = it => isBread(it) ? it.f.unitG * 2 : isCracker(it) ? it.f.unitG * 6
       : isUnitCarb(it) ? Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG))) * it.f.unitG
       : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 450);
     const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
@@ -925,7 +927,7 @@ function rebuildRest(meals, eaten, mealIdx, actualItems) {
 // על יותר ארוחות ולא לדחוס מנות ענק (מפתחי גוף אוכלים 5–6 ארוחות).
 function mealPlan(key, target) {
   const defs = MEAL_TIMES[key].map(d => ({ ...d }));
-  const extra = target > 3100 ? 3 : target > 2600 ? 2 : target > 2300 ? 1 : 0;
+  const extra = target > 2900 ? 3 : target > 2400 ? 2 : target > 2100 ? 1 : 0;   // ספים הונמכו כשהלחם הוגבל ל-2 פרוסות
   const slots = [{ time: '10:30' }, { time: '16:00' }, { time: '21:30' }];
   for (let i = 0; i < extra; i++)
     defs.push({ label: 'נשנוש נוסף', icon: 'coffee', time: slots[i].time, pct: 0.13, tag: null, type: 'snack', big: false });
