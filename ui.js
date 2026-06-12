@@ -64,6 +64,103 @@ function loadState() {
 }
 
 // ══════════════════════════════════════════
+//  היום שלי — שמירת התפריט הנוכחי + סימוני "אכלתי" (הבסיס ללולאת השימוש היומית)
+// ══════════════════════════════════════════
+const DAY_KEY = 'shapeat-day';
+let DAY = null;   // { date, target, meals(live), eaten[], warn{bmi,carb,menu}, gLabel, tLabel }
+
+const FOOD_BY_ID = Object.fromEntries(ALL.map(f => [f.id, f]));
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+// פריט → נתונים שטוחים (בלי refs); משחזרים את f לפי id (תקף גם אחרי adjustEgg/lean-swap)
+function serializeDay(day) {
+  const item = it => it.isSaladGroup
+    ? { salad: true, label: it.label, parts: it.parts, comps: it._comps.map(c => ({ id: c.f.id, g: c.g })),
+        oilG: it._oilG || 0, cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
+    : { id: it.f.id, g: it.g, dispG: it.dispG, displayName: it.displayName,
+        cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
+  return {
+    date: day.date, target: day.target, eaten: day.eaten,
+    warn: day.warn, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
+    meals: day.meals.map(m => ({
+      label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type,
+      totCal: m.totCal, totP: m.totP, totC: m.totC, totF: m.totF, totFib: m.totFib,
+      items: m.items.map(item),
+    })),
+  };
+}
+
+function deserializeDay(d) {
+  const item = it => it.salad
+    ? { isSaladGroup: true, label: it.label, parts: it.parts,
+        _comps: it.comps.map(c => ({ f: FOOD_BY_ID[c.id], g: c.g })).filter(c => c.f),
+        _oil: FOOD_BY_ID[86] || null, _oilG: it.oilG,
+        cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
+    : { f: FOOD_BY_ID[it.id], g: it.g, dispG: it.dispG, displayName: it.displayName,
+        cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
+  return {
+    date: d.date, target: d.target, eaten: d.eaten || [],
+    warn: d.warn || {}, gLabel: d.gLabel, tLabel: d.tLabel, morningTip: d.morningTip,
+    meals: d.meals.map(m => ({ ...m, items: m.items.map(item).filter(it => it.isSaladGroup || it.f) })),
+  };
+}
+
+function saveDay() {
+  if (!DAY) return;
+  try { localStorage.setItem(DAY_KEY, JSON.stringify(serializeDay(DAY))); } catch (e) {}
+}
+
+function loadDay() {
+  let d;
+  try { d = JSON.parse(localStorage.getItem(DAY_KEY)); } catch (e) { return null; }
+  if (!d || !d.meals) return null;
+  try {
+    const day = deserializeDay(d);
+    if (day.date !== todayStr()) {           // יום חדש — אותו תפריט, סימונים מתאפסים
+      day.date = todayStr();
+      day.eaten = day.meals.map(() => false);
+    }
+    return day;
+  } catch (e) { return null; }
+}
+
+function clearDay() {
+  DAY = null;
+  try { localStorage.removeItem(DAY_KEY); } catch (e) {}
+}
+
+// ── סימון "אכלתי" — עדכון במקום (בלי רינדור מחדש, שומר מיקום גלילה) ──
+function toggleEaten(i) {
+  if (!DAY) return;
+  DAY.eaten[i] = !DAY.eaten[i];
+  saveDay();
+  const card = document.getElementById(`meal-card-${i}`);
+  if (card) {
+    card.classList.toggle('meal-eaten', DAY.eaten[i]);
+    const btn = card.querySelector('.eaten-btn');
+    if (btn) {
+      btn.textContent = DAY.eaten[i] ? '✓ נאכלה' : 'אכלתי ✓';
+      btn.classList.toggle('on', DAY.eaten[i]);
+    }
+  }
+  updateDayProgress();
+}
+
+function updateDayProgress() {
+  const box = document.getElementById('day-progress');
+  if (!box || !DAY) return;
+  const eatenCal = DAY.meals.reduce((s, m, i) => s + (DAY.eaten[i] ? m.totCal : 0), 0);
+  const count = DAY.eaten.filter(Boolean).length;
+  const pct = Math.min(100, Math.round(eatenCal / Math.max(DAY.target, 1) * 100));
+  box.innerHTML = `
+    <div class="dp-row">
+      <span>נאכלו ${count}/${DAY.meals.length} ארוחות</span>
+      <span><strong>${eatenCal.toLocaleString()}</strong> / ${DAY.target.toLocaleString()} קק"ל</span>
+    </div>
+    <div class="dp-track"><div class="dp-fill" style="width:${pct}%"></div></div>`;
+}
+
+// ══════════════════════════════════════════
 //  ניווט בין מסכים
 // ══════════════════════════════════════════
 function goTo(n) {
@@ -136,6 +233,8 @@ function updateMacroDisplay() {
 });
 loadState();          // שחזור העדפות מביקור קודם (אם יש)
 updateMacroDisplay();
+DAY = loadDay();      // אם יש תפריט יום שמור — נכנסים ישר אליו ("מלווה יומי")
+if (DAY) { renderDay(); }
 
 // ══════════════════════════════════════════
 //  מסך 2 — העדפות תזונה
@@ -257,60 +356,75 @@ function renderMenu() {
   if (!S.target) { alert('יש למלא פרטים אישיים'); goTo(0); return; }
 
   const meals = buildMenu();
+  DAY = {
+    date: todayStr(), target: S.target,
+    meals, eaten: meals.map(() => false),
+    warn: { bmi: S.bmiWarning, carb: S.carbWarning, menu: S.menuWarning },
+    gLabel: { cut: 'חיטוב', maintain: 'שמירה', bulk: 'מסה' }[S.goal],
+    tLabel: S.noTrain || !S.time ? 'ללא אימון'
+      : { morning: 'אימון בוקר', noon: 'אימון צהריים', evening: 'אימון ערב' }[S.time],
+    morningTip: S.time === 'morning',
+  };
+  saveDay();
+  renderDay();
+}
+
+// מציג את היום השמור (DAY) — נקרא גם אחרי בנייה וגם בשחזור מ-localStorage
+function renderDay() {
+  if (!DAY) return;
+  const meals = DAY.meals;
   const dCal  = meals.reduce((s, m) => s + m.totCal, 0);
   const dP    = Math.round(meals.reduce((s, m) => s + m.totP, 0));
   const dC    = Math.round(meals.reduce((s, m) => s + m.totC, 0));
   const dF    = Math.round(meals.reduce((s, m) => s + m.totF, 0));
   const dFib  = Math.round(meals.reduce((s, m) => s + (m.totFib || 0), 0));
-  const pPct  = Math.round(dP * 4 / dCal * 100);
-  const cPct  = Math.round(dC * 4 / dCal * 100);
+  const pPct  = Math.round(dP * 4 / Math.max(dCal, 1) * 100);
+  const cPct  = Math.round(dC * 4 / Math.max(dCal, 1) * 100);
   const fPct  = 100 - pPct - cPct;
-  const gLabel = { cut:'חיטוב', maintain:'שמירה', bulk:'מסה' }[S.goal];
-  const tLabel = S.noTrain || !S.time ? 'ללא אימון'
-    : { morning:'אימון בוקר', noon:'אימון צהריים', evening:'אימון ערב' }[S.time];
 
   let html = `<div class="menu-header">
-    <div class="menu-title">התפריט שלך — ${gLabel}</div>
-    <div class="menu-sub">${tLabel}</div>
-  </div>`;
+    <div class="menu-title">התפריט שלך — ${esc(DAY.gLabel || '')}</div>
+    <div class="menu-sub">${esc(DAY.tLabel || '')}</div>
+  </div>
+  <div class="day-progress" id="day-progress"></div>`;
 
   // אזהרת BMI
-  if (S.bmiWarning) {
+  if (DAY.warn.bmi) {
     html += `<div class="bmi-warning">
       <span class="bmi-warning-icon">⚠️</span>
-      <span>${S.bmiWarning}</span>
+      <span>${esc(DAY.warn.bmi)}</span>
     </div>`;
   }
 
   // אזהרת פחמימות נמוכות
-  if (S.carbWarning) {
+  if (DAY.warn.carb) {
     html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
-      <span>${S.carbWarning}</span>
+      <span>${esc(DAY.warn.carb)}</span>
     </div>`;
   }
 
   // אזהרת אי-התאמה: לא ניתן לעמוד ביעד הקלורי עם ההעדפות הנוכחיות
-  if (S.menuWarning) {
+  if (DAY.warn.menu) {
     html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
-      <span>${S.menuWarning}</span>
+      <span>${esc(DAY.warn.menu)}</span>
     </div>`;
   }
 
   // הערה לאימון בוקר
-  if (S.time === 'morning') {
+  if (DAY.morningTip) {
     html += `<div class="tips-box" style="margin-bottom:10px">
       אימון בוקר על קיבה ריקה — אם מרגישים צורך, בננה אחת או תמר לפני האימון יספיקו.
     </div>`;
   }
 
-  meals.forEach(m => {
+  meals.forEach((m, mi) => {
     const tagH = m.tag
       ? `<span class="meal-tag ${m.tag === 'pre' ? 'tag-pre' : 'tag-post'}">${m.tag === 'pre' ? 'לפני אימון' : 'אחרי אימון'}</span>`
       : '';
 
-    html += `<div class="meal-card">
+    html += `<div class="meal-card${DAY.eaten[mi] ? ' meal-eaten' : ''}" id="meal-card-${mi}">
       <div class="meal-header">
         <div class="meal-title">${esc(m.label)} ${tagH}</div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -357,6 +471,9 @@ function renderMenu() {
       <div class="macro-pill"><div class="val">${m.totP}g</div><div class="lbl">חלבון</div></div>
       <div class="macro-pill"><div class="val">${m.totC}g</div><div class="lbl">פחמימות</div></div>
       <div class="macro-pill"><div class="val">${m.totF}g</div><div class="lbl">שומן</div></div>
+    </div>
+    <div class="meal-actions">
+      <button class="eaten-btn${DAY.eaten[mi] ? ' on' : ''}" onclick="toggleEaten(${mi})">${DAY.eaten[mi] ? '✓ נאכלה' : 'אכלתי ✓'}</button>
     </div></div>`;
   });
 
@@ -397,6 +514,7 @@ function renderMenu() {
   </div>`;
 
   document.getElementById('menu-output').innerHTML = html;
+  updateDayProgress();
   goTo(4);
 }
 
@@ -430,6 +548,7 @@ function resetApp() {
   document.getElementById('like-count').textContent  = '0';
   document.getElementById('avoid-count').textContent = '0';
   try { localStorage.removeItem(STATE_KEY); } catch (e) {}
+  clearDay();
 
   goTo(0);
 }

@@ -485,6 +485,56 @@ input[type="number"]:focus {
   color: #78350f;
 }
 
+/* ── פס התקדמות יומי (נאכלו X/Y ארוחות) ── */
+.day-progress {
+  background: #fff;
+  border: 1.5px solid rgba(79, 70, 229, 0.12);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.dp-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: var(--text-sec);
+  margin-bottom: 8px;
+}
+.dp-track {
+  height: 10px; border-radius: 5px;
+  background: rgba(79, 70, 229, 0.10);
+  overflow: hidden;
+}
+.dp-fill {
+  height: 100%; border-radius: 5px;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  transition: width 0.35s ease;
+}
+
+/* ── סימון "אכלתי" על ארוחה ── */
+.meal-actions {
+  display: flex; justify-content: flex-end;
+  margin-top: 10px;
+}
+.eaten-btn {
+  border: 1.5px solid #10b981;
+  background: #fff;
+  color: #059669;
+  font-weight: 700; font-size: 13px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.eaten-btn:hover { background: #ecfdf5; }
+.eaten-btn.on {
+  background: #10b981;
+  color: #fff;
+}
+.meal-eaten {
+  opacity: 0.72;
+  border-right: 4px solid #10b981;
+}
+
 /* ── חלון ויתור ── */
 .disclaimer-overlay {
   position: fixed; inset: 0;
