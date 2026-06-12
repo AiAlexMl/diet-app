@@ -34,6 +34,10 @@ The meal **count is dynamic**: `mealPlan(key, target)` adds 1–3 snacks for hig
 
 All user inputs/selections persist to `localStorage['dietai-state']` (Sets serialized as arrays): `saveState()` is called from every mutator (toggles, setters, input listeners); `loadState()` runs once at ui.js load (before the first `updateMacroDisplay()`) — restores `S` **and** syncs the DOM (inputs, chips, buttons, time cards, counts). `resetApp()` clears the key. Everything is try/catch-wrapped — blocked localStorage (private mode) degrades to no persistence. This is the future migration path to Supabase `profiles`.
 
+## Day State (ui.js) — `localStorage['shapeat-day']`
+
+The generated menu is a persistent **day**: global `DAY = { date, target, meals(live), eaten[], note, warn{bmi,carb,menu}, gLabel, tLabel, morningTip }`. `serializeDay`/`deserializeDay` flatten items to `{id,g,...}` (food refs reattached from `FOOD_BY_ID = ALL+TREATS`; manual items `{manual:true,name,...}` survive too; salads keep `comps`+`oilG`; meals keep `removed`). On app load, a saved day renders immediately (screen 4, "daily companion" behavior); a stale date keeps the menu but resets `eaten`. `S.treat` (app.js) holds a planned-treat id. Check-marks (`toggleEaten`) update in place + drive the daily progress bar; `rebuildRest` (app.js) mutates `DAY.meals/eaten` for mid-day corrections. `resetApp()`/`clearDay()` remove the key; rebuild actions ask `confirmRebuild()` when marks exist.
+
 ## Key UI Functions (ui.js)
 
 | Function | Description |

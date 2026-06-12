@@ -52,6 +52,19 @@ Helpers: **`setMacros(it, f, g)`** is the single source of truth for an item's `
 
 **Measured accuracy** (sim over thousands of menus, incl. 30k fuzz with 0 crashes/NaN): protein ~±3% (worst +10%, never the old 200 g+ blowups), fat ~±4%, calories: maintain median ~2%, p90 ~6%, only ~2% of menus deviate >10% (was 12% before the starch unit lever). Known micro-issue: ~0.1–0.2% of menus exceed an egg `maxDay` by one egg (`adjustEgg` can converge two meals onto the same egg id). **Residual undershoot**: bulk ~−5% (GF-bulk ~−8%) even with 5–7 meals — high targets are carb-limited, worst for gluten-free. **Inherent limits**: vegan protein ~20% short of `weight×1.6` (plants are protein-poor; seitan helps when present); fat can't drop if every liked protein is fatty; and a low target + fatty/plant-only protein triggers the `S.menuWarning` (cut female + schnitzel+cheese ~25%, small vegan cut ~50%). Empty meals only when the user avoids ~45%+ of foods.
 
+## Planned treat (`S.treat`)
+
+`S.treat` holds a `TREATS` id (data.js, ids 200+). In `buildMenu`: the treat's calories/fat/carbs are subtracted from the targets **before** building (protein untouched; floors 800 kcal / 20g fat / 50g carbs), the menu is built+reconciled against the reduced target, then `S.target` is restored and a standalone `type:'treat'` meal card is appended (never touched by reconcile). UI: picker overlay (`openTreatPicker`), rebuilding wipes day check-marks behind a confirm.
+
+## Day correction — `rebuildRest(meals, eaten, mealIdx, actualItem)`
+
+"אכלתי משהו אחר": replaces the reported meal's items with what was actually eaten (`mkItem` from DB/TREATS, or `manualItem(name, cal)` — conservative macros: p=0, 60/40 carb/fat), locks all eaten meals (+ a not-yet-eaten planned treat), computes remaining targets, and acts by tier:
+- **`tR ≤ 0`** (crossed daily target): all open meals removed, positive banner with the overage ("חצית את היעד... מחר דף חדש"; no punishment meals, no compensating deficit — safety by design).
+- **`0 < tR < 300`**: one light snack (fruit/veg) replaces the rest + supportive note.
+- **`tR ≥ 300`**: full rebuild of open meals with the existing engine — `buildMealBest` per meal + `reconcile` — against temporarily-swapped `S` targets (restored in `finally`). **Two-way meal-count adaptation**: drops trailing meals while `tR/openCount < 260` (meals have a minimum size), adds 1–3 extra snacks when `perMeal > 450/600/800` (cap: 6 open meals).
+
+**Measured** (2000 random disrupted days): 0 crashes/NaN; ~15% hit the over/light tiers; of the fully-rebuilt days ~93% land within ±12% of the original daily target (the residual is structural — e.g., the hot meal was the one replaced).
+
 ## Meal Templates (the realism mechanism)
 
 Meals are built from **templates** (`MEAL_TEMPLATES` keyed by `breakfast`/`hot`/`snack`/`dinner`), not free category-mixing — so every meal is a coherent plate by construction.

@@ -34,7 +34,11 @@ paths:
 
 `toggleFood(mode, id)` updates the card in-place and calls `updateTabBadges(mode)` to refresh all badge counts without re-rendering the grid.
 
-## Menu Rendering (`renderMenu`)
+## Menu Rendering (`renderMenu` → `renderDay`)
+
+`renderMenu()` = build path: `buildMenu()` → wraps result in `DAY` (+ warnings/labels snapshot) → `saveDay()` → `renderDay()`. `renderDay()` renders from `DAY` only — used both after build and on restore-from-localStorage. Removed meals (`m.removed`, set by day-correction) are skipped.
+
+**Menu-screen interactions:** daily progress bar (`#day-progress`, in-place updates); treat bar button (add/remove planned treat → full rebuild behind `confirmRebuild()`); per-meal `✓ אכלתי` (`toggleEaten` — in-place class+button+progress update) and `🔄 אכלתי משהו אחר` (`openAltPicker` — 3 tabs: TREATS / DB search+grams / manual name+calories → `applyAlt` → `rebuildRest`). `DAY.note` renders as a green `.day-note` banner (day-correction messages).
 
 Renders in order:
 1. Menu header (goal label + training label)

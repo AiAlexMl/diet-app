@@ -33,6 +33,7 @@ Detailed rules are in `.claude/rules/`:
 - **One-type rules**: one tuna type per menu (max one can), one cottage type (3% or 5%)
 - **Truthful unit labels**: `plural` field foods are snapped to whole units — "3 תמרים", never "תמר אחד" hiding 72g
 - **State persists** to `localStorage['dietai-state']` (restored on load; cleared by reset). All dynamic text rendered via `esc()` (XSS guard for future DB content)
+- **The day is the product**: generated menu persists as a day (`localStorage['shapeat-day']`) with ✓ check-offs + progress bar; **planned treat** (`S.treat`, TREATS ids 200+) reserves budget before build; **"אכלתי משהו אחר"** → `rebuildRest()` rebuilds the rest of the day in 3 tiers (rebuild / light snack / over-target banner). Details: `algorithm.md`, `architecture.md`
 - **Fiber**: `fib` per item; daily total shown in the summary (number only)
 
 ## Product Images
