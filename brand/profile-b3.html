@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+  * { margin:0; padding:0; }
+  body { width:1024px; height:1024px; overflow:hidden; }
+  .bg {
+    width:1024px; height:1024px;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:40px;
+    font-family:'Segoe UI', Arial, sans-serif;
+  }
+  .mark { position:relative; width:560px; height:560px; }
+  .mark svg { position:absolute; inset:0; }
+  .s {
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:430px; font-weight:800; line-height:1;
+    text-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+  .name { color:#fff; font-size:130px; font-weight:800; letter-spacing:-3px; }
+  .name .eat { color:#a7f3d0; }
+</style></head>
+<body>
+  <div class="bg">
+    <!-- B3: מונוגרמה — S ענקית ומאחוריה מזלג אלכסוני במנטה -->
+    <div class="mark">
+      <svg viewBox="0 0 560 560">
+        <g fill="#a7f3d0" transform="rotate(-38 280 280)" opacity="0.95">
+          <rect x="231" y="38" width="19" height="92" rx="9"/>
+          <rect x="265" y="38" width="19" height="92" rx="9"/>
+          <rect x="299" y="38" width="19" height="92" rx="9"/>
+          <rect x="333" y="38" width="19" height="92" rx="9"/>
+          <path d="M231 116 h121 v32 a60 47 0 0 1 -121 0 z"/>
+          <rect x="268" y="166" width="46" height="356" rx="23"/>
+        </g>
+      </svg>
+      <div class="s">S</div>
+    </div>
+    <div class="name">Shap<span class="eat">Eat</span></div>
+  </div>
+</body></html>
