@@ -589,6 +589,7 @@ function removeTreat() {
 //  "אכלתי משהו אחר" — דיווח אכילה חריגה ובנייה מחדש של המשך היום
 // ══════════════════════════════════════════
 let altIdx = null;
+let altCart = [];   // הפריטים שנאכלו בפועל — אפשר כמה (שווארמה + קולה...)
 
 function altFoodRows(query) {
   const q = (query || '').trim();
@@ -602,12 +603,13 @@ function altFoodRows(query) {
 function openAltPicker(mi) {
   closeAltPicker();
   altIdx = mi;
+  altCart = [];
   const ov = document.createElement('div');
   ov.className = 'picker-overlay';
   ov.id = 'alt-picker';
   ov.innerHTML = `<div class="picker-box">
     <div class="picker-title">מה אכלת בפועל? 🔄</div>
-    <div class="picker-sub">נעדכן את הארוחה ונבנה מחדש את המשך היום סביבה</div>
+    <div class="picker-sub">הוסף פריט אחד או יותר — ונבנה מחדש את המשך היום סביבם</div>
     <div class="picker-tabs">
       <button class="ptab active" onclick="altTab(this, 'alt-treats')">פינוקים</button>
       <button class="ptab" onclick="altTab(this, 'alt-foods')">מהמאגר</button>
@@ -626,9 +628,11 @@ function openAltPicker(mi) {
     <div id="alt-manual" class="picker-pane" style="display:none">
       <input id="alt-name" class="picker-input" placeholder="מה אכלת? (למשל: בורקס)">
       <input id="alt-cal" class="picker-input" type="number" min="0" placeholder="כמה קלוריות בערך?">
-      <button class="btn-primary" style="width:100%" onclick="altManual()">עדכן ובנה מחדש</button>
+      <button class="btn-secondary" style="width:100%" onclick="altManual()">+ הוסף לרשימה</button>
       <div class="picker-sub" style="margin-top:8px">לא בטוח? הערכה גסה מספיקה.</div>
     </div>
+    <div id="alt-cart" class="alt-cart"></div>
+    <button id="alt-apply" class="btn-primary picker-cancel" style="display:none" onclick="applyAltCart()"></button>
     <button class="btn-secondary picker-cancel" onclick="closeAltPicker()">ביטול</button>
   </div>`;
   ov.addEventListener('click', e => { if (e.target === ov) closeAltPicker(); });
@@ -647,6 +651,32 @@ function closeAltPicker() {
   const el = document.getElementById('alt-picker');
   if (el) el.remove();
   altIdx = null;
+  altCart = [];
+}
+
+function renderAltCart() {
+  const box = document.getElementById('alt-cart');
+  const apply = document.getElementById('alt-apply');
+  if (!box || !apply) return;
+  if (!altCart.length) {
+    box.innerHTML = '';
+    apply.style.display = 'none';
+    return;
+  }
+  const total = altCart.reduce((s, it) => s + it.cal, 0);
+  box.innerHTML = altCart.map((it, i) =>
+    `<div class="alt-cart-row">
+      <span>${esc(it.displayName || it.f.name)}${it.dispG ? ` <small>(${esc(it.dispG)})</small>` : ''}</span>
+      <span>${it.cal} קק"ל <button class="cart-x" onclick="removeAltItem(${i})">✕</button></span>
+    </div>`).join('') +
+    `<div class="alt-cart-row alt-cart-total"><span>סה"כ</span><span>${total} קק"ל</span></div>`;
+  apply.style.display = '';
+  apply.textContent = `עדכן ובנה מחדש את ההמשך (${altCart.length})`;
+}
+
+function removeAltItem(i) {
+  altCart.splice(i, 1);
+  renderAltCart();
 }
 
 function altFood(id) {
@@ -654,21 +684,27 @@ function altFood(id) {
   if (!f) return;
   const gIn = document.getElementById('alt-grams');
   const g = (gIn && parseInt(gIn.value)) || f.unitG || 100;
-  applyAlt(mkItem(f, g));
+  altCart.push(mkItem(f, g));
+  renderAltCart();
 }
 
 function altManual() {
-  const name = (document.getElementById('alt-name').value || '').trim() || 'ארוחה מחוץ לתפריט';
-  const cal = parseFloat(document.getElementById('alt-cal').value);
+  const nameEl = document.getElementById('alt-name');
+  const calEl = document.getElementById('alt-cal');
+  const name = (nameEl.value || '').trim() || 'ארוחה מחוץ לתפריט';
+  const cal = parseFloat(calEl.value);
   if (isNaN(cal) || cal < 0) { alert('יש להזין הערכת קלוריות'); return; }
-  applyAlt(manualItem(name, cal));
+  altCart.push(manualItem(name, cal));
+  nameEl.value = ''; calEl.value = '';
+  renderAltCart();
 }
 
-function applyAlt(item) {
+function applyAltCart() {
+  if (!altCart.length || altIdx === null || !DAY) return;
   const mi = altIdx;
+  const items = altCart.slice();
   closeAltPicker();
-  if (mi === null || !DAY) return;
-  const res = rebuildRest(DAY.meals, DAY.eaten, mi, item);
+  const res = rebuildRest(DAY.meals, DAY.eaten, mi, items);
   DAY.note = res.note;
   DAY.warn.menu = res.partialWarn || null;
   saveDay();

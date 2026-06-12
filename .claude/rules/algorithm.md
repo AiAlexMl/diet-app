@@ -50,7 +50,7 @@ The build is bottom-up (per-item rounding, clamps, skipped `optional` slots), so
 
 Helpers: **`setMacros(it, f, g)`** is the single source of truth for an item's `cal/p/c/fat/fib` (food values are per-100g) — reused by `mkItem` and every lever. `reG`/`reBread`/`reCracker`/`reUnit`/`reNuts`/`adjustEgg` set `g`+`dispG` then call it; `recalcSalad(sg)` rebuilds a salad group from `_comps`/`_oilG`; `recalcMeal(m)` re-sums meal totals. **Truthful unit labels**: any food with `plural`+`unitG` is snapped to whole units by `mkItem` and labeled "N {plural}" ("3 תמרים", "2 בננות בינוניות") — the label always matches `g`. Other natural-portion items are never rescaled. `buildSalad` returns via `recalcSalad` and keeps `_comps`/`_oil`/`_oilG` so the oil stays tunable.
 
-**Measured accuracy** (sim over thousands of menus, incl. 30k fuzz with 0 crashes/NaN): protein ~±3% (worst +10%, never the old 200 g+ blowups), fat ~±4%, calories: maintain median ~2%, p90 ~6%, only ~2% of menus deviate >10% (was 12% before the starch unit lever). Known micro-issue: ~0.1–0.2% of menus exceed an egg `maxDay` by one egg (`adjustEgg` can converge two meals onto the same egg id). **Residual undershoot**: bulk ~−5% (GF-bulk ~−8%) even with 5–7 meals — high targets are carb-limited, worst for gluten-free. **Inherent limits**: vegan protein ~20% short of `weight×1.6` (plants are protein-poor; seitan helps when present); fat can't drop if every liked protein is fatty; and a low target + fatty/plant-only protein triggers the `S.menuWarning` (cut female + schnitzel+cheese ~25%, small vegan cut ~50%). Empty meals only when the user avoids ~45%+ of foods.
+**Measured accuracy** (sim over thousands of menus, incl. 30k fuzz with 0 crashes/NaN): protein ~±3% (worst +10%, never the old 200 g+ blowups), fat ~±4%, calories: maintain median ~2%, p90 ~6%, only ~2% of menus deviate >10% (was 12% before the starch unit lever). The old egg-maxDay micro-issue is gone (one egg dish per menu via `VARIANT_GROUPS`). **Residual undershoot**: bulk ~−5% (GF-bulk ~−8%) even with 5–7 meals — high targets are carb-limited, worst for gluten-free. **Inherent limits**: vegan protein ~20% short of `weight×1.6` (plants are protein-poor; seitan helps when present); fat can't drop if every liked protein is fatty; and a low target + fatty/plant-only protein triggers the `S.menuWarning` (cut female + schnitzel+cheese ~25%, small vegan cut ~50%). Empty meals only when the user avoids ~45%+ of foods.
 
 ## Planned treat (`S.treat`)
 
@@ -58,7 +58,7 @@ Helpers: **`setMacros(it, f, g)`** is the single source of truth for an item's `
 
 ## Day correction — `rebuildRest(meals, eaten, mealIdx, actualItem)`
 
-"אכלתי משהו אחר": replaces the reported meal's items with what was actually eaten (`mkItem` from DB/TREATS, or `manualItem(name, cal)` — conservative macros: p=0, 60/40 carb/fat), locks all eaten meals (+ a not-yet-eaten planned treat), computes remaining targets, and acts by tier:
+"אכלתי משהו אחר": replaces the reported meal's items with what was actually eaten — **one or more items** (UI cart: TREATS / DB search+grams / `manualItem(name, cal)` — conservative macros: p=0, 60/40 carb/fat), locks all eaten meals (+ a not-yet-eaten planned treat), computes remaining targets, and acts by tier (every tier returns a `note` shown as the green day banner — the full-rebuild tier explicitly says the change is **for today only**):
 - **`tR ≤ 0`** (crossed daily target): all open meals removed, positive banner with the overage ("חצית את היעד... מחר דף חדש"; no punishment meals, no compensating deficit — safety by design).
 - **`0 < tR < 300`**: one light snack (fruit/veg) replaces the rest + supportive note.
 - **`tR ≥ 300`**: full rebuild of open meals with the existing engine — `buildMealBest` per meal + `reconcile` — against temporarily-swapped `S` targets (restored in `finally`). **Two-way meal-count adaptation**: drops trailing meals while `tR/openCount < 260` (meals have a minimum size), adds 1–3 extra snacks when `perMeal > 450/600/800` (cap: 6 open meals).
@@ -98,9 +98,9 @@ Legumes for **omnivores**: only a side in a meat meal (`hot_side`) or in `big_sa
 
 `tunaUsed(used)` gates all tuna pools: only one tuna type per menu, capped at one can (`maxDay:160`).
 
-## Cottage rule
+## Variant groups (one per menu)
 
-`variantBlocked(f, used)` (checked inside `pick()`): only one cottage type per menu — 3% (21) or 5% (20), never both. The `LEANER` swap (20→21) is safe: it replaces in place and already checks `usedIds`.
+`VARIANT_GROUPS = [[20,21],[15,16,17]]`, enforced by `variantBlocked(f, used)` inside `pick()`: one cottage type (3%/5%) and **one egg dish per menu** (M/L/XL are separate ids, so `used` alone wouldn't block a second omelet). `adjustEgg` additionally **respects a liked egg size** — if the user liked specific size(s), it only resizes within them. Together these also eliminate the old egg-maxDay micro-bug (two meals converging on the same egg id). The `LEANER` swap (20→21) is safe: replaces in place and checks `usedIds`.
 
 ## Kosher rule
 

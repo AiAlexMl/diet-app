@@ -29,10 +29,11 @@ const ALL = Object.values(DB).flat();
 const TUNA_IDS = new Set(ALL.filter(f => f.tags.includes('tuna')).map(f => f.id));
 const tunaUsed = used => [...TUNA_IDS].some(id => used.has(id));
 
-// ── קוטג': סוג אחד בלבד לתפריט (3% או 5%, לא שניהם) — נאכף בסינון של pick ──
-const COTTAGE_IDS = [20, 21];
+// ── קבוצות וריאנטים: אחד מכל קבוצה לתפריט — נאכף בסינון של pick ──
+// קוטג' 3%/5% (לא שניהם); ביצים M/L/XL (חביתה אחת ביום — מזהים שונים ולכן used לא תופס לבד)
+const VARIANT_GROUPS = [[20, 21], [15, 16, 17]];
 const variantBlocked = (f, used) =>
-  COTTAGE_IDS.includes(f.id) && COTTAGE_IDS.some(id => id !== f.id && used.has(id));
+  VARIANT_GROUPS.some(g => g.includes(f.id) && g.some(id => id !== f.id && used.has(id)));
 
 // ערבוב (Fisher-Yates) — לגיוון בחירת מאכלים מועדפים
 const shuffle = arr => {
@@ -539,7 +540,9 @@ function recalcMeal(m) {
 // כיוונון ביצה: בוחר גודל (M/15 ל-L/16 ל-XL/17) וכמות (1–2) הכי קרובים ליעד הגרמים.
 // ערכי המאקרו ל-100g זהים בכל הגדלים — רק המשקל משתנה.
 function adjustEgg(it, targetG) {
-  const sizes = [15, 16, 17].map(id => ALL.find(f => f.id === id)).filter(Boolean);
+  let sizes = [15, 16, 17].map(id => ALL.find(f => f.id === id)).filter(Boolean);
+  const likedSizes = sizes.filter(ef => S.liked.has(ef.id));
+  if (likedSizes.length) sizes = likedSizes;   // המשתמש סימן גודל ביצה מועדף — לא מחליפים לו אותו
   let best = null, bestDiff = Infinity;
   for (const ef of sizes) for (const n of [1, 2]) {
     const g = ef.unitG * n, d = Math.abs(g - targetG);
@@ -812,12 +815,12 @@ function manualItem(name, cal) {
            cal, p: 0, c: Math.round(cal * 0.6 / 4), fat: Math.round(cal * 0.4 / 9), fib: 0 };
 }
 
-// מחליף את תוכן הארוחה mealIdx בפריט שנאכל בפועל, נועל את הנאכלות, ובונה מחדש את הפתוחות
-// מול היעדים שנותרו. שלוש מדרגות לפי היתרה: בנייה רגילה / נשנוש קל / חצה את היעד.
+// מחליף את תוכן הארוחה mealIdx בפריטים שנאכלו בפועל (אחד או יותר), נועל את הנאכלות,
+// ובונה מחדש את הפתוחות מול היעדים שנותרו. שלוש מדרגות: בנייה רגילה / נשנוש קל / חצה את היעד.
 // משנה את meals/eaten במקום; מחזיר { note, partialWarn } להצגה.
-function rebuildRest(meals, eaten, mealIdx, actualItem) {
+function rebuildRest(meals, eaten, mealIdx, actualItems) {
   const meal = meals[mealIdx];
-  meal.items = [actualItem];
+  meal.items = Array.isArray(actualItems) ? actualItems : [actualItems];
   meal.removed = false;
   recalcMeal(meal);
   eaten[mealIdx] = true;
@@ -912,7 +915,10 @@ function rebuildRest(meals, eaten, mealIdx, actualItem) {
   } finally {
     Object.assign(S, saved);
   }
-  return { note: null, partialWarn };
+  return {
+    note: 'ההמשך עודכן סביב מה שאכלת ✓ — השינוי תקף להיום בלבד; מחר חוזרים לתפריט הרגיל.',
+    partialWarn,
+  };
 }
 
 // תבנית ארוחות לפי זמן אימון + תוספת נשנושים ליעד קלורי גבוה (מסה) — כדי לפזר את התקציב
