@@ -62,6 +62,8 @@ body {
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.3px;
 }
+/* ה-Eat בלוגו בירוק המותג (כמו באווטאר) */
+.logo-eat { -webkit-text-fill-color: #10b981; }
 
 /* ── שורת התקדמות ── */
 .step-bar { display: flex; gap: 6px; margin-bottom: 2rem; }

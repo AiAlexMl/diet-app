@@ -106,7 +106,7 @@ function setGoal(g) {
 }
 
 // טווחים חוקיים לקלט (min/max של ה-HTML לא חוסמים הקלדה ידנית)
-const NUM_LIMITS = { age: [15, 60, 28], height: [140, 220, 178], weight: [40, 200, 80] };
+const NUM_LIMITS = { age: [18, 60, 28], height: [140, 220, 178], weight: [40, 200, 80] };   // גיל 18+ — אוכלוסיות רגישות (ראו ROADMAP, סעיף משפטי)
 function readNum(id) {
   const [lo, hi, def] = NUM_LIMITS[id];
   const v = +document.getElementById(id).value;
