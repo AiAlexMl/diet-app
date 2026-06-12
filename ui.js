@@ -77,13 +77,16 @@ function serializeDay(day) {
   const item = it => it.isSaladGroup
     ? { salad: true, label: it.label, parts: it.parts, comps: it._comps.map(c => ({ id: c.f.id, g: c.g })),
         oilG: it._oilG || 0, cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
+    : it.f && it.f.id === -1   // פריט ידני ("אכלתי משהו אחר" עם קלוריות בלבד)
+    ? { manual: true, name: it.f.name, displayName: it.displayName,
+        cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
     : { id: it.f.id, g: it.g, dispG: it.dispG, displayName: it.displayName,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
   return {
-    date: day.date, target: day.target, eaten: day.eaten,
+    date: day.date, target: day.target, eaten: day.eaten, note: day.note || null,
     warn: day.warn, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
     meals: day.meals.map(m => ({
-      label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type,
+      label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type, removed: m.removed || false,
       totCal: m.totCal, totP: m.totP, totC: m.totC, totF: m.totF, totFib: m.totFib,
       items: m.items.map(item),
     })),
@@ -96,10 +99,13 @@ function deserializeDay(d) {
         _comps: it.comps.map(c => ({ f: FOOD_BY_ID[c.id], g: c.g })).filter(c => c.f),
         _oil: FOOD_BY_ID[86] || null, _oilG: it.oilG,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
+    : it.manual
+    ? { f: { id: -1, name: it.name, prep: '', tags: [] }, g: 0, dispG: '', displayName: it.displayName,
+        cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
     : { f: FOOD_BY_ID[it.id], g: it.g, dispG: it.dispG, displayName: it.displayName,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
   return {
-    date: d.date, target: d.target, eaten: d.eaten || [],
+    date: d.date, target: d.target, eaten: d.eaten || [], note: d.note || null,
     warn: d.warn || {}, gLabel: d.gLabel, tLabel: d.tLabel, morningTip: d.morningTip,
     meals: d.meals.map(m => ({ ...m, items: m.items.map(item).filter(it => it.isSaladGroup || it.f) })),
   };
@@ -149,12 +155,13 @@ function toggleEaten(i) {
 function updateDayProgress() {
   const box = document.getElementById('day-progress');
   if (!box || !DAY) return;
-  const eatenCal = DAY.meals.reduce((s, m, i) => s + (DAY.eaten[i] ? m.totCal : 0), 0);
-  const count = DAY.eaten.filter(Boolean).length;
+  const active = DAY.meals.map((m, i) => ({ m, i })).filter(x => !x.m.removed);
+  const eatenCal = active.reduce((s, x) => s + (DAY.eaten[x.i] ? x.m.totCal : 0), 0);
+  const count = active.filter(x => DAY.eaten[x.i]).length;
   const pct = Math.min(100, Math.round(eatenCal / Math.max(DAY.target, 1) * 100));
   box.innerHTML = `
     <div class="dp-row">
-      <span>נאכלו ${count}/${DAY.meals.length} ארוחות</span>
+      <span>נאכלו ${count}/${active.length} ארוחות</span>
       <span><strong>${eatenCal.toLocaleString()}</strong> / ${DAY.target.toLocaleString()} קק"ל</span>
     </div>
     <div class="dp-track"><div class="dp-fill" style="width:${pct}%"></div></div>`;
@@ -418,6 +425,11 @@ function renderDay() {
     </div>`;
   }
 
+  // הודעת היום (תיקון יום: "כמעט מלא" / "חצית את היעד")
+  if (DAY.note) {
+    html += `<div class="day-note">${esc(DAY.note)}</div>`;
+  }
+
   // הערה לאימון בוקר
   if (DAY.morningTip) {
     html += `<div class="tips-box" style="margin-bottom:10px">
@@ -426,6 +438,7 @@ function renderDay() {
   }
 
   meals.forEach((m, mi) => {
+    if (m.removed) return;   // ארוחה שהוסרה בתיקון יום (חצה את היעד)
     const tagH = m.tag
       ? `<span class="meal-tag ${m.tag === 'pre' ? 'tag-pre' : 'tag-post'}">${m.tag === 'pre' ? 'לפני אימון' : 'אחרי אימון'}</span>`
       : '';
@@ -479,6 +492,7 @@ function renderDay() {
       <div class="macro-pill"><div class="val">${m.totF}g</div><div class="lbl">שומן</div></div>
     </div>
     <div class="meal-actions">
+      ${m.type !== 'treat' ? `<button class="alt-btn" onclick="openAltPicker(${mi})">🔄 אכלתי משהו אחר</button>` : ''}
       <button class="eaten-btn${DAY.eaten[mi] ? ' on' : ''}" onclick="toggleEaten(${mi})">${DAY.eaten[mi] ? '✓ נאכלה' : 'אכלתי ✓'}</button>
     </div></div>`;
   });
@@ -569,6 +583,96 @@ function removeTreat() {
   if (!confirmRebuild()) return;
   S.treat = null;
   renderMenu();
+}
+
+// ══════════════════════════════════════════
+//  "אכלתי משהו אחר" — דיווח אכילה חריגה ובנייה מחדש של המשך היום
+// ══════════════════════════════════════════
+let altIdx = null;
+
+function altFoodRows(query) {
+  const q = (query || '').trim();
+  return ALL.filter(f => !q || f.name.includes(q)).map(f =>
+    `<div class="picker-item" onclick="altFood(${f.id})">
+      <span>${esc(f.name)} <small>(${f.unitG ? esc(f.unitLabel || f.unitG + 'g') : '100g'})</small></span>
+      <span class="picker-cal">${Math.round(f.cal * (f.unitG || 100) / 100)} קק"ל</span>
+    </div>`).join('') || `<div class="picker-sub">לא נמצא — נסה את הטאב הידני</div>`;
+}
+
+function openAltPicker(mi) {
+  closeAltPicker();
+  altIdx = mi;
+  const ov = document.createElement('div');
+  ov.className = 'picker-overlay';
+  ov.id = 'alt-picker';
+  ov.innerHTML = `<div class="picker-box">
+    <div class="picker-title">מה אכלת בפועל? 🔄</div>
+    <div class="picker-sub">נעדכן את הארוחה ונבנה מחדש את המשך היום סביבה</div>
+    <div class="picker-tabs">
+      <button class="ptab active" onclick="altTab(this, 'alt-treats')">פינוקים</button>
+      <button class="ptab" onclick="altTab(this, 'alt-foods')">מהמאגר</button>
+      <button class="ptab" onclick="altTab(this, 'alt-manual')">ידני</button>
+    </div>
+    <div id="alt-treats" class="picker-list">` + TREATS.map(tr =>
+      `<div class="picker-item" onclick="altFood(${tr.id})">
+        <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
+        <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>
+      </div>`).join('') + `</div>
+    <div id="alt-foods" class="picker-pane" style="display:none">
+      <input id="alt-search" class="picker-input" placeholder="חיפוש מאכל..." oninput="document.getElementById('alt-food-list').innerHTML = altFoodRows(this.value)">
+      <input id="alt-grams" class="picker-input" type="number" min="10" placeholder="כמות בגרמים (ריק = מנה רגילה)">
+      <div id="alt-food-list" class="picker-list">${altFoodRows('')}</div>
+    </div>
+    <div id="alt-manual" class="picker-pane" style="display:none">
+      <input id="alt-name" class="picker-input" placeholder="מה אכלת? (למשל: בורקס)">
+      <input id="alt-cal" class="picker-input" type="number" min="0" placeholder="כמה קלוריות בערך?">
+      <button class="btn-primary" style="width:100%" onclick="altManual()">עדכן ובנה מחדש</button>
+      <div class="picker-sub" style="margin-top:8px">לא בטוח? הערכה גסה מספיקה.</div>
+    </div>
+    <button class="btn-secondary picker-cancel" onclick="closeAltPicker()">ביטול</button>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) closeAltPicker(); });
+  document.body.appendChild(ov);
+}
+
+function altTab(btn, paneId) {
+  document.querySelectorAll('#alt-picker .ptab').forEach(b => b.classList.toggle('active', b === btn));
+  ['alt-treats', 'alt-foods', 'alt-manual'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === paneId ? '' : 'none';
+  });
+}
+
+function closeAltPicker() {
+  const el = document.getElementById('alt-picker');
+  if (el) el.remove();
+  altIdx = null;
+}
+
+function altFood(id) {
+  const f = FOOD_BY_ID[id];
+  if (!f) return;
+  const gIn = document.getElementById('alt-grams');
+  const g = (gIn && parseInt(gIn.value)) || f.unitG || 100;
+  applyAlt(mkItem(f, g));
+}
+
+function altManual() {
+  const name = (document.getElementById('alt-name').value || '').trim() || 'ארוחה מחוץ לתפריט';
+  const cal = parseFloat(document.getElementById('alt-cal').value);
+  if (isNaN(cal) || cal < 0) { alert('יש להזין הערכת קלוריות'); return; }
+  applyAlt(manualItem(name, cal));
+}
+
+function applyAlt(item) {
+  const mi = altIdx;
+  closeAltPicker();
+  if (mi === null || !DAY) return;
+  const res = rebuildRest(DAY.meals, DAY.eaten, mi, item);
+  DAY.note = res.note;
+  DAY.warn.menu = res.partialWarn || null;
+  saveDay();
+  renderDay();
 }
 
 // ══════════════════════════════════════════

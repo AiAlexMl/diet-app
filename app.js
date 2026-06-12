@@ -802,6 +802,119 @@ function buildMenu() {
   return meals;
 }
 
+// ══════════════════════════════════════════
+//  "אכלתי משהו אחר" — בנייה מחדש של המשך היום סביב מה שנאכל בפועל
+// ══════════════════════════════════════════
+// פריט ידני (שם חופשי + קלוריות): מאקרו משוער שמרני-לחלבון — p=0, ‎60% פחמימה / 40% שומן.
+function manualItem(name, cal) {
+  cal = Math.max(0, Math.round(cal));
+  return { f: { id: -1, name, prep: '', tags: [] }, g: 0, dispG: '', displayName: name,
+           cal, p: 0, c: Math.round(cal * 0.6 / 4), fat: Math.round(cal * 0.4 / 9), fib: 0 };
+}
+
+// מחליף את תוכן הארוחה mealIdx בפריט שנאכל בפועל, נועל את הנאכלות, ובונה מחדש את הפתוחות
+// מול היעדים שנותרו. שלוש מדרגות לפי היתרה: בנייה רגילה / נשנוש קל / חצה את היעד.
+// משנה את meals/eaten במקום; מחזיר { note, partialWarn } להצגה.
+function rebuildRest(meals, eaten, mealIdx, actualItem) {
+  const meal = meals[mealIdx];
+  meal.items = [actualItem];
+  meal.removed = false;
+  recalcMeal(meal);
+  eaten[mealIdx] = true;
+
+  // פינוק מתוכנן שטרם נאכל שומר על מקומו (תקציבו הוקצה כבר בבנייה) — נספר כ"נעול"
+  const isLockedIdx = i => eaten[i] || meals[i].type === 'treat';
+  const open = meals.map((m, i) => ({ m, i })).filter(x => !isLockedIdx(x.i) && !x.m.removed);
+  const lockedMeals = meals.filter((m, i) => isLockedIdx(i) && !m.removed);
+
+  const sum = sel => lockedMeals.reduce((s, m) => s + (m[sel] || 0), 0);
+  const tR = S.target - sum('totCal');
+
+  // מדרגה 3: חצה את היעד היומי — מסירים את הארוחות הפתוחות, בלי "ארוחות עונשין"
+  if (tR <= 0) {
+    open.forEach(x => { x.m.removed = true; x.m.items = []; recalcMeal(x.m); });
+    return {
+      note: `חצית את היעד היומי (+${Math.abs(Math.round(tR))} קק"ל). זה קורה — מחר מתחילים דף חדש 💪 אם רעבים: ירקות חופשיים ומים.`,
+      partialWarn: null,
+    };
+  }
+
+  // used מהפריטים הנעולים — כדי שהבנייה מחדש לא תחזור על אותם מאכלים
+  const used = new Map();
+  lockedMeals.forEach(m => m.items.forEach(it => {
+    if (it.isSaladGroup) (it._comps || []).forEach(c => c.f && used.set(c.f.id, (used.get(c.f.id) || 0) + c.g));
+    else if (it.f && it.f.id > 0) used.set(it.f.id, (used.get(it.f.id) || 0) + it.g);
+  }));
+
+  // מדרגה 2: יתרה קטנה — נשנוש קל אחד במקום כל ההמשך
+  if (tR < 300) {
+    open.forEach((x, k) => {
+      if (k === 0) {
+        const fr = pick(ALL.filter(f => f.tags.includes('fruit') || f.tags.includes('veg')), used, Math.max(tR, 80), 0, 250);
+        x.m.items = fr ? [fr] : [];
+        x.m.label = 'נשנוש קל';
+        recalcMeal(x.m);
+      } else {
+        x.m.removed = true; x.m.items = []; recalcMeal(x.m);
+      }
+    });
+    return { note: 'היום כמעט מלא — השארנו לך ארוחה קלה להמשך. מחר חוזרים למסלול 💪', partialWarn: null };
+  }
+
+  // מדרגה 1: בנייה מחדש מלאה של ההמשך מול היעדים שנותרו (אותו מנוע: buildMealBest + reconcile)
+  const saved = { target: S.target, proteinG: S.proteinG, fatG: S.fatG, carbG: S.carbG, menuWarning: S.menuWarning };
+  let partialWarn = null;
+  try {
+    S.target   = tR;
+    S.proteinG = Math.max(10, S.proteinG - Math.round(sum('totP')));
+    S.fatG     = Math.max(10, S.fatG - Math.round(sum('totF')));
+    S.carbG    = Math.max(20, S.carbG - Math.round(sum('totC')));
+    S.menuWarning = null;
+
+    const ctx = { usedCarbCats: new Set() };
+    const openMeals = open.map(x => x.m);
+
+    // התאמת מספר הארוחות ליתרה (דו-כיווני, אותו עיקרון כמו mealPlan):
+    // יתרה גדולה → נשנושים נוספים (לא לנפח מנות); יתרה קטנה → מורידים ארוחות מהסוף
+    // (לארוחה יש גודל מינימלי — אחרת ההמשך גולש מעל היעד).
+    while (openMeals.length > 1 && tR / openMeals.length < 260) {
+      const drop = openMeals.pop();
+      drop.removed = true; drop.items = []; recalcMeal(drop);
+    }
+    const perMeal = tR / Math.max(openMeals.length, 1);
+    let extra = perMeal > 800 ? 3 : perMeal > 600 ? 2 : perMeal > 450 ? 1 : 0;
+    extra = Math.min(extra, 6 - openMeals.length);   // לא יותר מ-6 ארוחות פתוחות
+    for (let k = 0; k < extra; k++) {
+      const nm = { label: 'נשנוש נוסף', icon: 'coffee', time: '', pct: 0.15, tag: null, type: 'snack', big: false, items: [] };
+      meals.push(nm);
+      eaten.push(false);
+      openMeals.push(nm);
+    }
+
+    const pctSum = openMeals.reduce((s, m) => s + (m.pct || 0), 0) || openMeals.length;
+    const shareOf = m => (m.pct || pctSum / openMeals.length) / pctSum;
+
+    openMeals.filter(m => m.type !== 'hot').forEach(m => {
+      m.items = buildMealBest(m.type, Math.round(tR * shareOf(m)), used, ctx);
+      recalcMeal(m);
+    });
+    const hotOpen = openMeals.filter(m => m.type === 'hot');
+    const usedCal = openMeals.filter(m => m.type !== 'hot').reduce((s, m) => s + m.totCal, 0);
+    const remaining = Math.max(0, tR - usedCal);
+    const hotPct = hotOpen.reduce((s, m) => s + (m.pct || 0), 0) || 1;
+    hotOpen.forEach(m => {
+      m.items = buildMealBest(m.type, Math.round(remaining * (m.pct || 1) / hotPct), used, ctx);
+      recalcMeal(m);
+    });
+
+    reconcile(openMeals);
+    partialWarn = S.menuWarning;
+  } finally {
+    Object.assign(S, saved);
+  }
+  return { note: null, partialWarn };
+}
+
 // תבנית ארוחות לפי זמן אימון + תוספת נשנושים ליעד קלורי גבוה (מסה) — כדי לפזר את התקציב
 // על יותר ארוחות ולא לדחוס מנות ענק (מפתחי גוף אוכלים 5–6 ארוחות).
 function mealPlan(key, target) {
