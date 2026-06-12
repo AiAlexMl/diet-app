@@ -55,6 +55,11 @@ body {
   margin-bottom: 1.75rem;
 }
 .logo-icon { font-size: 22px; }
+.logo-img {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+}
 .logo-text {
   font-size: 18px; font-weight: 800;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
