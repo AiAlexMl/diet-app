@@ -826,16 +826,22 @@ function manualItem(name, cal) {
 }
 
 // מחליף את תוכן הארוחה mealIdx בפריטים שנאכלו בפועל (אחד או יותר), נועל את הנאכלות,
-// ובונה מחדש את הפתוחות מול היעדים שנותרו. שלוש מדרגות: בנייה רגילה / נשנוש קל / חצה את היעד.
-// משנה את meals/eaten במקום; מחזיר { note, partialWarn } להצגה.
+// ובונה מחדש את הפתוחות מול היעדים שנותרו (rebalanceDay).
 function rebuildRest(meals, eaten, mealIdx, actualItems) {
   const meal = meals[mealIdx];
   meal.items = Array.isArray(actualItems) ? actualItems : [actualItems];
   meal.removed = false;
   recalcMeal(meal);
   eaten[mealIdx] = true;
+  return rebalanceDay(meals, eaten);
+}
 
-  // פינוק מתוכנן שטרם נאכל שומר על מקומו (תקציבו הוקצה כבר בבנייה) — נספר כ"נעול"
+// בונה מחדש את הארוחות הפתוחות סביב הנעולות (נאכלו / פינוק) מול היעדים שנותרו.
+// שלוש מדרגות: בנייה רגילה / נשנוש קל / חצה את היעד. משמש גם את "אכלתי משהו אחר"
+// וגם הוספת/הסרת פינוק באמצע יום (בלי לאפס סימונים).
+// משנה את meals/eaten במקום; מחזיר { note, partialWarn } להצגה.
+function rebalanceDay(meals, eaten) {
+  // פינוק מתוכנן שטרם נאכל שומר על מקומו (תקציבו שמור) — נספר כ"נעול"
   const isLockedIdx = i => eaten[i] || meals[i].type === 'treat';
   const open = meals.map((m, i) => ({ m, i })).filter(x => !isLockedIdx(x.i) && !x.m.removed);
   const lockedMeals = meals.filter((m, i) => isLockedIdx(i) && !m.removed);

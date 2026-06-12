@@ -576,14 +576,50 @@ function closeTreatPicker() {
   if (el) el.remove();
 }
 
+// הודעת ה-rebalance: שומרים את הודעות המדרגות (כמעט מלא / חצית), אחרת נוסח פינוק ייעודי
+function treatNote(res, fallback) {
+  return res.note && (res.note.includes('חצית') || res.note.includes('כמעט מלא')) ? res.note : fallback;
+}
+
 function chooseTreat(id) {
   closeTreatPicker();
-  if (!confirmRebuild()) return;
+  const tf = FOOD_BY_ID[id];
+
+  // באמצע יום (כבר סומנו ארוחות): לא מאפסים כלום — מוסיפים כרטיס פינוק ומעדכנים רק את ההמשך
+  if (DAY && DAY.eaten.some(Boolean) && tf) {
+    const tm = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items: [mkItem(tf, tf.unitG)], removed: false };
+    recalcMeal(tm);
+    DAY.meals.push(tm);
+    DAY.eaten.push(false);
+    const res = rebalanceDay(DAY.meals, DAY.eaten);
+    DAY.note = treatNote(res, 'הפינוק נוסף והמשך היום עודכן סביבו ✓ — השינוי תקף להיום בלבד.');
+    DAY.warn.menu = res.partialWarn || null;
+    saveDay();
+    renderDay();
+    return;
+  }
+
   S.treat = id;
-  renderMenu();
+  renderMenu();   // אין סימונים — בנייה מלאה סביב הפינוק (אין מה לאפס)
 }
 
 function removeTreat() {
+  const ti = DAY ? DAY.meals.findIndex(m => m.type === 'treat' && !m.removed) : -1;
+
+  // באמצע יום: מסירים רק את כרטיס הפינוק (אם טרם נאכל) ומעדכנים את ההמשך
+  if (DAY && DAY.eaten.some(Boolean) && ti >= 0 && !DAY.eaten[ti]) {
+    DAY.meals[ti].removed = true;
+    DAY.meals[ti].items = [];
+    recalcMeal(DAY.meals[ti]);
+    const res = rebalanceDay(DAY.meals, DAY.eaten);
+    DAY.note = treatNote(res, 'הפינוק הוסר וההמשך עודכן ✓');
+    DAY.warn.menu = res.partialWarn || null;
+    S.treat = null;
+    saveDay();
+    renderDay();
+    return;
+  }
+
   if (!confirmRebuild()) return;
   S.treat = null;
   renderMenu();
