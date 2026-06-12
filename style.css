@@ -51,24 +51,32 @@ body {
 
 /* ── לוגו ── */
 .app-logo {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
   margin-bottom: 1.75rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid rgba(79, 70, 229, 0.10);
 }
 .logo-icon { font-size: 22px; }
 .logo-img {
-  width: 30px; height: 30px;
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
 }
+.logo-stack { display: flex; flex-direction: column; line-height: 1.15; }
 .logo-text {
-  font-size: 18px; font-weight: 800;
+  font-size: 26px; font-weight: 800;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.5px;
 }
 /* ה-Eat בלוגו בירוק המותג (כמו באווטאר) */
 .logo-eat { -webkit-text-fill-color: #10b981; }
+.logo-tag {
+  font-size: 12px; font-weight: 600;
+  color: var(--text-tert);
+  letter-spacing: 0.3px;
+}
 
 /* ── שורת התקדמות ── */
 .step-bar { display: flex; gap: 6px; margin-bottom: 2rem; }
