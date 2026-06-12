@@ -451,10 +451,14 @@ function renderDay() {
       <div class="meal-header">
         <div class="meal-title">${m.type === 'treat' ? '🍫 ' : ''}${esc(m.label)} ${tagH}</div>
         <div style="display:flex;align-items:center;gap:8px">
-          ${m.time ? `<span class="meal-time">${m.time}</span>` : ''}
+          ${m.type === 'treat' ? `<span class="meal-time">מתי שמתחשק 🙂</span>` : m.time ? `<span class="meal-time">${m.time}</span>` : ''}
           <span class="meal-cal">${m.totCal} קל׳</span>
         </div>
       </div>`;
+    // למתאמנים: עדיף להרחיק את הפינוק מחלון האימון (תגי לפני/אחרי אימון שמורים לארוחות עצמן)
+    if (m.type === 'treat' && DAY.tLabel && DAY.tLabel !== 'ללא אימון') {
+      html += `<div class="treat-tip">💡 טיפ: עדיף להרחיק את הפינוק מחלון האימון — לפני אימון פחמימה קלה, אחריו חלבון.</div>`;
+    }
 
     if (m.items.length === 0) {
       html += `<div class="empty-meal-note">לא נמצאו מזונות מתאימים לארוחה זו. נסה להסיר חלק מהמאכלים המוחרגים.</div>`;

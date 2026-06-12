@@ -551,6 +551,14 @@ input[type="number"]:focus {
 .btn-treat:hover { background: rgba(79, 70, 229, 0.09); }
 .btn-treat.on { border-style: solid; color: #b45309; border-color: #f59e0b; background: #fffbeb; }
 .treat-card { border: 1.5px solid #fde68a; background: #fffdf5; }
+.treat-tip {
+  font-size: 12.5px; color: var(--text-tert);
+  background: rgba(245, 158, 11, 0.07);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  margin: 6px 0 2px;
+  line-height: 1.5;
+}
 
 /* ── בורר (פינוקים / מאכלים) ── */
 .picker-overlay {
