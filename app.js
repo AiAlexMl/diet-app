@@ -19,7 +19,7 @@ const S = {
   bmiWarning: null,
   carbWarning: null,
   menuWarning: null,    // מוצג כשאי אפשר לעמוד ביעד עם ההעדפות (גלישה קלורית בלתי-פתירה)
-  treat: null,          // id מתוך TREATS — פינוק מתוכנן שהתפריט נבנה סביבו
+  treats: [],           // ids מתוך TREATS — פינוקים מתוכננים שהתפריט נבנה סביבם
 };
 
 // ── ALL foods flat array (מאוחד מ-DB) ──
@@ -756,21 +756,24 @@ function buildMenu() {
   // calcMacro רץ בכל בנייה, אז ההפחתה כאן זמנית מטבעה (משוחזר בסוף הפונקציה לתצוגה).
   const fullTarget = S.target;
   let treatMeal = null, treatWarn = null;
-  if (S.treat) {
-    const tf = TREATS.find(x => x.id === S.treat);
-    if (tf) {
-      const it = mkItem(tf, tf.unitG);
-      const reduced = S.target - it.cal;
-      if (reduced < 800) {
+  if (S.treats && S.treats.length) {
+    const items = S.treats.map(id => TREATS.find(x => x.id === id)).filter(Boolean).map(tf => mkItem(tf, tf.unitG));
+    if (items.length) {
+      const tCal  = items.reduce((s, it) => s + it.cal, 0);
+      const tFat  = items.reduce((s, it) => s + it.fat, 0);
+      const tCarb = items.reduce((s, it) => s + it.c, 0);
+      const tName = items.length === 1 ? items[0].f.name : `${items.length} פינוקים`;
+      const reduced = S.target - tCal;
+      if (tCal > 0 && reduced < 800) {
         // הפינוק גדול מכדי להיכנס ביעד: לא בונים יום מתחת ל-800 קק"ל (safety) — מתריעים על החריגה
-        treatWarn = `הגזמנו קצת 🙂 הפינוק שבחרת (${tf.name}, ${it.cal} קק"ל) גדול ביחס ליעד היומי — גם עם ארוחות מינימליות היום יחרוג בכ-${800 + it.cal - S.target} קק"ל. אפשר לבחור פינוק קטן יותר, או ליהנות היום ולחזור למסלול מחר.`;
-      } else if (it.cal > S.target * 0.25) {
-        treatWarn = `שים לב: הפינוק תופס כ-${Math.round(it.cal / S.target * 100)}% מהיעד היומי — שאר הארוחות קוצצו בהתאם.`;
+        treatWarn = `הגזמנו קצת 🙂 הפינוק שבחרת (${tName}, ${tCal} קק"ל) גדול ביחס ליעד היומי — גם עם ארוחות מינימליות היום יחרוג בכ-${800 + tCal - S.target} קק"ל. אפשר לבחור פינוק קטן יותר, או ליהנות היום ולחזור למסלול מחר.`;
+      } else if (tCal > S.target * 0.25) {
+        treatWarn = `שים לב: הפינוק תופס כ-${Math.round(tCal / S.target * 100)}% מהיעד היומי — שאר הארוחות קוצצו בהתאם.`;
       }
       S.target  = Math.max(800, reduced);
-      S.fatG    = Math.max(20, S.fatG - Math.round(it.fat));
-      S.carbG   = Math.max(50, S.carbG - Math.round(it.c));
-      treatMeal = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items: [it] };
+      S.fatG    = Math.max(20, S.fatG - Math.round(tFat));
+      S.carbG   = Math.max(50, S.carbG - Math.round(tCarb));
+      treatMeal = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items };
       recalcMeal(treatMeal);
     }
   }

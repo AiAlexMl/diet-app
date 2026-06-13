@@ -126,6 +126,9 @@ function loadDay() {
       day.date = todayStr();
       day.eaten = day.meals.map(() => false);
     }
+    // שחזור הפינוקים המתוכננים מתוך כרטיס הפינוק (כדי שהוספה/הסרה יעבדו אחרי רענון)
+    const tm = day.meals.find(m => m.type === 'treat' && !m.removed);
+    S.treats = tm ? tm.items.map(it => it.f && it.f.id).filter(id => id > 0) : [];
     return day;
   } catch (e) { return null; }
 }
@@ -148,6 +151,12 @@ function toggleEaten(i) {
       btn.textContent = DAY.eaten[i] ? '✓ נאכלה' : 'אכלתי ✓';
       btn.classList.toggle('on', DAY.eaten[i]);
     }
+    // ארוחה שנאכלה: יוצאים ממצב עריכה (ה-✏️ מוסתר ב-CSS, ה-✕ נעלמים)
+    if (DAY.eaten[i]) {
+      card.classList.remove('editing');
+      const eb = card.querySelector('.meal-edit-btn');
+      if (eb) eb.textContent = '✏️';
+    }
   }
   updateDayProgress();
 }
@@ -165,6 +174,53 @@ function updateDayProgress() {
       <span><strong>${eatenCal.toLocaleString()}</strong> / ${DAY.target.toLocaleString()} קק"ל</span>
     </div>
     <div class="dp-track"><div class="dp-fill" style="width:${pct}%"></div></div>`;
+}
+
+// ══════════════════════════════════════════
+//  הסרת פריט בודד מארוחה (מצב עריכה per-meal)
+// ══════════════════════════════════════════
+// כפתור ✏️ בכותרת הארוחה חושף ✕ על השורות (CSS לפי .editing) — ברירת המחדל נקייה.
+function toggleMealEdit(mi) {
+  const card = document.getElementById(`meal-card-${mi}`);
+  if (!card) return;
+  const editing = card.classList.toggle('editing');
+  const btn = card.querySelector('.meal-edit-btn');
+  if (btn) btn.textContent = editing ? 'סיום' : '✏️';
+}
+
+// ✕ על פריט = "פשוט דלג": יורד מהארוחה ומהסיכום, שאר היום לא משתנה. הערה מציעה איזון אופציונלי.
+function removeItem(mi, ii) {
+  if (!DAY || !DAY.meals[mi]) return;
+  const meal = DAY.meals[mi];
+  meal.items.splice(ii, 1);
+  if (!meal.items.length) meal.removed = true;
+  recalcMeal(meal);
+  if (meal.removed) {
+    DAY.note = 'הסרת את כל פריטי הארוחה — היא ירדה מהיום. שאר הארוחות לא השתנו.';
+    DAY.noteAction = null;
+  } else {
+    DAY.note = 'הסרת פריט שלא אכלת — הוא ירד מהתפריט ומהסיכום היומי. שאר הארוחות לא השתנו.';
+    DAY.noteAction = { label: '⚖️ אזן את ההמשך', fn: 'balanceAfterRemoval', mi };
+  }
+  saveDay();
+  renderDay();
+}
+
+// "אזן את ההמשך": נועל את הארוחה הערוכה (במה שנשאר בה — המשתמש אכל את השאר) ובונה מחדש
+// רק את הארוחות שלא נגעו בהן. אם הארוחה רוקנה לגמרי — פשוט מאזנים את שאר היום.
+function balanceAfterRemoval(mi) {
+  if (!DAY) return;
+  const meal = DAY.meals[mi];
+  const res = (meal && meal.removed)
+    ? rebalanceDay(DAY.meals, DAY.eaten)
+    : rebuildRest(DAY.meals, DAY.eaten, mi, meal.items);
+  DAY.note = (res.note && (res.note.includes('חצית') || res.note.includes('כמעט מלא')))
+    ? res.note
+    : 'איזנו את שאר היום סביב מה שכן תאכל ✓ — השינוי תקף להיום בלבד.';
+  DAY.warn.menu = res.partialWarn || null;
+  DAY.noteAction = null;
+  saveDay();
+  renderDay();
 }
 
 // ══════════════════════════════════════════
@@ -367,9 +423,7 @@ function renderMenu() {
   DAY = {
     date: todayStr(), target: S.target,
     meals, eaten: meals.map(() => false),
-    note: treatMeal && treatMeal.items[0]
-      ? `התפריט נבנה סביב הפינוק שביקשת ✓ — ${treatMeal.items[0].f.name} (${treatMeal.totCal} קק"ל) הוקצה מתוך היעד היומי, ושאר הארוחות הותאמו בהתאם.`
-      : null,
+    note: treatMeal ? treatBuildNote(treatMeal.items) : null,
     warn: { bmi: S.bmiWarning, carb: S.carbWarning, menu: S.menuWarning },
     gLabel: { cut: 'חיטוב', maintain: 'שמירה', bulk: 'מסה' }[S.goal],
     tLabel: S.noTrain || !S.time ? 'ללא אימון'
@@ -400,10 +454,11 @@ function renderDay() {
   <div class="day-progress" id="day-progress"></div>`;
 
   // כפתור פינוק: הוספה או הסרה (התפריט נבנה מחדש סביב הפינוק)
-  const hasTreat = meals.some(m => m.type === 'treat');
-  html += `<div class="treat-bar">` + (hasTreat
-    ? `<button class="btn-treat on" onclick="removeTreat()">✕ הסר את הפינוק</button>`
-    : `<button class="btn-treat" onclick="openTreatPicker()">🍫 בא לי פינוק היום</button>`) + `</div>`;
+  const hasTreat = meals.some(m => m.type === 'treat' && !m.removed);
+  html += `<div class="treat-bar">` +
+    `<button class="btn-treat" onclick="openTreatPicker()">🍫 ${hasTreat ? 'עוד פינוק' : 'בא לי פינוק היום'}</button>` +
+    (hasTreat ? `<button class="btn-treat on" onclick="removeTreat()">✕ הסר פינוקים</button>` : '') +
+    `</div>`;
 
   // אזהרת BMI
   if (DAY.warn.bmi) {
@@ -429,9 +484,11 @@ function renderDay() {
     </div>`;
   }
 
-  // הודעת היום (תיקון יום: "כמעט מלא" / "חצית את היעד")
+  // הודעת היום (תיקון יום: "כמעט מלא" / "חצית את היעד") + פעולה אופציונלית (אזן אחרי הסרה)
   if (DAY.note) {
-    html += `<div class="day-note">${esc(DAY.note)}</div>`;
+    html += `<div class="day-note">${esc(DAY.note)}` +
+      (DAY.noteAction ? ` <button class="note-action" onclick="${DAY.noteAction.fn}(${DAY.noteAction.mi})">${esc(DAY.noteAction.label)}</button>` : '') +
+      `</div>`;
   }
 
   // הערה לאימון בוקר
@@ -453,10 +510,11 @@ function renderDay() {
         <div style="display:flex;align-items:center;gap:8px">
           ${m.type === 'treat' ? `<span class="meal-time">מתי שמתחשק 🙂</span>` : m.time ? `<span class="meal-time">${m.time}</span>` : ''}
           <span class="meal-cal">${m.totCal} קל׳</span>
+          ${m.type !== 'treat' ? `<button class="meal-edit-btn" onclick="toggleMealEdit(${mi})" title="ערוך ארוחה">✏️</button>` : ''}
         </div>
       </div>`;
     // למתאמנים: עדיף להרחיק את הפינוק מחלון האימון (תגי לפני/אחרי אימון שמורים לארוחות עצמן)
-    if (m.type === 'treat' && DAY.tLabel && DAY.tLabel !== 'ללא אימון') {
+    if (m.type === 'treat' && m.totCal > 0 && DAY.tLabel && DAY.tLabel !== 'ללא אימון') {
       html += `<div class="treat-tip">💡 טיפ: הארוחות שלפני ואחרי האימון בנויות בדיוק בשבילו (פחמימה + חלבון) — את הפינוק עדיף לשמור רחוק מחלון האימון, לא במקומן.</div>`;
     }
 
@@ -464,11 +522,14 @@ function renderDay() {
       html += `<div class="empty-meal-note">לא נמצאו מזונות מתאימים לארוחה זו. נסה להסיר חלק מהמאכלים המוחרגים.</div>`;
     }
 
-    m.items.forEach(it => {
+    m.items.forEach((it, ii) => {
+      const rm = m.type === 'treat'
+        ? `<button class="treat-remove" onclick="removeTreatItem(${ii})" title="הסר פינוק">✕</button>`
+        : `<button class="item-remove" onclick="removeItem(${mi},${ii})" title="הסר פריט">✕</button>`;
       if (it.isSaladGroup) {
         html += `<div class="salad-row">
           <div class="salad-header">
-            <span class="food-row-name">${esc(it.label)}</span>
+            <span class="food-row-name">${rm}${esc(it.label)}</span>
             <div class="food-row-right">
               <span class="food-row-cal">${it.cal} קל׳</span>
             </div>
@@ -485,7 +546,7 @@ function renderDay() {
         const imgSrc = it.f.img || `images/${it.f.id}.jpg`;
         const thumb = `<span class="food-thumb"><img src="${esc(imgSrc)}" alt="${esc(it.f.name)}" loading="lazy" onerror="this.parentElement.style.display='none'"></span>`;
         html += `<div class="food-row">
-          <span class="food-row-name">${thumb}${esc(rowName)}</span>
+          <span class="food-row-name">${rm}${thumb}${esc(rowName)}</span>
           <div class="food-row-right">
             ${it.dispG ? `<span class="food-row-amount">${esc(it.dispG)}</span>` : ''}
             <span class="food-row-cal">${it.cal} קל׳</span>
@@ -580,6 +641,15 @@ function closeTreatPicker() {
   if (el) el.remove();
 }
 
+// נוסח הערת הפינוק בבנייה: אפס-קלוריות = "על חשבון הבית"; אחרת ההסבר הרגיל (סכום הקלוריות לכמה פינוקים)
+function treatBuildNote(items) {
+  if (!items || !items.length) return null;
+  const tCal = items.reduce((s, it) => s + it.cal, 0);
+  if (tCal === 0) return '🥤 על חשבון הבית — בלי קלוריות, בלי השפעה על התפריט. תיהנה!';
+  const name = items.length === 1 ? items[0].f.name : `${items.length} פינוקים`;
+  return `התפריט נבנה סביב הפינוק שביקשת ✓ — ${name} (${tCal} קק"ל) הוקצה מתוך היעד היומי, ושאר הארוחות הותאמו בהתאם.`;
+}
+
 // הודעת ה-rebalance: שומרים את הודעות המדרגות (כמעט מלא / חצית), אחרת נוסח פינוק ייעודי
 function treatNote(res, fallback) {
   return res.note && (res.note.includes('חצית') || res.note.includes('כמעט מלא')) ? res.note : fallback;
@@ -588,45 +658,74 @@ function treatNote(res, fallback) {
 function chooseTreat(id) {
   closeTreatPicker();
   const tf = FOOD_BY_ID[id];
+  if (!tf) return;
+  if (!S.treats) S.treats = [];
 
-  // באמצע יום (כבר סומנו ארוחות): לא מאפסים כלום — מוסיפים כרטיס פינוק ומעדכנים רק את ההמשך
-  if (DAY && DAY.eaten.some(Boolean) && tf) {
-    const tm = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items: [mkItem(tf, tf.unitG)], removed: false };
-    recalcMeal(tm);
-    DAY.meals.push(tm);
-    DAY.eaten.push(false);
+  // באמצע יום (כבר סומנו ארוחות): לא מאפסים כלום — מוסיפים לכרטיס הפינוק ומעדכנים רק את ההמשך
+  if (DAY && DAY.eaten.some(Boolean)) {
+    S.treats.push(id);
+    const it = mkItem(tf, tf.unitG);
+    let ti = DAY.meals.findIndex(m => m.type === 'treat' && !m.removed);
+    if (ti >= 0) {
+      DAY.meals[ti].items.push(it);
+      recalcMeal(DAY.meals[ti]);
+    } else {
+      const tm = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items: [it], removed: false };
+      recalcMeal(tm);
+      DAY.meals.push(tm);
+      DAY.eaten.push(false);
+    }
     const res = rebalanceDay(DAY.meals, DAY.eaten);
-    DAY.note = treatNote(res, 'הפינוק נוסף והמשך היום עודכן סביבו ✓ — השינוי תקף להיום בלבד.');
+    DAY.note = treatNote(res, it.cal === 0
+      ? 'הפינוק נוסף — בלי קלוריות, בלי השפעה על היום ✓'
+      : 'הפינוק נוסף והמשך היום עודכן סביבו ✓ — השינוי תקף להיום בלבד.');
     DAY.warn.menu = res.partialWarn || null;
     saveDay();
     renderDay();
     return;
   }
 
-  S.treat = id;
-  renderMenu();   // אין סימונים — בנייה מלאה סביב הפינוק (אין מה לאפס)
+  S.treats.push(id);
+  renderMenu();   // אין סימונים — בנייה מלאה סביב הפינוקים (אין מה לאפס)
 }
 
 function removeTreat() {
   const ti = DAY ? DAY.meals.findIndex(m => m.type === 'treat' && !m.removed) : -1;
 
-  // באמצע יום: מסירים רק את כרטיס הפינוק (אם טרם נאכל) ומעדכנים את ההמשך
+  // באמצע יום: מסירים את כרטיס הפינוק (אם טרם נאכל) ומעדכנים את ההמשך
   if (DAY && DAY.eaten.some(Boolean) && ti >= 0 && !DAY.eaten[ti]) {
     DAY.meals[ti].removed = true;
     DAY.meals[ti].items = [];
     recalcMeal(DAY.meals[ti]);
+    S.treats = [];
     const res = rebalanceDay(DAY.meals, DAY.eaten);
-    DAY.note = treatNote(res, 'הפינוק הוסר וההמשך עודכן ✓');
+    DAY.note = treatNote(res, 'הפינוקים הוסרו וההמשך עודכן ✓');
     DAY.warn.menu = res.partialWarn || null;
-    S.treat = null;
     saveDay();
     renderDay();
     return;
   }
 
   if (!confirmRebuild()) return;
-  S.treat = null;
+  S.treats = [];
   renderMenu();
+}
+
+// הסרת פינוק בודד מתוך כרטיס הפינוק (משחרר תקציב → מאזן מחדש את ההמשך, בניגוד להסרת פריט רגיל)
+function removeTreatItem(idx) {
+  if (!DAY) return;
+  const ti = DAY.meals.findIndex(m => m.type === 'treat' && !m.removed);
+  if (ti < 0) return;
+  const meal = DAY.meals[ti];
+  meal.items.splice(idx, 1);
+  if (S.treats) S.treats.splice(idx, 1);
+  if (!meal.items.length) meal.removed = true;
+  recalcMeal(meal);
+  const res = rebalanceDay(DAY.meals, DAY.eaten);
+  DAY.note = treatNote(res, 'הפינוק הוסר וההמשך עודכן ✓');
+  DAY.warn.menu = res.partialWarn || null;
+  saveDay();
+  renderDay();
 }
 
 // ══════════════════════════════════════════
@@ -773,6 +872,7 @@ function resetApp() {
   S.time   = null;
   S.noTrain = false;
   S.goal   = 'maintain';
+  S.treats = [];
 
   document.querySelectorAll('.chip').forEach(el => el.classList.remove('active', 'active-danger'));
   ['cut','maintain','bulk'].forEach(x => document.getElementById(x + '-btn').classList.remove('active'));

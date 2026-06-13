@@ -361,6 +361,39 @@ input[type="number"]:focus {
 .food-row-amount { color: var(--text-sec); }
 .food-row-cal    { color: var(--text-tert); min-width: 52px; text-align: left; }
 
+/* כפתור עריכת ארוחה (✏️) — חושף את ה-✕ על הפריטים */
+.meal-edit-btn {
+  border: none; background: none; cursor: pointer;
+  font-size: 13px; padding: 2px 6px; border-radius: 8px;
+  color: var(--text-tert); line-height: 1;
+}
+.meal-edit-btn:hover { background: var(--bg-info); color: var(--accent); }
+/* ארוחה שנאכלה: אין עריכה (אי אפשר להוריד מה שאכלת) */
+.meal-card.meal-eaten .meal-edit-btn,
+.meal-card.meal-eaten .item-remove { display: none !important; }
+
+/* ✕ להסרת פריט בודד — מוסתר עד מצב עריכה; פינוקים מציגים תמיד */
+.item-remove, .treat-remove {
+  display: none;
+  border: none; cursor: pointer; line-height: 1;
+  width: 20px; height: 20px; border-radius: 999px;
+  margin-left: 8px; font-size: 11px; font-weight: 700;
+  background: #fee2e2; color: #dc2626;
+  vertical-align: middle;
+}
+.item-remove:hover, .treat-remove:hover { background: #dc2626; color: #fff; }
+.meal-card.editing .item-remove { display: inline-flex; align-items: center; justify-content: center; }
+.treat-remove { display: inline-flex; align-items: center; justify-content: center; }
+
+/* כפתור פעולה בתוך הודעת היום ("אזן את ההמשך") */
+.note-action {
+  display: inline-block; margin-top: 8px;
+  border: 1.5px solid #10b981; background: #fff;
+  color: #065f46; font-weight: 700; font-size: 13px;
+  padding: 6px 14px; border-radius: 999px; cursor: pointer;
+}
+.note-action:hover { background: #10b981; color: #fff; }
+
 /* שורת סלט */
 .salad-row { padding: 5px 0; border-bottom: .5px solid var(--border); }
 .salad-row:last-child { border-bottom: none; }
@@ -536,9 +569,9 @@ input[type="number"]:focus {
 }
 
 /* ── כפתור פינוק + כרטיס פינוק ── */
-.treat-bar { margin-bottom: 14px; }
+.treat-bar { margin-bottom: 14px; display: flex; gap: 8px; }
 .btn-treat {
-  width: 100%;
+  flex: 1;
   border: 1.5px dashed var(--accent);
   background: rgba(79, 70, 229, 0.04);
   color: var(--accent);
