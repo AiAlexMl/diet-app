@@ -165,6 +165,12 @@
   - **הבהרה (HTTPS/PWA)**: HTTPS מסופק ע"י המארח (Cloudflare/GitHub Pages), **לא** ע"י סיומת הדומיין — אז .co.il מקבל SSL מלא ותומך ב-PWA בדיוק כמו .app. ה-frontend נשאר client-side (GitHub Pages או Cloudflare Pages); Supabase מתווסף כ-backend בלבד ואינו מחליף את ה-hosting.
 - **ניהול**: DNS ב‑Cloudflare (חינם — SSL, מהירות, תתי-דומיינים עתידיים: `coaches.`/`app.`/`admin.`); חיבור GitHub Pages: קובץ CNAME בריפו + רשומות DNS + אכיפת HTTPS (אין צורך לשנות שם ריפו — הכתובת הישנה מפנה); מייל `hello@` (Zoho חינם) — נדרש ל‑Supabase Auth ולאמינות מול מאמנים וחברות.
 - ✅ **הלוגו באפליקציה הוחלף ל‑ShapEat** (בוצע 12/06/2026): logo-text עם Eat בירוק המותג + title "ShapEat — תפריט תזונה אישי".
+- ✅ **הקמת דומיין — בוצע (13/06/2026), ממתין להפצת DNS**:
+  - shapeat.co.il **נרכש** ב-Domain The Net (יחיד פרטי, ת.ז., על שם אלכס).
+  - **Cloudflare** (תוכנית Free, חשבון אישי) מנהל את ה-DNS. נוספו 5 רשומות **DNS only (ענן אפור)**: 4× A על `@` → IP-ים של GitHub Pages (185.199.108–111.153) + CNAME `www` → `aialexml.github.io`. אפור בכוונה — כדי ש-GitHub ינפיק HTTPS; נדליק פרוקסי כתום (SSL=Full) רק *אחרי* שהתעודה הונפקה. AI crawlers: הוגדר "Do not block" (גילוי).
+  - ה-nameservers ב-Domain The Net הוחלפו ל-`quincy.ns.cloudflare.com` + `shubhi.ns.cloudflare.com`; **מייל האישור אושר** — השינוי נכנס ~30 דק' ומתפשט עד 24ש'. ממתינים למייל "active" מ-Cloudflare.
+  - ✅ קובץ **CNAME** (`shapeat.co.il`) נדחף לשורש הריפו (commit 984a209).
+  - ⏭️ **כשהדומיין active**: GitHub → Settings → Pages → לוודא Custom domain + לסמן **Enforce HTTPS**; לבדוק ש-`https://shapeat.co.il` עולה.
 
 ---
 
