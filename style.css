@@ -484,6 +484,17 @@ input[type="number"]:focus {
   line-height: 1.6; margin-top: 10px;
 }
 
+/* שגיאת קלט (גיל/גובה/משקל מחוץ לטווח) — גוון שגיאה אדום */
+.field-error {
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-right: 4px solid #dc2626;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px; color: #991b1b;
+  line-height: 1.6; margin-bottom: 10px;
+}
+
 /* ── badge מונה בטאב קטגוריה ── */
 .tab-badge {
   display: inline-block;

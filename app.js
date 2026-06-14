@@ -29,6 +29,13 @@ const ALL = Object.values(DB).flat();
 const TUNA_IDS = new Set(ALL.filter(f => f.tags.includes('tuna')).map(f => f.id));
 const tunaUsed = used => [...TUNA_IDS].some(id => used.has(id));
 
+// ── תקרת מנת דגן-בגרמים, תלוית-מטרה: במסה (משקל/יעד גבוה) מנות גדולות הגיוניות, בחיטוב לא.
+// שיבולת שועל (תג breakfast) מקבלת תקרה הדוקה יותר — ארוחת בוקר, לא מאגר הקלוריות של היום.
+const isElasticGrain = f => f && !f.unitLabel && (f.tags.includes('hot_carb') || f.tags.includes('grain'));
+const grainCap = f => f.tags.includes('breakfast')
+  ? ({ cut: 280, maintain: 300, bulk: 350 }[S.goal] || 350)   // שיבולת שועל — ארוחת בוקר, תקרה הדוקה
+  : ({ cut: 280, maintain: 350, bulk: 450 }[S.goal] || 450);
+
 // ── קבוצות וריאנטים: אחד מכל קבוצה לתפריט — נאכף בסינון של pick ──
 // קוטג' 3%/5% (לא שניהם); ביצים M/L/XL (חביתה אחת ביום — מזהים שונים ולכן used לא תופס לבד)
 const VARIANT_GROUPS = [[20, 21], [15, 16, 17]];
@@ -174,6 +181,7 @@ function pick(pool, used, calT, protT, maxG) {
     let lim = maxG, hard = Infinity;   // hard = תקרה קשיחה (maxDay/maxMeal); maxG הוא רק יעד גודל רך
     if (f.maxDay) { const a = used.get(f.id) || 0; hard = Math.min(hard, f.maxDay - a); }
     if (f.maxMeal) hard = Math.min(hard, f.maxMeal);
+    if (isElasticGrain(f)) hard = Math.min(hard, grainCap(f));   // תקרת מנת דגן תלוית-מטרה
     lim = Math.min(lim, hard);
     if (lim < 20 || hard < (f.unitG || 40)) continue;   // אין מקום למנת מינימום — רצפת ה-clamp הייתה חורגת מהתקרה הקשיחה
     let g = protT > 0 && f.p > 0
@@ -686,14 +694,14 @@ function reconcile(meals) {
     const isCount   = it => isBread(it) || isCracker(it) || isUnitCarb(it);
     const maxOf = it => isBread(it) ? it.f.unitG * 2 : isCracker(it) ? it.f.unitG * 6
       : isUnitCarb(it) ? Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG))) * it.f.unitG
-      : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 450);
+      : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
     const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
     const grams = items().filter(it => it.f && !it.f.isEgg && !it.f.condiment && !it.isSaladGroup &&
       it.f.id !== 20 && it.f.id !== 21 && (!it.f.unitLabel || isCount(it)));
     const hasRoom = arr => arr.some(it => grow ? it.g < maxOf(it) : it.g > minOf(it));
     // שלב הקלוריות נוגע *רק* בפחמימות (דגן/לחם/פריכיות). חלבון בבעלות שלב 1 בלבד —
     // כך לא מנפחים חלבון מעבר ליעד כדי למלא קלוריות. אם הפחמימות מוצו → מקבלים תת-השגה קלורית.
-    const CARBCAP = 450;   // לדגן בגרמים מותר יותר (בולק אוכל הרבה); חלבון נשאר עד 350 (clampG)
+    // תקרת דגן-בגרמים תלוית-מטרה (grainCap): חיטוב 280 / שמירה 350 / מסה 450; שיבולת שועל ≤350.
     let pool = grams.filter(it => isCarb(it) || isCount(it));
     if (!pool.length || !hasRoom(pool)) break;
     const poolCal = pool.reduce((s, it) => s + it.cal, 0) || 1;
@@ -703,7 +711,7 @@ function reconcile(meals) {
       if (isBread(it))        reBread(it, Math.round(targetCal / (it.f.cal * it.f.unitG / 100)));
       else if (isCracker(it)) reCracker(it, targetG);
       else if (isUnitCarb(it)) reUnit(it, Math.round(targetCal / (it.f.cal * it.f.unitG / 100)));
-      else { const cap = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, CARBCAP);
+      else { const cap = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
              reG(it, Math.max(it.f.unitG || 30, Math.min(Math.round(targetG), cap))); }
     });
     meals.forEach(recalcMeal);

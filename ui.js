@@ -273,6 +273,22 @@ function readNum(id) {
   return v ? Math.min(hi, Math.max(lo, v)) : def;
 }
 
+// הודעת שגיאה לשדה מספרי אם הערך שהוקלד מחוץ לטווח (אחרת null). ריק = אין שגיאה.
+// לגיל: מתחת ל-18 הודעה ייעודית (ללא 60); מעל 60 הודעת טווח.
+function fieldError(id) {
+  const [lo, hi] = NUM_LIMITS[id];
+  const raw = document.getElementById(id).value.trim();
+  if (raw === '') return null;
+  const v = +raw;
+  if (isFinite(v) && v >= lo && v <= hi) return null;
+  if (id === 'age')    return v < lo ? 'האפליקציה מיועדת לגילאי 18 ומעלה.' : 'הגיל חייב להיות בין 18 ל-60.';
+  if (id === 'height') return 'הגובה חייב להיות בין 140 ל-220 ס"מ.';
+  return 'המשקל חייב להיות בין 40 ל-200 ק"ג.';
+}
+function inputErrors() {
+  return ['age', 'height', 'weight'].map(fieldError).filter(Boolean);
+}
+
 function updateMacroDisplay() {
   S.age    = readNum('age');
   S.height = readNum('height');
@@ -287,13 +303,32 @@ function updateMacroDisplay() {
   const warnBox = document.getElementById('bmi-warn-box');
   warnBox.textContent = warn || '';
   warnBox.style.display = warn ? 'block' : 'none';
+
+  // הודעות ולידציה לקלט (גיל/גובה/משקל מחוץ לטווח) — במקום החלפה שקטה
+  const errs = inputErrors();
+  const errBox = document.getElementById('input-error');
+  if (errBox) {
+    errBox.innerHTML = errs.map(esc).join('<br>');
+    errBox.style.display = errs.length ? 'block' : 'none';
+  }
 }
 
 ['age','height','weight'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => { updateMacroDisplay(); saveState(); });
-  el.addEventListener('change', () => { el.value = readNum(id); });   // החזרת ערך חורג לטווח בסיום ההקלדה
+  // אין החלפה שקטה של ערך חורג — מוצגת הודעת שגיאה (inputErrors) והמעבר נחסם עד תיקון
 });
+
+// מעבר ממסך הפרטים: חוסם אם יש שדה מחוץ לטווח (גיל/גובה/משקל)
+function goToFromDetails() {
+  if (inputErrors().length) {
+    updateMacroDisplay();
+    const box = document.getElementById('input-error');
+    if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  goTo(1);
+}
 loadState();          // שחזור העדפות מביקור קודם (אם יש)
 updateMacroDisplay();
 DAY = loadDay();      // אם יש תפריט יום שמור — נכנסים ישר אליו ("מלווה יומי")
@@ -416,6 +451,7 @@ function updateTabBadges(mode) {
 // ══════════════════════════════════════════
 function renderMenu() {
   updateMacroDisplay();
+  if (inputErrors().length) { goTo(0); updateMacroDisplay(); return; }   // קלט לא תקין — חזרה למסך הפרטים עם השגיאה
   if (!S.target) { alert('יש למלא פרטים אישיים'); goTo(0); return; }
 
   const meals = buildMenu();
