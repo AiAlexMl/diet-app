@@ -43,6 +43,7 @@ paths:
 Renders in order:
 1. Menu header (goal label + training label)
 2. `S.bmiWarning` → orange `.bmi-warning` banner (⚠️)
+2b. `S.trainWarning` → **red `.field-error` banner (⚠️)** — bulk goal + no training (`trainWarnText()` in `buildMenu`); also shown **live on screen 1** in `#train-warn` via `updateTrainWarn()` (called from `setTime`/`toggleNoTrain`/`setGoal`/`goTo(1)`)
 3. `S.carbWarning` → yellow `.bmi-warning` banner (ℹ️)
 3b. `S.menuWarning` → yellow `.bmi-warning` banner (ℹ️) — target unreachable with current likes/goal
 4. Morning training tip (if applicable)

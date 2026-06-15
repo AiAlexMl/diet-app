@@ -21,6 +21,7 @@ Detailed rules are in `.claude/rules/`:
 - **Dynamic cut deficit**: `min(500, rmr × 0.20)` — scales down for low-RMR users
 - **Carb floor**: target raised so protein + fat + 100g carbs all fit (`S.carbWarning` set)
 - **BMI warnings**: cut+BMI<20 / bulk+BMI≥30 → shown live on screen 0 and in final menu
+- **Bulk-without-training warning** (`trainWarnText`/`S.trainWarning`): bulk goal + no training → sharp red banner (surplus without resistance training = fat, not muscle); shown live on screen 1 and in the final menu
 - **Disclaimer**: overlay on load (`closeDisclaimer()`)
 - **Macro accuracy**: best-of-4 meal builds (lean-fat preference) + 3-stage `reconcile()` (protein → fat → carbs-only calories), extra snacks for high targets, 1.6 g/kg protein floor + `S.menuWarning` on infeasible low targets. **Full mechanics + measured accuracy: `.claude/rules/algorithm.md`**
 - **Gluten-free**: `allowed()` excludes `gluten`-tagged foods; `gfOnly` items (109, 110) shown only when `gluten_free` selected

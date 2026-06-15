@@ -165,13 +165,15 @@ function updateDayProgress() {
   const box = document.getElementById('day-progress');
   if (!box || !DAY) return;
   const active = DAY.meals.map((m, i) => ({ m, i })).filter(x => !x.m.removed);
+  // המכנה = סך קלוריות היום בפועל (כמו הסיכום למטה), לא היעד — כך אכילת הכל = 100% והמספרים זהים
+  const totalCal = active.reduce((s, x) => s + x.m.totCal, 0);
   const eatenCal = active.reduce((s, x) => s + (DAY.eaten[x.i] ? x.m.totCal : 0), 0);
   const count = active.filter(x => DAY.eaten[x.i]).length;
-  const pct = Math.min(100, Math.round(eatenCal / Math.max(DAY.target, 1) * 100));
+  const pct = Math.min(100, Math.round(eatenCal / Math.max(totalCal, 1) * 100));
   box.innerHTML = `
     <div class="dp-row">
       <span>נאכלו ${count}/${active.length} ארוחות</span>
-      <span><strong>${eatenCal.toLocaleString()}</strong> / ${DAY.target.toLocaleString()} קק"ל</span>
+      <span><strong>${eatenCal.toLocaleString()}</strong> / ${totalCal.toLocaleString()} קק"ל</span>
     </div>
     <div class="dp-track"><div class="dp-fill" style="width:${pct}%"></div></div>`;
 }
@@ -236,6 +238,7 @@ function goTo(n) {
     s.classList.toggle('done',   i < n);
     s.classList.toggle('active', i === n);
   });
+  if (n === 1) updateTrainWarn();
   if (n === 2) renderGrid('like');
   if (n === 3) renderGrid('avoid');
   window.scrollTo(0, 0);
@@ -262,6 +265,7 @@ function setGoal(g) {
   ['cut','maintain','bulk'].forEach(x => document.getElementById(x + '-btn').classList.remove('active'));
   document.getElementById(g + '-btn').classList.add('active');
   updateMacroDisplay();
+  updateTrainWarn();   // מסה ↔ אזהרת מסה-בלי-אימון (מתעדכן אם המשתמש כבר סימן 'לא מתאמן')
   saveState();
 }
 
@@ -351,8 +355,36 @@ function toggleAllergy(el) {
   saveState();
 }
 
+// הערת "לא מתאמן" לפי מטרה: חיטוב — שמירת שריר; שמירה — עידוד לאימון; מסה — ריק (האזהרה האדומה היא המסר)
+function noTrainNoteText() {
+  return {
+    cut: 'פעילות אנאירובית מומלצת לשמירת מסת שריר. אירובי יכול לזרז אך אינו חובה.',
+    maintain: 'שווה לשלב אימוני כוח (אנאירובי) — הם בונים שריר ומעצבים את הגוף 💪',
+    bulk: '',
+  }[S.goal] || '';
+}
+
+// אזהרה חיה: מסה בלי אימון (מקור יחיד — trainWarnText ב-app.js) + רענון הערת ה"לא מתאמן" לפי מטרה
+function updateTrainWarn() {
+  const box = document.getElementById('train-warn');
+  if (box) {
+    const w = trainWarnText();
+    box.textContent = w || '';
+    box.style.display = w ? 'block' : 'none';
+  }
+  if (S.noTrain) {   // כשנבחר "לא מתאמן" — ההערה תלוית-מטרה (מתרעננת גם אם המטרה השתנתה)
+    const n = document.getElementById('time-note');
+    if (n) { const t = noTrainNoteText(); n.textContent = t; n.style.display = t ? 'block' : 'none'; }
+  }
+}
+
 function setTime(el) {
-  if (S.noTrain) return;
+  if (S.noTrain) {   // מעבר מ"לא מתאמן" לבחירת זמן — מבטלים אוטומטית את "לא מתאמן" (מעבר טבעי)
+    S.noTrain = false;
+    const nb = document.getElementById('notrain-btn');
+    nb.textContent = 'לא מתאמן כרגע';
+    nb.style.borderStyle = 'dashed';
+  }
   document.querySelectorAll('.time-card').forEach(c => c.classList.remove('active'));
   S.time = el.dataset.val;
   el.classList.add('active');
@@ -364,6 +396,7 @@ function setTime(el) {
   const n = document.getElementById('time-note');
   n.style.display = 'block';
   n.textContent = notes[S.time];
+  updateTrainWarn();
   saveState();
 }
 
@@ -376,11 +409,11 @@ function toggleNoTrain() {
   if (S.noTrain) {
     document.querySelectorAll('.time-card').forEach(c => c.classList.remove('active'));
     S.time = null;
-    n.style.display = 'block';
-    n.textContent = 'פעילות אנאירובית מומלצת לשמירת מסת שריר. אירובי יכול לזרז אך אינו חובה.';
+    // הערת ה"לא מתאמן" (תלוית-מטרה) מוגדרת ב-updateTrainWarn למטה
   } else {
     n.style.display = 'none';
   }
+  updateTrainWarn();
   saveState();
 }
 
@@ -460,7 +493,7 @@ function renderMenu() {
     date: todayStr(), target: S.target,
     meals, eaten: meals.map(() => false),
     note: treatMeal ? treatBuildNote(treatMeal.items) : null,
-    warn: { bmi: S.bmiWarning, carb: S.carbWarning, menu: S.menuWarning },
+    warn: { bmi: S.bmiWarning, train: S.trainWarning, carb: S.carbWarning, menu: S.menuWarning },
     gLabel: { cut: 'חיטוב', maintain: 'שמירה', bulk: 'מסה' }[S.goal],
     tLabel: S.noTrain || !S.time ? 'ללא אימון'
       : { morning: 'אימון בוקר', noon: 'אימון צהריים', evening: 'אימון ערב' }[S.time],
@@ -501,6 +534,14 @@ function renderDay() {
     html += `<div class="bmi-warning">
       <span class="bmi-warning-icon">⚠️</span>
       <span>${esc(DAY.warn.bmi)}</span>
+    </div>`;
+  }
+
+  // אזהרה חריפה: מסה בלי אימון
+  if (DAY.warn.train) {
+    html += `<div class="field-error">
+      <span class="bmi-warning-icon">⚠️</span>
+      <span>${esc(DAY.warn.train)}</span>
     </div>`;
   }
 

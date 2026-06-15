@@ -17,6 +17,7 @@ const S = {
   // ערכי מאקרו מחושבים
   bmr: 0, rmr: 0, target: 0, proteinG: 0, fatG: 0, carbG: 0,
   bmiWarning: null,
+  trainWarning: null,    // מסה בלי אימון — עודף קלורי בלי אימוני כוח
   carbWarning: null,
   menuWarning: null,    // מוצג כשאי אפשר לעמוד ביעד עם ההעדפות (גלישה קלורית בלתי-פתירה)
   treats: [],           // ids מתוך TREATS — פינוקים מתוכננים שהתפריט נבנה סביבם
@@ -38,7 +39,7 @@ const grainCap = f => f.tags.includes('breakfast')
 
 // ── קבוצות וריאנטים: אחד מכל קבוצה לתפריט — נאכף בסינון של pick ──
 // קוטג' 3%/5% (לא שניהם); ביצים M/L/XL (חביתה אחת ביום — מזהים שונים ולכן used לא תופס לבד)
-const VARIANT_GROUPS = [[20, 21], [15, 16, 17]];
+const VARIANT_GROUPS = [[20, 21], [15, 16, 17], [45, 46, 100]];   // קוטג' / ביצים / פריכיות — סוג אחד מכל קבוצה לתפריט
 const variantBlocked = (f, used) =>
   VARIANT_GROUPS.some(g => g.includes(f.id) && g.some(id => id !== f.id && used.has(id)));
 
@@ -124,8 +125,10 @@ function cottagePortion(targetG) {
     : { g: 125, dispG: 'חצי קופסה (125g)' };
 }
 
+// תקרת פריכיות לארוחה תלוית-מטרה: בולק 6 (אוכל הרבה), חיטוב/שמירה 4 (מנה אמינה, לא "מגדל")
+const crackerMaxN = () => (S.goal === 'bulk' ? 6 : 4);
 function crackerPortion(targetG, unitW) {
-  const n = Math.max(2, Math.min(6, Math.round(targetG / unitW)));
+  const n = Math.max(2, Math.min(crackerMaxN(), Math.round(targetG / unitW)));
   return { g: n * unitW, dispG: `${n} פריכיות (${n * unitW}g)` };
 }
 
@@ -353,9 +356,9 @@ const MEAL_TEMPLATES = {
       { match:_tag('fruit'), calPct:.55, max:200 },
       { match:_tag('nuts'), calPct:.45, max:30 },   // אגוזים אמיתיים בלבד (לא אבוקדו/זיתים)
     ]},
-    { name:'cracker_cheese', weight:2, slots:[
+    { name:'carb_cheese', weight:2, slots:[
       { match:isCheese, calPct:.45, protPct:.6, max:120, optional:true },
-      { match:_tag('cracker'), calPct:.45, max:54, spread:'ifAlone' },
+      { match:_sliced, calPct:.45, max:65, spread:'ifAlone' },   // לחם/פריכית (לא רק פריכית) — כך הנשנוש תמיד אפשרי גם כשהפריכית חסומה (קבוצת וריאנט)
     ]},
     { name:'shake',          weight:2, slots:[
       { match:_tag('supplement'), calPct:.7, protPct:.9, max:60 },
@@ -464,7 +467,7 @@ function slotFeasible(s, used) {
   if (s.special === 'salad')
     return ALL.filter(f => f.tags.includes('salad') && !f.tags.includes('salad_only') && allowed(f) && !used.has(f.id)).length >= 2;
   if (s.special) return true; // hot_carb / hotveg — כמעט תמיד זמינים
-  return ALL.some(f => s.match(f, used) && allowed(f) && !used.has(f.id));
+  return ALL.some(f => s.match(f, used) && allowed(f) && !used.has(f.id) && !variantBlocked(f, used));
 }
 function tplHasLiked(tpl, used) {
   return tpl.slots.some(s => !s.special && ALL.some(f => s.match(f, used) && S.liked.has(f.id) && allowed(f)));
@@ -692,7 +695,7 @@ function reconcile(meals) {
     const isCracker = it => it.f && it.f.tags.includes('cracker') && it.f.unitG;
     const isUnitCarb = it => it.f && it.f.plural && it.f.unitG && it.f.tags.includes('starch');   // בטטה/תפו"א/תירס — 1–3 יחידות
     const isCount   = it => isBread(it) || isCracker(it) || isUnitCarb(it);
-    const maxOf = it => isBread(it) ? it.f.unitG * 2 : isCracker(it) ? it.f.unitG * 6
+    const maxOf = it => isBread(it) ? it.f.unitG * 2 : isCracker(it) ? it.f.unitG * crackerMaxN()
       : isUnitCarb(it) ? Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG))) * it.f.unitG
       : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
     const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
@@ -754,9 +757,17 @@ function bmiWarnText() {
   return null;
 }
 
+// אזהרת מסה-בלי-אימון: עודף קלורי ללא אימוני כוח נאגר כשומן, לא כשריר. מקור יחיד (תפריט + מסך 1).
+function trainWarnText() {
+  if (S.goal === 'bulk' && S.noTrain)   // רק כשנבחר מפורשות "לא מתאמן כרגע" (לא סתם כשטרם נבחר זמן)
+    return 'מסה בלי אימון לא עובדת: עודף קלורי ללא אימוני כוח נאגר כשומן, לא כשריר. אם אינך מתאמן — בחר יעד "שמירה". תוכנית מסה מתאימה רק עם אימוני התנגדות.';
+  return null;
+}
+
 function buildMenu() {
   calcMacro();
   S.bmiWarning = bmiWarnText();
+  S.trainWarning = trainWarnText();
 
   S.menuWarning = null;
 
