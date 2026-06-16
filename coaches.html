@@ -45,6 +45,11 @@
     font-weight:800;font-size:17px;padding:15px 34px;border-radius:999px;text-decoration:none;
     box-shadow:0 8px 22px rgba(79,70,229,.32);transition:transform .15s}
   .cta:hover{transform:translateY(-2px)}
+  .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;align-items:center}
+  .cta-ghost{display:inline-block;background:#fff;color:var(--accent);font-weight:800;font-size:17px;
+    padding:15px 34px;border-radius:999px;text-decoration:none;border:2px solid var(--accent);
+    box-shadow:0 4px 14px rgba(79,70,229,.14);transition:transform .15s}
+  .cta-ghost:hover{transform:translateY(-2px)}
   .cta-note{font-size:13px;color:var(--text-tert);margin-top:12px}
 
   /* value cards */
@@ -120,8 +125,11 @@
   <header class="hero">
     <h1>האפליקציה שלך.<br><span class="grad">המתאמנים שלך.</span></h1>
     <p>תן לכל מתאמן כלי תזונה יומי <b>ממותג בשמך</b> — תפריט אישי שנפתח בכל ארוחה. האפליקציה עושה את התזונה; אתה מתמקד באימון, במותג ובליווי.</p>
-    <a class="cta" href="#join">הצטרפו ראשונים →</a>
-    <div class="cta-note">המוצר בבנייה · הצטרפות חינם לרשימת ההמתנה</div>
+    <div class="cta-row">
+      <a class="cta" href="#join">הצטרפו ראשונים →</a>
+      <a class="cta-ghost" href="/" target="_blank" rel="noopener">👀 נסו את האפליקציה</a>
+    </div>
+    <div class="cta-note">המוצר בבנייה · הצטרפות חינם לרשימת ההמתנה · האפליקציה למתאמן כבר חיה וחינמית</div>
   </header>
 
   <h2 class="sec-title reveal">למה מאמנים בוחרים ב-ShapEat</h2>

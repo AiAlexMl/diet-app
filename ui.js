@@ -677,6 +677,10 @@ function renderDay() {
   <div class="nav-btns" style="margin-top:12px">
     <button class="btn-primary" onclick="if (confirmRebuild()) renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
     <button class="btn-secondary" onclick="resetApp()">התחל מחדש (איפוס)</button>
+  </div>
+  <div style="text-align:center;margin-top:18px;font-size:13px;color:#8b8fa3">
+    <a href="coaches.html" style="color:#4f46e5;text-decoration:none;font-weight:600">מאמן/ה?</a>
+    יש לך גרסה משלך — ממותגת בשמך, למתאמנים שלך ←
   </div>`;
 
   document.getElementById('menu-output').innerHTML = html;
