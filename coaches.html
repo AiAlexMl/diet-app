@@ -141,20 +141,22 @@
   <section id="join" class="join reveal">
     <h2>רוצה להיות מהראשונים?</h2>
     <div class="sub">השאר פרטים — ונעדכן אותך ברגע שנפתח למאמנים.</div>
-    <form id="waitlist-form" class="wl-form"
-          action="https://docs.google.com/forms/d/e/1FAIpQLSfbmKwuxiACOPKDP3Wo8tk9DY4knSZUtFHrg-jyIr31o_tKYA/formResponse"
-          method="POST" target="hidden_iframe">
-      <input class="fld" type="text"  name="entry.1422360787" placeholder="שם מלא *" required>
-      <input class="fld" type="email" name="entry.493730028"  placeholder="מייל *" required>
-      <input class="fld" type="tel"   name="entry.2036782185" placeholder="טלפון / וואטסאפ">
-      <select class="fld" name="entry.310719958" required>
+    <form id="waitlist-form" class="wl-form" action="https://api.web3forms.com/submit" method="POST">
+      <input type="hidden" name="access_key" value="551d8138-f046-4062-a9da-fcbb98cbf9a2">
+      <input type="hidden" name="subject" value="הרשמה חדשה — ShapEat למאמנים">
+      <input type="hidden" name="from_name" value="ShapEat למאמנים">
+      <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" style="display:none !important">
+      <input class="fld" type="text"  name="שם מלא" placeholder="שם מלא *" required>
+      <input class="fld" type="email" name="email" placeholder="מייל *" required>
+      <input class="fld" type="tel"   name="טלפון" placeholder="טלפון / וואטסאפ">
+      <select class="fld" name="מספר מתאמנים" required>
         <option value="" disabled selected hidden>כמה מתאמנים יש לך כיום? *</option>
         <option value="1-5">1-5</option>
         <option value="6-15">6-15</option>
         <option value="16-40">16-40</option>
         <option value="40+">40+</option>
       </select>
-      <select class="fld" name="entry.184478514" required>
+      <select class="fld" name="התמחות" required>
         <option value="" disabled selected hidden>ההתמחות שלך *</option>
         <option value="כוח">כוח</option>
         <option value="חיטוב / הרזיה">חיטוב / הרזיה</option>
@@ -163,13 +165,12 @@
         <option value="אחרי לידה">אחרי לידה</option>
         <option value="אחר">אחר</option>
       </select>
-      <input class="fld" type="text" name="entry.426831539" placeholder="איפה שמעת עלינו?">
+      <input class="fld" type="text" name="איפה שמעת עלינו" placeholder="איפה שמעת עלינו?">
       <button class="cta" type="submit">הצטרפו לרשימת ההמתנה</button>
       <div class="wl-priv">הפרטים נשמרים אצלנו בלבד, לעדכון כשנפתח.</div>
     </form>
     <div id="wl-thanks" class="wl-thanks" style="display:none">🎉 תודה! נרשמת לרשימת ההמתנה — נעדכן אותך ברגע שנפתח למאמנים.</div>
   </section>
-  <iframe name="hidden_iframe" id="hidden_iframe" style="display:none" title="submit"></iframe>
 
   <div class="foot reveal">
     ShapEat — תפריט תזונה אישי לאורח חיים בריא.<br>
@@ -184,15 +185,25 @@
   }, { threshold: 0.12 });
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 
-  // טופs ההרשמה: נשלח חרישית ל-Google Forms (target=iframe נסתר), ואז מציגים "תודה"
+  // טופס ההרשמה → Web3Forms (fetch אמין, מציג "תודה" רק על הצלחה אמיתית)
   const wf = document.getElementById('waitlist-form');
   if (wf) {
-    let submitted = false;
-    wf.addEventListener('submit', () => { submitted = true; });
-    document.getElementById('hidden_iframe').addEventListener('load', () => {
-      if (!submitted) return;            // טעינה ראשונית של ה-iframe — מתעלמים
-      wf.style.display = 'none';
-      document.getElementById('wl-thanks').style.display = 'block';
+    const thanks = document.getElementById('wl-thanks');
+    const btn = wf.querySelector('button[type="submit"]');
+    wf.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btn.disabled = true; btn.textContent = 'שולח…';
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST', headers: { 'Accept': 'application/json' }, body: new FormData(wf)
+        });
+        const data = await res.json();
+        if (data.success) { wf.style.display = 'none'; thanks.style.display = 'block'; }
+        else throw new Error(data.message || 'failed');
+      } catch (err) {
+        btn.disabled = false; btn.textContent = 'הצטרפו לרשימת ההמתנה';
+        alert('הייתה תקלה בשליחה. בדוק את החיבור ונסה שוב.');
+      }
     });
   }
 </script>
