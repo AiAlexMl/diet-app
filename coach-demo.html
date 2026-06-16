@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<!-- דמו דשבורד מאמנים — נתוני דוגמה בלבד, ללא backend. לדף נחיתה ולאינסטגרם. -->
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShapEat — דשבורד מאמנים (דמו)</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#4f46e5; --accent2:#7c3aed;
+    --text:#1e2235; --text-sec:#5b6072; --text-tert:#8b90a3;
+    --border:#e6e8f0; --card:#fff;
+    --ok:#10b981; --warn:#f59e0b; --bad:#dc2626;
+    --radius:16px; --shadow:0 4px 18px rgba(40,46,90,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Heebo','Segoe UI',system-ui,sans-serif;
+    background:linear-gradient(135deg,#f0f2f8,#e8ecf7) fixed;
+    color:var(--text); min-height:100vh; padding:20px 14px 40px;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+
+  /* כותרת */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .logo{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .logo .eat{color:var(--accent)}
+  .demo-badge{font-size:11px;font-weight:700;color:var(--text-tert);
+    border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:#fff}
+
+  /* פס זהות המאמן */
+  .coach-bar{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);margin-bottom:16px}
+  .coach-av{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.22);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;flex:0 0 auto}
+  .coach-name{font-weight:800;font-size:18px}
+  .coach-sub{font-size:13px;opacity:.9}
+  .coach-stats{margin-right:auto;display:flex;gap:18px;text-align:center}
+  .coach-stats .n{font-weight:800;font-size:20px;line-height:1}
+  .coach-stats .l{font-size:11px;opacity:.9;margin-top:3px}
+
+  /* טאבים */
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tab{flex:1;padding:11px;border:none;border-radius:12px;background:#fff;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:700;color:var(--text-sec);box-shadow:var(--shadow)}
+  .tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+
+  /* כרטיס מתאמן */
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:12px}
+  .trainee{display:flex;align-items:center;gap:13px}
+  .av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;color:#fff;flex:0 0 auto}
+  .t-main{flex:1;min-width:0}
+  .t-name{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .goal{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef0fb;color:var(--accent)}
+  .flag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#fef2f2;color:var(--bad)}
+  .t-metrics{display:flex;align-items:center;gap:16px;margin-top:8px;flex-wrap:wrap}
+  .metric{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-sec)}
+  .metric b{color:var(--text);font-weight:700}
+  .adh-bar{width:62px;height:7px;border-radius:99px;background:#eceef5;overflow:hidden}
+  .adh-fill{height:100%;border-radius:99px}
+  .streak{color:var(--warn);font-weight:700}
+  .trend{font-weight:700}
+  .trend.dn{color:var(--ok)} .trend.up{color:var(--bad)} .trend.fl{color:var(--text-tert)}
+
+  /* לוח מאמנים */
+  .board-title{font-size:15px;font-weight:800;margin:18px 2px 10px;display:flex;align-items:center;gap:7px}
+  .lb{display:flex;align-items:center;gap:13px;background:#fff;border-radius:14px;box-shadow:var(--shadow);
+    padding:12px 15px;margin-bottom:9px}
+  .lb.me{outline:2px solid var(--accent);outline-offset:0}
+  .rank{font-weight:800;font-size:16px;color:var(--text-tert);width:26px;text-align:center;flex:0 0 auto}
+  .lb .av{width:38px;height:38px;font-size:14px}
+  .lb-main{flex:1;min-width:0}
+  .lb-name{font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .niche{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#f3f4f8;color:var(--text-sec)}
+  .me-tag{font-size:10px;font-weight:700;color:var(--accent)}
+  .rise{font-size:11px;font-weight:700;color:var(--ok)}
+  .lb-count{text-align:center;flex:0 0 auto}
+  .lb-count .n{font-weight:800;font-size:18px;line-height:1}
+  .lb-count .l{font-size:10px;color:var(--text-tert)}
+  .hide{display:none}
+  .foot{text-align:center;font-size:11px;color:var(--text-tert);margin-top:22px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="logo">Shap<span class="eat">Eat</span></div>
+    <span class="demo-badge">תצוגה מקדימה · נתוני דוגמה</span>
+  </div>
+
+  <div class="coach-bar">
+    <div class="coach-av">ד</div>
+    <div>
+      <div class="coach-name">דני כהן</div>
+      <div class="coach-sub">מאמן כוח · ShapEat Pro</div>
+    </div>
+    <div class="coach-stats">
+      <div><div class="n" id="s-active">—</div><div class="l">מתאמנים פעילים</div></div>
+      <div><div class="n" id="s-adh">—</div><div class="l">התמדה ממוצעת</div></div>
+      <div><div class="n" id="s-flag">—</div><div class="l">צריכים תשומת לב</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-roster" onclick="show('roster')">המתאמנים שלי</button>
+    <button class="tab" id="tab-board" onclick="show('board')">לוח המאמנים</button>
+  </div>
+
+  <div id="view-roster"></div>
+  <div id="view-board" class="hide"></div>
+
+  <div class="foot">דמו להמחשה — הנתונים פיקטיביים.<br>התזונה נבנית אוטומטית באפליקציה; המאמן רואה התמדה והתקדמות בלבד.</div>
+</div>
+
+<script>
+// ── נתוני דוגמה ──
+const AV_COLORS = ['#4f46e5','#7c3aed','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6'];
+const avColor = i => AV_COLORS[i % AV_COLORS.length];
+const initial = name => name.trim()[0];
+
+const trainees = [
+  { name:'נועה לוי',    goal:'חיטוב', adh:92, streak:12, w:[68,67.4,66.9,66.5,66.1,65.8], flag:false },
+  { name:'יוסי מזרחי',  goal:'מסה',   adh:95, streak:21, w:[74,74.4,74.9,75.3,75.8,76.2], flag:false },
+  { name:'דניאל פרץ',   goal:'חיטוב', adh:85, streak:8,  w:[90,89.2,88.5,88.0,87.3,86.7], flag:false },
+  { name:'תמר שלום',    goal:'שמירה', adh:74, streak:4,  w:[60,60.1,59.9,60.0,59.8,59.9], flag:false },
+  { name:'איתי כהן',    goal:'מסה',   adh:71, streak:5,  w:[80,80.2,80.5,80.6,80.9,81.1], flag:false },
+  { name:'מאיה ברק',    goal:'שמירה', adh:58, streak:1,  w:[63,63.2,63.1,63.4,63.3,63.5], flag:true  },
+  { name:'שירה אבני',   goal:'חיטוב', adh:41, streak:0,  w:[72,72.1,72.3,72.2,72.4,72.3], flag:true  },
+  { name:'עומר דהן',    goal:'חיטוב', adh:28, streak:0,  w:[85,85.3,85.6,85.4,85.8,86.0], flag:true  },
+];
+
+// לוח — מובילים (לפי מתאמנים פעילים) + עולים (לפי צמיחה). דני מופיע בשניהם.
+const leaders = [
+  { name:'רוני שגב',  niche:'חיטוב',      active:31, me:false },
+  { name:'ליאת אדרי', niche:'אחרי לידה',  active:24, me:false },
+  { name:'אבי נחום',  niche:'מסה',        active:19, me:false },
+  { name:'נטע גל',    niche:'מתחילים',    active:13, me:false },
+  { name:'דני כהן',   niche:'כוח',        active:8,  me:true  },
+];
+const risers = [
+  { name:'דני כהן',   niche:'כוח',        rise:'+60%', me:true  },
+  { name:'שי בר',     niche:'פיזיק',      rise:'+45%', me:false },
+  { name:'מור לוי',   niche:'חיטוב',      rise:'+38%', me:false },
+  { name:'טל אוחיון', niche:'אונליין',    rise:'+29%', me:false },
+];
+
+// ── עזרים ──
+function sparkline(pts){
+  const w=64,h=22,min=Math.min(...pts),max=Math.max(...pts),rng=(max-min)||1;
+  const xs=i=>i*(w/(pts.length-1)), ys=v=>h-2-((v-min)/rng)*(h-4);
+  const d=pts.map((v,i)=>`${i?'L':'M'}${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(' ');
+  const up=pts[pts.length-1]>pts[0], col=up?'#dc2626':'#10b981';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+function trendLabel(pts,goal){
+  const d=+(pts[pts.length-1]-pts[0]).toFixed(1);
+  if(Math.abs(d)<0.3) return `<span class="trend fl">→ יציב</span>`;
+  const cls = d<0 ? 'dn' : 'up';
+  return `<span class="trend ${cls}">${d<0?'▼':'▲'} ${Math.abs(d)} ק"ג</span>`;
+}
+const adhColor = a => a>=75?'var(--ok)':a>=50?'var(--warn)':'var(--bad)';
+
+// ── רינדור דשבורד ──
+function renderRoster(){
+  const active=trainees.length;
+  const avgAdh=Math.round(trainees.reduce((s,t)=>s+t.adh,0)/active);
+  const flags=trainees.filter(t=>t.flag).length;
+  document.getElementById('s-active').textContent=active;
+  document.getElementById('s-adh').textContent=avgAdh+'%';
+  document.getElementById('s-flag').textContent=flags;
+  // מסדרים: דגלים קודם (מי שצריך טיפול), אחר כך לפי התמדה
+  const sorted=[...trainees].sort((a,b)=> (b.flag-a.flag) || (b.adh-a.adh));
+  document.getElementById('view-roster').innerHTML = sorted.map((t,i)=>`
+    <div class="card"><div class="trainee">
+      <div class="av" style="background:${avColor(i)}">${initial(t.name)}</div>
+      <div class="t-main">
+        <div class="t-name">${t.name}<span class="goal">${t.goal}</span>${t.flag?'<span class="flag">⚠ צריך תשומת לב</span>':''}</div>
+        <div class="t-metrics">
+          <span class="metric">התמדה <b>${t.adh}%</b><span class="adh-bar"><span class="adh-fill" style="width:${t.adh}%;background:${adhColor(t.adh)}"></span></span></span>
+          <span class="metric">משקל ${sparkline(t.w)} ${trendLabel(t.w,t.goal)}</span>
+          <span class="metric streak">🔥 ${t.streak}<span style="color:var(--text-tert);font-weight:400"> ימים</span></span>
+        </div>
+      </div>
+    </div></div>`).join('');
+}
+
+// ── רינדור לוח ──
+function lbRow(rank,row,kind){
+  const i = row.name.charCodeAt(0);
+  return `<div class="lb ${row.me?'me':''}">
+    <div class="rank">${rank}</div>
+    <div class="av" style="background:${avColor(rank+2)}">${initial(row.name)}</div>
+    <div class="lb-main">
+      <div class="lb-name">${row.name}${row.me?'<span class="me-tag">(אתה)</span>':''}<span class="niche">${row.niche}</span>${kind==='rise'?`<span class="rise">📈 ${row.rise}</span>`:''}</div>
+    </div>
+    ${kind==='lead'?`<div class="lb-count"><div class="n">${row.active}</div><div class="l">פעילים</div></div>`:''}
+  </div>`;
+}
+function renderBoard(){
+  document.getElementById('view-board').innerHTML =
+    `<div class="board-title">🏆 מובילים החודש <span class="niche">אונליין</span></div>`+
+    leaders.map((r,i)=>lbRow(i+1,r,'lead')).join('')+
+    `<div class="board-title">📈 עולים החודש</div>`+
+    risers.map((r,i)=>lbRow(i+1,r,'rise')).join('');
+}
+
+function show(v){
+  document.getElementById('view-roster').classList.toggle('hide', v!=='roster');
+  document.getElementById('view-board').classList.toggle('hide', v!=='board');
+  document.getElementById('tab-roster').classList.toggle('active', v==='roster');
+  document.getElementById('tab-board').classList.toggle('active', v==='board');
+}
+
+renderRoster(); renderBoard();
+</script>
+</body>
+</html>
