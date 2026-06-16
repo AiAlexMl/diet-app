@@ -67,6 +67,21 @@
   .close p{opacity:.92;margin-bottom:22px;font-size:16px}
   .close .cta{background:#fff;color:var(--accent);box-shadow:0 8px 22px rgba(0,0,0,.18)}
 
+  /* טופס הרשמה ממותג (נשלח ל-Google Forms ברקע) */
+  .join{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:36px 24px;margin-top:46px;text-align:center}
+  .join h2{font-size:26px;font-weight:900;letter-spacing:-.5px;margin-bottom:8px}
+  .join .sub{color:var(--text-sec);font-size:16px;margin-bottom:24px}
+  .wl-form{max-width:430px;margin:0 auto;display:flex;flex-direction:column;gap:11px;text-align:right}
+  .fld{width:100%;padding:13px 15px;border:1.5px solid var(--border);border-radius:12px;
+    font-family:inherit;font-size:15px;background:#fbfbfe;color:var(--text)}
+  .fld::placeholder{color:var(--text-tert)}
+  .fld:focus{outline:none;border-color:var(--accent);background:#fff}
+  select.fld{appearance:none;-webkit-appearance:none;cursor:pointer}
+  select.fld:invalid{color:var(--text-tert)}
+  .wl-form .cta{margin-top:6px;border:none;cursor:pointer;font-family:inherit;font-size:16px;width:100%}
+  .wl-priv{font-size:12px;color:var(--text-tert);margin-top:4px}
+  .wl-thanks{font-size:19px;font-weight:800;color:#10b981;padding:24px 6px;line-height:1.5}
+
   .foot{text-align:center;font-size:12px;color:var(--text-tert);margin-top:30px;line-height:1.7}
 
   /* אנימציות עדינות */
@@ -103,7 +118,7 @@
   <header class="hero">
     <h1>האפליקציה שלך.<br><span class="grad">המתאמנים שלך.</span></h1>
     <p>תן לכל מתאמן כלי תזונה יומי <b>ממותג בשמך</b> — תפריט אישי שנפתח בכל ארוחה. האפליקציה עושה את התזונה; אתה מתמקד באימון, במותג ובליווי.</p>
-    <a class="cta" href="https://forms.gle/gipe4duaXKTwzmzf9" target="_blank" rel="noopener">הצטרפו ראשונים →</a>
+    <a class="cta" href="#join">הצטרפו ראשונים →</a>
     <div class="cta-note">המוצר בבנייה · הצטרפות חינם לרשימת ההמתנה</div>
   </header>
 
@@ -121,11 +136,38 @@
     <div class="preview-cap">תצוגה מקדימה · נתוני דוגמה — <a href="coach-demo.html" target="_blank">פתח במסך מלא ↗</a></div>
   </div>
 
-  <section class="close reveal">
+  <section id="join" class="join reveal">
     <h2>רוצה להיות מהראשונים?</h2>
-    <p>הצטרף לרשימת ההמתנה — ונעדכן אותך ברגע שנפתח למאמנים.</p>
-    <a class="cta" href="https://forms.gle/gipe4duaXKTwzmzf9" target="_blank" rel="noopener">הצטרפו לרשימת ההמתנה</a>
+    <div class="sub">השאר פרטים — ונעדכן אותך ברגע שנפתח למאמנים.</div>
+    <form id="waitlist-form" class="wl-form"
+          action="https://docs.google.com/forms/d/e/1FAIpQLSfbmKwuxiACOPKDP3Wo8tk9DY4knSZUtFHrg-jyIr31o_tKYA/formResponse"
+          method="POST" target="hidden_iframe">
+      <input class="fld" type="text"  name="entry.1422360787" placeholder="שם מלא *" required>
+      <input class="fld" type="email" name="entry.493730028"  placeholder="מייל *" required>
+      <input class="fld" type="tel"   name="entry.2036782185" placeholder="טלפון / וואטסאפ">
+      <select class="fld" name="entry.310719958" required>
+        <option value="" disabled selected hidden>כמה מתאמנים יש לך כיום? *</option>
+        <option value="1-5">1-5</option>
+        <option value="6-15">6-15</option>
+        <option value="16-40">16-40</option>
+        <option value="40+">40+</option>
+      </select>
+      <select class="fld" name="entry.184478514" required>
+        <option value="" disabled selected hidden>ההתמחות שלך *</option>
+        <option value="כוח">כוח</option>
+        <option value="חיטוב / הרזיה">חיטוב / הרזיה</option>
+        <option value="פיזיק / תחרויות">פיזיק / תחרויות</option>
+        <option value="אונליין">אונליין</option>
+        <option value="אחרי לידה">אחרי לידה</option>
+        <option value="אחר">אחר</option>
+      </select>
+      <input class="fld" type="text" name="entry.426831539" placeholder="איפה שמעת עלינו?">
+      <button class="cta" type="submit">הצטרפו לרשימת ההמתנה</button>
+      <div class="wl-priv">הפרטים נשמרים אצלנו בלבד, לעדכון כשנפתח.</div>
+    </form>
+    <div id="wl-thanks" class="wl-thanks" style="display:none">🎉 תודה! נרשמת לרשימת ההמתנה — נעדכן אותך ברגע שנפתח למאמנים.</div>
   </section>
+  <iframe name="hidden_iframe" id="hidden_iframe" style="display:none" title="submit"></iframe>
 
   <div class="foot reveal">
     ShapEat — תפריט תזונה אישי לאורח חיים בריא.<br>
@@ -139,6 +181,18 @@
     entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); } });
   }, { threshold: 0.12 });
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+  // טופs ההרשמה: נשלח חרישית ל-Google Forms (target=iframe נסתר), ואז מציגים "תודה"
+  const wf = document.getElementById('waitlist-form');
+  if (wf) {
+    let submitted = false;
+    wf.addEventListener('submit', () => { submitted = true; });
+    document.getElementById('hidden_iframe').addEventListener('load', () => {
+      if (!submitted) return;            // טעינה ראשונית של ה-iframe — מתעלמים
+      wf.style.display = 'none';
+      document.getElementById('wl-thanks').style.display = 'block';
+    });
+  }
 </script>
 </body>
 </html>
