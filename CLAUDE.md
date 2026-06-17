@@ -15,6 +15,12 @@ Detailed rules are in `.claude/rules/`:
 - `algorithm.md` — macro calc, `buildMenu()` flow, builders, salad, tuna rule *(scoped to `app.js`)*
 - `ui-rendering.md` — menu rendering, thumbnails, design system *(scoped to `ui.js`, `style.css`, `index.html`)*
 
+## Deployment & Marketing
+
+- **Brand**: ShapEat / שייפיט. Live at **shapeat.co.il** (GitHub Pages + Cloudflare DNS; `CNAME` in repo root — push to `master` deploys; allow ~1–2 min).
+- **Coaches funnel** (Stage 0.5 validation): `coaches.html` (landing page + Web3Forms waitlist form — English field `name`s so the dashboard/email aren't mojibake) and `coach-demo.html` (hard-coded coach-dashboard demo). Brand assets in `brand/`; OG/share image = `brand/AVATAR-shapeat.jpg` (keep under ~300KB so WhatsApp renders it). The menu screen carries a subtle "מאמן/ה?" link to `coaches.html`.
+- **Strategy & go-to-market**: `ROADMAP.md` — business model, coaches/trainees decisions, and the current GTM plan (targeted coach outreach for validation).
+
 ## Health Safeguards (app.js)
 
 - **Calorie floor**: `Math.max(target, female ? 1200 : 1500)` after goal offset
