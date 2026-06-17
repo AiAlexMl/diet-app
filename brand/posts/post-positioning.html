@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!-- פוסט מיצוב לאינסטגרם 1080x1080. פתח בדפדפן → צלם את הכרטיס (.card) → שמור כ-PNG. -->
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{display:flex;align-items:center;justify-content:center;background:#333;font-family:'Heebo',sans-serif;min-height:100vh}
+  .card{
+    width:1080px;height:1080px;flex:0 0 auto;position:relative;overflow:hidden;
+    background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);
+    color:#fff;display:flex;flex-direction:column;justify-content:center;padding:0 110px;
+  }
+  .card::before,.card::after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.06)}
+  .card::before{width:620px;height:620px;top:-200px;left:-160px}
+  .card::after{width:520px;height:520px;bottom:-220px;right:-140px}
+  .logo{position:absolute;top:70px;right:110px;display:flex;align-items:center;gap:16px;z-index:2}
+  .logo img{width:64px;height:64px;border-radius:16px;object-fit:cover;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+  .logo span{font-size:30px;font-weight:900;letter-spacing:-.5px}
+  .inner{position:relative;z-index:1}
+  .pre{font-size:46px;font-weight:600;opacity:.78;line-height:1.35;margin-bottom:30px}
+  .big{font-size:92px;font-weight:900;letter-spacing:-2px;line-height:1.08}
+  .hl{display:inline-block;background:#fff;color:#5b3ee0;border-radius:18px;padding:2px 22px;margin-top:10px}
+  .url{position:absolute;bottom:70px;right:110px;font-size:30px;font-weight:700;opacity:.92;z-index:2}
+  .handle{position:absolute;bottom:70px;left:110px;font-size:30px;font-weight:700;opacity:.92;z-index:2}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo"><img src="../AVATAR-shapeat.png" alt="ShapEat"><span>ShapEat</span></div>
+    <div class="inner">
+      <div class="pre">אפליקציות אחרות אומרות לך<br>מה אכלת.</div>
+      <div class="big">אנחנו אומרים לך<br><span class="hl">מה לאכול.</span></div>
+    </div>
+    <div class="url">shapeat.co.il</div>
+    <div class="handle">@shapeatapp</div>
+  </div>
+</body>
+</html>
