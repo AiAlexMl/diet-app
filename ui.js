@@ -139,8 +139,39 @@ function clearDay() {
 }
 
 // ── סימון "אכלתי" — עדכון במקום (בלי רינדור מחדש, שומר מיקום גלילה) ──
+// כל הארוחות הפעילות (לא-removed) סומנו כנאכלו
+function dayComplete() {
+  if (!DAY) return false;
+  const active = DAY.meals.map((m, i) => ({ m, i })).filter(x => !x.m.removed);
+  return active.length > 0 && active.every(x => DAY.eaten[x.i]);
+}
+
+// הנפשת קונפטי חוגגת בהשלמת היום. טהור CSS/JS, מכבד prefers-reduced-motion.
+function celebrate() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = ['#4f46e5', '#7c3aed', '#22c55e', '#f59e0b', '#ec4899'];
+  const layer = document.createElement('div');
+  layer.className = 'confetti-layer';
+  for (let k = 0; k < 44; k++) {
+    const p = document.createElement('i');
+    p.className = 'confetti-piece';
+    p.style.left = (Math.random() * 100) + 'vw';
+    p.style.background = colors[k % colors.length];
+    p.style.animationDelay = (Math.random() * 0.5).toFixed(2) + 's';
+    p.style.animationDuration = (1.8 + Math.random() * 1.2).toFixed(2) + 's';
+    layer.appendChild(p);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'day-done-toast';
+  toast.textContent = 'כל הכבוד! סיימת את היום 🎉';
+  layer.appendChild(toast);
+  document.body.appendChild(layer);
+  setTimeout(() => layer.remove(), 3200);
+}
+
 function toggleEaten(i) {
   if (!DAY) return;
+  const wasComplete = dayComplete();
   DAY.eaten[i] = !DAY.eaten[i];
   saveDay();
   const card = document.getElementById(`meal-card-${i}`);
@@ -159,6 +190,7 @@ function toggleEaten(i) {
     }
   }
   updateDayProgress();
+  if (!wasComplete && dayComplete()) celebrate();   // חגיגה רק במעבר ללא-שלם→שלם (לא בטעינת יום מושלם)
 }
 
 function updateDayProgress() {
@@ -252,10 +284,33 @@ document.querySelectorAll('.screen').forEach((s, i) => {
 // ══════════════════════════════════════════
 //  מסך 1 — פרטים אישיים
 // ══════════════════════════════════════════
+// לשון נקבה: כפתור "לא מתאמן" לפי מין + מצב הסימון
+function noTrainLabel() {
+  return gword('לא מתאמן כרגע', 'לא מתאמנת כרגע') + (S.noTrain ? ' ✓' : '');
+}
+
+// מחליף את כל הטקסט הסטטי המגדרי (אלמנטים עם data-m/data-f) לפי S.gender — דו-כיווני.
+// נקרא מ-setGender (עדכון חי) ומ-init אחרי loadState (לפי המין המשוחזר).
+function applyGender() {
+  const f = S.gender === 'female';
+  document.querySelectorAll('[data-m]').forEach(el => {
+    el.textContent = f ? (el.dataset.f || el.dataset.m) : el.dataset.m;
+  });
+  const nb = document.getElementById('notrain-btn');
+  if (nb) nb.textContent = noTrainLabel();
+}
+
+// לחיצת לוגו = בית. מציג את היום השמור אם קיים, אחרת מסך הפרטים. לא מאפס דבר.
+function goHome() {
+  if (DAY && DAY.meals && DAY.meals.length) renderDay();
+  else goTo(0);
+}
+
 function setGender(g) {
   S.gender = g;
   document.getElementById('male-btn').classList.toggle('active',   g === 'male');
   document.getElementById('female-btn').classList.toggle('active', g === 'female');
+  applyGender();
   updateMacroDisplay();
   saveState();
 }
@@ -334,6 +389,7 @@ function goToFromDetails() {
   goTo(1);
 }
 loadState();          // שחזור העדפות מביקור קודם (אם יש)
+applyGender();         // החלת לשון זכר/נקבה לפי המין המשוחזר
 updateMacroDisplay();
 DAY = loadDay();      // אם יש תפריט יום שמור — נכנסים ישר אליו ("מלווה יומי")
 if (DAY) { renderDay(); }
@@ -382,7 +438,7 @@ function setTime(el) {
   if (S.noTrain) {   // מעבר מ"לא מתאמן" לבחירת זמן — מבטלים אוטומטית את "לא מתאמן" (מעבר טבעי)
     S.noTrain = false;
     const nb = document.getElementById('notrain-btn');
-    nb.textContent = 'לא מתאמן כרגע';
+    nb.textContent = noTrainLabel();
     nb.style.borderStyle = 'dashed';
   }
   document.querySelectorAll('.time-card').forEach(c => c.classList.remove('active'));
@@ -403,7 +459,7 @@ function setTime(el) {
 function toggleNoTrain() {
   S.noTrain = !S.noTrain;
   const btn = document.getElementById('notrain-btn');
-  btn.textContent   = S.noTrain ? 'לא מתאמן כרגע ✓' : 'לא מתאמן כרגע';
+  btn.textContent   = noTrainLabel();
   btn.style.borderStyle = S.noTrain ? 'solid' : 'dashed';
   const n = document.getElementById('time-note');
   if (S.noTrain) {
@@ -960,7 +1016,7 @@ function resetApp() {
   document.getElementById('maintain-btn').classList.add('active');
   document.querySelectorAll('.time-card').forEach(c => c.classList.remove('active'));
   const noTrainBtn = document.getElementById('notrain-btn');
-  noTrainBtn.textContent   = 'לא מתאמן כרגע';
+  noTrainBtn.textContent   = noTrainLabel();
   noTrainBtn.style.borderStyle = 'dashed';
   document.getElementById('time-note').style.display = 'none';
   document.getElementById('like-count').textContent  = '0';

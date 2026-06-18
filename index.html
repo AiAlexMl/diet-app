@@ -20,7 +20,7 @@
 <div class="app-wrapper" id="app">
 
   <!-- לוגו -->
-  <div class="app-logo">
+  <div class="app-logo" onclick="goHome()" role="button" title="דף הבית">
     <img class="logo-img" src="brand/AVATAR-shapeat.png" alt="ShapEat">
     <div class="logo-stack">
       <span class="logo-text">Shap<span class="logo-eat">Eat</span></span>
@@ -76,14 +76,14 @@
     </div>
 
     <div class="nav-btns">
-      <button class="btn-primary" onclick="goToFromDetails()">המשך ←</button>
+      <button class="btn-primary" onclick="goToFromDetails()" data-m="המשך ←" data-f="המשיכי ←">המשך ←</button>
     </div>
   </div>
 
   <!-- ══ מסך 2: העדפות תזונה ══ -->
   <div class="screen" id="screen-1">
     <div class="screen-title">העדפות תזונה</div>
-    <div class="screen-sub">סמן מה רלוונטי אליך</div>
+    <div class="screen-sub" data-m="סמן מה רלוונטי אליך" data-f="סמני מה רלוונטי אליך">סמן מה רלוונטי אליך</div>
 
     <div class="section">
       <div class="sec-title">סגנון תזונה</div>
@@ -135,38 +135,38 @@
     </div>
 
     <div class="nav-btns">
-      <button class="btn-secondary" onclick="goTo(0)">← חזור</button>
-      <button class="btn-primary"   onclick="goTo(2)">המשך ←</button>
+      <button class="btn-secondary" onclick="goTo(0)" data-m="← חזור" data-f="← חזרי">← חזור</button>
+      <button class="btn-primary"   onclick="goTo(2)" data-m="המשך ←" data-f="המשיכי ←">המשך ←</button>
     </div>
   </div>
 
   <!-- ══ מסך 3: מאכלים מועדפים ══ -->
   <div class="screen" id="screen-2">
-    <div class="screen-title">מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂</div>
-    <div class="screen-sub">עבור בין הקטגוריות וסמן את המאכלים שאתה אוהב</div>
+    <div class="screen-title" data-m="מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂" data-f="מה את אוהבת לאכול? סמני ונדאג לשאר 🙂">מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂</div>
+    <div class="screen-sub" data-m="עבור בין הקטגוריות וסמן את המאכלים שאתה אוהב" data-f="עברי בין הקטגוריות וסמני את המאכלים שאת אוהבת">עבור בין הקטגוריות וסמן את המאכלים שאתה אוהב</div>
     <div class="cat-tabs" id="like-tabs"></div>
     <div class="food-grid" id="like-grid"></div>
     <div class="count-bar">
       <span>סומנו: <strong id="like-count">0</strong> מאכלים</span>
     </div>
     <div class="nav-btns">
-      <button class="btn-secondary" onclick="goTo(1)">← חזור</button>
-      <button class="btn-primary"   onclick="goTo(3)">המשך ←</button>
+      <button class="btn-secondary" onclick="goTo(1)" data-m="← חזור" data-f="← חזרי">← חזור</button>
+      <button class="btn-primary"   onclick="goTo(3)" data-m="המשך ←" data-f="המשיכי ←">המשך ←</button>
     </div>
   </div>
 
   <!-- ══ מסך 4: מאכלים מוחרגים ══ -->
   <div class="screen" id="screen-3">
-    <div class="screen-title">יש משהו שאתה פשוט לא אוכל? 🚫</div>
-    <div class="screen-sub">עבור בין הקטגוריות וסמן מאכלים שתרצה לא לראות בתפריט. אם אין — לחץ המשך</div>
+    <div class="screen-title" data-m="יש משהו שאתה פשוט לא אוכל? 🚫" data-f="יש משהו שאת פשוט לא אוכלת? 🚫">יש משהו שאתה פשוט לא אוכל? 🚫</div>
+    <div class="screen-sub" data-m="עבור בין הקטגוריות וסמן מאכלים שתרצה לא לראות בתפריט. אם אין — לחץ המשך" data-f="עברי בין הקטגוריות וסמני מאכלים שתרצי לא לראות בתפריט. אם אין — לחצי המשיכי">עבור בין הקטגוריות וסמן מאכלים שתרצה לא לראות בתפריט. אם אין — לחץ המשך</div>
     <div class="cat-tabs" id="avoid-tabs"></div>
     <div class="food-grid" id="avoid-grid"></div>
     <div class="count-bar">
       <span>מוחרגים: <strong id="avoid-count">0</strong> מאכלים</span>
     </div>
     <div class="nav-btns">
-      <button class="btn-secondary" onclick="goTo(2)">← חזור</button>
-      <button class="btn-primary"   onclick="renderMenu()">בנה לי תפריט ←</button>
+      <button class="btn-secondary" onclick="goTo(2)" data-m="← חזור" data-f="← חזרי">← חזור</button>
+      <button class="btn-primary"   onclick="renderMenu()" data-m="בנה לי תפריט ←" data-f="בני לי תפריט ←">בנה לי תפריט ←</button>
     </div>
   </div>
 
@@ -189,7 +189,7 @@
     <div class="disclaimer-body">
       האפליקציה מספקת מידע כללי בלבד ואינה מחליפה ייעוץ מקצועי של תזונאי, דיאטנית או רופא.
       <br><br>
-      כל שימוש באפליקציה הוא על דעת המשתמש ועל אחריותו הבלעדית.
+      כל שימוש באפליקציה הוא על דעת המשתמש/ת ובאחריותו/ה הבלעדית.
     </div>
     <button class="btn-primary disclaimer-btn" onclick="closeDisclaimer()">הבנתי, המשך ←</button>
   </div>
