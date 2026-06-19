@@ -62,33 +62,42 @@ async function smoothScrollTo(targetY, dur = 5000) {
   }, { targetY, dur });
 }
 
+// קצב: ברירת מחדל ~21ש' (הנבחר) · --short ~18ש' · --full ~26ש'
+const MODE = process.argv.includes('--short') ? 'short' : process.argv.includes('--full') ? 'full' : 'mid';
+const TIMINGS = {
+  short: { load:1200, c1:1500, c2:1900, rosterScroll:3800, gap:300, toTop:600, tabWait:500, boardScroll:2800, c5:1900 },
+  mid:   { load:1450, c1:1950, c2:2350, rosterScroll:4700, gap:350, toTop:720, tabWait:580, boardScroll:3350, c5:2350 },
+  full:  { load:1800, c1:2600, c2:3000, rosterScroll:6000, gap:400, toTop:900, tabWait:700, boardScroll:4200, c5:3000 },
+};
+const T = TIMINGS[MODE];
+
 await page.goto(pathToFileURL(path.join(__dirname, '..', '..', 'coach-demo.html')).href);
 await initCaption();
-await page.waitForTimeout(1800); // המדדים מונפשים
+await page.waitForTimeout(T.load); // המדדים מונפשים
 
 // 1
 await caption('הדשבורד שלך — כל המתאמנים במקום אחד');
-await page.waitForTimeout(2600);
+await page.waitForTimeout(T.c1);
 // 2
 await caption('מי פעיל · אחוז התמדה · מי צריך תשומת לב');
-await page.waitForTimeout(3000);
+await page.waitForTimeout(T.c2);
 // 3 — גלילה ברוסטר
 await caption('כל מתאמן: יעד, מגמת משקל ורצף ימים');
 const docH = await page.evaluate(() => document.body.scrollHeight - window.innerHeight);
-await smoothScrollTo(Math.min(docH, 900), 6000);
-await page.waitForTimeout(400);
+await smoothScrollTo(Math.min(docH, 900), T.rosterScroll);
+await page.waitForTimeout(T.gap);
 // 4 — מעבר ללוח המאמנים
-await smoothScrollTo(0, 900);
+await smoothScrollTo(0, T.toTop);
 await page.click('#tab-board');
-await page.waitForTimeout(700);
+await page.waitForTimeout(T.tabWait);
 await caption('מובילים ועולים = חשיפה ולידים חדשים');
 const boardH = await page.evaluate(() => document.body.scrollHeight - window.innerHeight);
-await smoothScrollTo(Math.min(boardH, 700), 4200);
-await page.waitForTimeout(400);
+await smoothScrollTo(Math.min(boardH, 700), T.boardScroll);
+await page.waitForTimeout(T.gap);
 // 5 — סיום
-await smoothScrollTo(0, 700);
+await smoothScrollTo(0, T.toTop);
 await caption('ShapEat למאמנים · shapeat.co.il/coaches');
-await page.waitForTimeout(3000);
+await page.waitForTimeout(T.c5);
 
 await context.close();
 await browser.close();
