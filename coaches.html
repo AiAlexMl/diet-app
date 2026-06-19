@@ -62,7 +62,8 @@
   /* preview */
   .preview{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
     padding:14px;margin-top:14px;overflow:hidden}
-  .preview-frame{width:100%;height:560px;border:none;border-radius:12px;display:block;background:#eef0f7}
+  .demo-video{width:100%;max-width:380px;border-radius:14px;display:block;margin:0 auto;
+    box-shadow:0 12px 32px rgba(40,46,90,.20);background:#000}
   .preview-cap{text-align:center;font-size:13px;color:var(--text-tert);margin-top:10px}
   .preview-cap a{color:var(--accent);font-weight:700;text-decoration:none}
 
@@ -110,7 +111,7 @@
   @media(max-width:640px){
     .hero h1{font-size:30px} .hero p{font-size:16px}
     .grid{grid-template-columns:1fr} .sec-title{font-size:22px}
-    .preview-frame{height:600px}
+    .demo-video{max-width:320px}
   }
 </style>
 </head>
@@ -138,11 +139,12 @@
 
   <h2 class="sec-title reveal">ככה זה נראה</h2>
   <div class="preview reveal">
-    <iframe class="preview-frame" src="coach-demo.html" title="תצוגה מקדימה של דשבורד המאמן" loading="lazy"></iframe>
-    <div class="preview-cap">תצוגה מקדימה · נתוני דוגמה — <a href="coach-demo.html" target="_blank">פתח במסך מלא ↗</a></div>
+    <video class="demo-video" src="brand/posts/coach-demo-video/coach-demo.mp4"
+           autoplay muted loop playsinline controls preload="metadata"></video>
+    <div class="preview-cap">תצוגה מקדימה · נתוני דוגמה — <a href="coach-demo.html" target="_blank">פתח דמו אינטראקטיבי במסך מלא ↗</a></div>
   </div>
   <div class="reveal" style="text-align:center;margin-top:24px">
-    <a class="cta-ghost" href="/" target="_blank" rel="noopener">👀 הצצה מצד המתאמן</a>
+    <a class="cta-ghost" href="index.html" target="_blank" rel="noopener">👀 הצצה מצד המתאמן</a>
   </div>
 
   <section id="join" class="join reveal">
