@@ -25,7 +25,8 @@
 
   /* כותרת */
   .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-  .logo{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .logo{display:flex;align-items:center;gap:9px;font-size:22px;font-weight:800;letter-spacing:-.5px;direction:ltr}
+  .logo img{width:30px;height:30px;border-radius:8px;object-fit:cover}
   .logo .eat{color:var(--accent)}
   .demo-badge{font-size:11px;font-weight:700;color:var(--text-tert);
     border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:#fff}
@@ -87,7 +88,7 @@
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="logo">Shap<span class="eat">Eat</span></div>
+    <div class="logo"><img src="brand/AVATAR-shapeat.png" alt="ShapEat"><span>Shap<span class="eat">Eat</span></span></div>
     <span class="demo-badge">תצוגה מקדימה · נתוני דוגמה</span>
   </div>
 
