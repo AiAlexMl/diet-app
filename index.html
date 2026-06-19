@@ -20,7 +20,8 @@
 <div class="app-wrapper" id="app">
 
   <!-- לוגו -->
-  <div class="app-logo" onclick="goHome()" role="button" title="דף הבית">
+  <div class="app-logo" onclick="goHome()" role="button" tabindex="0" aria-label="דף הבית"
+       title="דף הבית" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goHome();}">
     <img class="logo-img" src="brand/AVATAR-shapeat.png" alt="ShapEat">
     <div class="logo-stack">
       <span class="logo-text">Shap<span class="logo-eat">Eat</span></span>
@@ -176,6 +177,10 @@
   </div>
 
 </div><!-- /app-wrapper -->
+
+<div style="text-align:center;padding:16px 12px 28px;font-size:12px">
+  <a href="accessibility.html" style="color:#8b90a3;text-decoration:none">הצהרת נגישות</a>
+</div>
 
 <script src="data.js"></script>
 <script src="app.js"></script>
