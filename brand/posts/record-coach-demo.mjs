@@ -73,7 +73,7 @@ await page.waitForTimeout(2600);
 await caption('מי פעיל · אחוז התמדה · מי צריך תשומת לב');
 await page.waitForTimeout(3000);
 // 3 — גלילה ברוסטר
-await caption('כל מתאמן: יעד, התמדה, והתראה כשנושר');
+await caption('כל מתאמן: יעד, מגמת משקל ורצף ימים');
 const docH = await page.evaluate(() => document.body.scrollHeight - window.innerHeight);
 await smoothScrollTo(Math.min(docH, 900), 6000);
 await page.waitForTimeout(400);
