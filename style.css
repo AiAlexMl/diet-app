@@ -763,7 +763,7 @@ input[type="number"]:focus {
 .day-done-toast {
   position: absolute; top: 38%; left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, var(--accent), var(--accent2, #7c3aed));
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #fff; font-weight: 800; font-size: 17px;
   padding: 14px 26px; border-radius: 999px;
   box-shadow: 0 12px 36px rgba(79, 70, 229, 0.4);
