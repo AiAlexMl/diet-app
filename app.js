@@ -993,7 +993,8 @@ function rebalanceDay(meals, eaten) {
     let extra = perMeal > 800 ? 3 : perMeal > 600 ? 2 : perMeal > 450 ? 1 : 0;
     extra = Math.min(extra, 6 - openMeals.length);   // לא יותר מ-6 ארוחות פתוחות
     for (let k = 0; k < extra; k++) {
-      const nm = { label: 'נשנוש נוסף', icon: 'coffee', time: '', pct: 0.15, tag: null, type: 'snack', big: false, items: [] };
+      // added:true => ארוחה שנוצרה אגב איזון אמצע-יום (לא חלק מתפריט הבסיס); מנוקה ביום חדש (loadDay)
+      const nm = { label: 'נשנוש נוסף', icon: 'coffee', time: '', pct: 0.15, tag: null, type: 'snack', big: false, items: [], added: true };
       meals.push(nm);
       eaten.push(false);
       openMeals.push(nm);
