@@ -86,7 +86,7 @@ function serializeDay(day) {
     date: day.date, target: day.target, eaten: day.eaten, note: day.note || null,
     warn: day.warn, tips: day.tips || null, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
     meals: day.meals.map(m => ({
-      label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type, removed: m.removed || false,
+      label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type, removed: m.removed || false, added: m.added || false,
       totCal: m.totCal, totP: m.totP, totC: m.totC, totF: m.totF, totFib: m.totFib,
       items: m.items.map(item),
     })),
@@ -122,9 +122,14 @@ function loadDay() {
   if (!d || !d.meals) return null;
   try {
     const day = deserializeDay(d);
-    if (day.date !== todayStr()) {           // יום חדש — אותו תפריט, סימונים מתאפסים
+    if (day.date !== todayStr()) {           // יום חדש — חוזרים לתפריט הבסיס הנקי
       day.date = todayStr();
+      // מסירים פינוקים, ארוחות שנוספו אגב איזון אמצע-יום ('added'/'נשנוש נוסף'), וארוחות שהוסרו —
+      // כך מחר לא נגרר עם פינוקים של אתמול או נשנושים שצצו תוך כדי. הסימונים מתאפסים.
+      day.meals = day.meals.filter(m =>
+        m.type !== 'treat' && !m.added && m.label !== 'נשנוש נוסף' && !m.removed);
       day.eaten = day.meals.map(() => false);
+      day.note = null;
     }
     // שחזור הפינוקים המתוכננים מתוך כרטיס הפינוק (כדי שהוספה/הסרה יעבדו אחרי רענון)
     const tm = day.meals.find(m => m.type === 'treat' && !m.removed);
