@@ -72,7 +72,7 @@
     <div id="bmi-warn-box" class="bmi-warn-inline" style="display:none"></div>
     <div class="rmr-box" id="rmr-box">
       <div><div class="rmr-label">BMR</div><div class="rmr-val" id="bmr-disp">—</div></div>
-      <div><div class="rmr-label">RMR (×1.2)</div><div class="rmr-val" id="rmr-disp">—</div></div>
+      <div><div class="rmr-label">צריכה יומית מוערכת</div><div class="rmr-val" id="rmr-disp">—</div></div>
       <div><div class="rmr-label">יעד קלורי</div><div class="rmr-val rmr-target" id="target-disp">—</div></div>
     </div>
 
@@ -111,6 +111,17 @@
     </div>
 
     <div class="section">
+      <div class="sec-title">מצב בריאותי (אופציונלי)</div>
+      <div class="chip-group">
+        <div class="chip" data-val="pregnancy" onclick="toggleHealth(this)">היריון/הנקה</div>
+        <div class="chip" data-val="kidney"    onclick="toggleHealth(this)">בעיה בכליות</div>
+        <div class="chip" data-val="diabetes"  onclick="toggleHealth(this)">סוכרת</div>
+      </div>
+      <div id="health-warn" class="field-error" style="display:none;margin-top:10px"></div>
+      <div class="info-note" style="margin-top:8px">יש לך מצב רפואי שמשפיע על התזונה או תרופות קבועות? התייעצ/י עם הרופא/ה לפני השימוש.</div>
+    </div>
+
+    <div class="section">
       <div class="sec-title">זמן אימון</div>
       <div class="time-grid">
         <div class="time-card" data-val="morning" onclick="setTime(this)">
@@ -137,7 +148,7 @@
 
     <div class="nav-btns">
       <button class="btn-secondary" onclick="goTo(0)" data-m="← חזור" data-f="← חזרי">← חזור</button>
-      <button class="btn-primary"   onclick="goTo(2)" data-m="המשך ←" data-f="המשיכי ←">המשך ←</button>
+      <button class="btn-primary"   onclick="nextFromPrefs()" data-m="המשך ←" data-f="המשיכי ←">המשך ←</button>
     </div>
   </div>
 

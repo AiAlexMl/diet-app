@@ -10,6 +10,7 @@ const S = {
   age: 28, height: 178, weight: 80,
   diet: new Set(),       // kosher | vegan | vegetarian | gluten_free | lactose_free | supplements
   allergy: new Set(),    // nuts | peanuts | eggs | fish | soy | sesame
+  health: new Set(),     // pregnancy | kidney — דגלים בריאותיים אופציונליים (סינון בטיחות)
   time: null,            // morning | noon | evening | null
   noTrain: false,
   liked: new Set(),      // IDs של מאכלים מועדפים
@@ -20,6 +21,7 @@ const S = {
   trainWarning: null,    // מסה בלי אימון — עודף קלורי בלי אימוני כוח
   carbWarning: null,
   menuWarning: null,    // מוצג כשאי אפשר לעמוד ביעד עם ההעדפות (גלישה קלורית בלתי-פתירה)
+  calFloorWarning: null,// היעד הועלה לרצפה הקלורית הבריאה
   treats: [],           // ids מתוך TREATS — פינוקים מתוכננים שהתפריט נבנה סביבם
 };
 
@@ -60,18 +62,32 @@ function calcMacro() {
     ? 66.5 + 13.75 * S.weight + 5.003 * S.height - 6.755 * S.age
     : 655.1 + 9.563 * S.weight + 1.85  * S.height - 4.676 * S.age;
 
-  S.bmr    = Math.round(bmr);
-  S.rmr    = Math.round(bmr * 1.2);
+  S.bmr = Math.round(bmr);
+
+  // גורם פעילות אסימטרי לפי יעד: חיטוב/לא-מתאמן שמרני (1.2 — מגן על הגירעון);
+  // שמירה/מסה של מתאמן — פעילות קלה (1.375) כדי שהתחזוקה מדויקת והעודף במסה אמיתי.
+  const af = (S.noTrain || S.goal === 'cut') ? 1.2 : 1.375;
+  S.rmr = Math.round(bmr * af);
+
   const cutDeficit = Math.min(500, Math.round(S.rmr * 0.20));
   S.target = S.goal === 'cut'  ? S.rmr - cutDeficit
            : S.goal === 'bulk' ? S.rmr + 300
-           : S.rmr;
-  S.target = Math.max(S.target, S.gender === 'female' ? 1200 : 1500);
+           :                     S.rmr;
 
-  // חלבון — לפי BMI, רצפה לנשים על שומן. טבעונים: 1.6g/ק"ג (קשה להגיע ל-2 מצמחי); אחרים: 2g/ק"ג
+  // רצפה קלורית בטיחותית — הערת שקיפות כשהיא מעלה את היעד
+  const floor = S.gender === 'female' ? 1200 : 1500;
+  if (S.target < floor) {
+    S.target = floor;
+    S.calFloorWarning = 'היעד הועלה למינימום הקלורי הבריא המומלץ — לא מומלץ לרדת מתחתיו.';
+  } else {
+    S.calFloorWarning = null;
+  }
+
+  // חלבון — לפי BMI (פרוקסי גוף-רזה ל-BMI≥30). מתאמן 2g/ק"ג; טבעוני או ללא אימון 1.6.
+  // (כליות/היריון מטופלים כ-hard-stop ב-healthBlockText — לא בונים תפריט, אז אין כאן התאמה.)
   const bmi = S.weight / (S.height / 100) ** 2;
   const pw  = bmi >= 30 ? 25 * (S.height / 100) ** 2 : S.weight;
-  const pf  = S.diet.has('vegan') ? 1.6 : 2;
+  const pf  = (S.diet.has('vegan') || S.noTrain) ? 1.6 : 2;
   S.proteinG = Math.round(Math.min(S.weight, pw) * pf);
   S.fatG     = Math.max(S.gender === 'female' ? 40 : 25,
                         Math.round(S.target * 0.2 / 9));
@@ -753,11 +769,39 @@ function gword(m, f) { return S.gender === 'female' ? f : m; }
 
 function bmiWarnText() {
   const bmi = S.weight / (S.height / 100) ** 2;
+  if (bmi < 18.5 && S.goal !== 'bulk')   // תת-משקל: רלוונטי לחיטוב/שמירה. במסה זו דווקא המטרה הנכונה — אין אזהרה.
+    return S.goal === 'cut'
+      ? `BMI שלך הוא ${bmi.toFixed(1)} — נמוך מהטווח הבריא (תת-משקל). חיטוב לא מומלץ במצב הזה; עדיף לשקול בניית מסה ולהתייעץ עם רופא/דיאטן.`
+      : `BMI שלך הוא ${bmi.toFixed(1)} — נמוך מהטווח הבריא (תת-משקל). כדאי לשקול בניית מסה ולהתייעץ עם רופא/דיאטן לפני שינוי תזונתי.`;
   if (S.goal === 'cut' && bmi < 20)
     return `BMI שלך הוא ${bmi.toFixed(1)} — נמוך. חיטוב במשקל זה עלול לגרום לנזק בריאותי ולפגיעה במסת השריר. מומלץ לשקול שמירה או בניית מסה.`;
   if (S.goal === 'bulk' && bmi >= 30)
     return `BMI שלך הוא ${bmi.toFixed(1)} — גבוה. בתפריט מסה עם BMI כזה מומלץ להתייעץ עם תזונאי או רופא לפני שמתחילים.`;
   return null;
+}
+
+// דגלים בריאותיים = hard-stop. כליות/היריון/הנקה דורשים ליווי מקצועי וחורגים מתחום הכלי
+// (אשלגן/זרחן/נוזלים בכליות; בטיחות-מזון ורכיבים ייחודיים בהיריון) — לא בונים תפריט, מפנים למקצוען.
+function healthBlockText() {
+  const parts = [];
+  if (S.health.has('kidney'))    parts.push('מצב כליתי');
+  if (S.health.has('diabetes'))  parts.push('סוכרת');
+  if (S.health.has('pregnancy')) parts.push('היריון/הנקה');
+  if (!parts.length) return null;
+  const who = parts.length === 1 ? parts[0]
+            : parts.slice(0, -1).join(', ') + ' ו' + parts[parts.length - 1];
+  return `ב${who} התזונה דורשת התאמה אישית וליווי של דיאטן/ית קליני/ת או רופא/ה. ` +
+         `ShapEat מיועד למבוגרים בריאים ואינו מתאים למצב הזה — לא נכון לתת המלצה תזונתית גורפת במצב רגיש. ` +
+         `מומלץ לפנות לאיש מקצוע שיתאים לך תפריט בטוח. 🩺`;
+}
+
+// טיפים קלילים (לא ייעוץ קליני) — לפי דיאטה; מוצגים בתחתית התפריט
+function dietTips() {
+  const tips = [];
+  if (S.diet.has('vegan'))
+    tips.push('🌱 בתזונה טבעונית כדאי לוודא מקור קבוע ל-B12.');
+  tips.push('💧 הקפידו על שתייה מרובה של מים במהלך היום.');
+  return tips;
 }
 
 // אזהרת מסה-בלי-אימון: עודף קלורי ללא אימוני כוח נאגר כשומן, לא כשריר. מקור יחיד (תפריט + מסך 1).
