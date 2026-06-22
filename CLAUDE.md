@@ -28,7 +28,7 @@ Detailed rules are in `.claude/rules/`:
 - **Carb floor**: target raised so protein + fat + 100g carbs all fit (`S.carbWarning` set)
 - **BMI warnings**: cut+BMI<20 / bulk+BMI≥30 → shown live on screen 0 and in final menu
 - **Bulk-without-training warning** (`trainWarnText`/`S.trainWarning`): bulk goal + no training → sharp red banner (surplus without resistance training = fat, not muscle); shown live on screen 1 and in the final menu
-- **Disclaimer**: overlay on load (`closeDisclaimer()`)
+- **Disclaimer**: entry overlay = **active self-declaration** — "general info for healthy adults; any medical condition / regular medication / pregnancy → consult first" + a **required acknowledgment checkbox** (`#disclaimer-ack`); the continue button stays `disabled` until checked and `closeDisclaimer()` is gated on it. There is **no per-condition medical screening** by design (a closed list implies the unlisted is "cleared" — `expressio unius`)
 - **Macro accuracy**: best-of-4 meal builds (lean-fat preference) + 3-stage `reconcile()` (protein → fat → carbs-only calories), extra snacks for high targets, 1.6 g/kg protein floor + `S.menuWarning` on infeasible low targets. **Full mechanics + measured accuracy: `.claude/rules/algorithm.md`**
 - **Gluten-free**: `allowed()` excludes `gluten`-tagged foods; `gfOnly` items (109, 110) shown only when `gluten_free` selected
 - **Kosher**: no meat+dairy in the same meal (`kosherOk` in `buildFromTemplate`); fish+dairy allowed

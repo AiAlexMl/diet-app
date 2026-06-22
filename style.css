@@ -728,7 +728,14 @@ input[type="number"]:focus {
   font-size: 16px; color: var(--text-sec);
   line-height: 1.9; margin-bottom: 1.75rem;
 }
+.disclaimer-check {
+  display: flex; align-items: flex-start; gap: 10px;
+  text-align: right; font-size: 14px; color: var(--text-sec);
+  line-height: 1.6; margin-bottom: 1.5rem; cursor: pointer;
+}
+.disclaimer-check input { margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; accent-color: var(--accent); }
 .disclaimer-btn { width: 100%; }
+.disclaimer-btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
 
 /* ── ארוחה ריקה ── */
 .empty-meal-note {

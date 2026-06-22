@@ -10,7 +10,6 @@ const S = {
   age: 28, height: 178, weight: 80,
   diet: new Set(),       // kosher | vegan | vegetarian | gluten_free | lactose_free | supplements
   allergy: new Set(),    // nuts | peanuts | eggs | fish | soy | sesame
-  health: new Set(),     // pregnancy | kidney — דגלים בריאותיים אופציונליים (סינון בטיחות)
   time: null,            // morning | noon | evening | null
   noTrain: false,
   liked: new Set(),      // IDs של מאכלים מועדפים
@@ -86,7 +85,6 @@ function calcMacro() {
   }
 
   // חלבון — לפי BMI (פרוקסי גוף-רזה ל-BMI≥30). מתאמן 2g/ק"ג; טבעוני או ללא אימון 1.6.
-  // (כליות/היריון מטופלים כ-hard-stop ב-healthBlockText — לא בונים תפריט, אז אין כאן התאמה.)
   const bmi = S.weight / (S.height / 100) ** 2;
   const pw  = bmi >= 30 ? 25 * (S.height / 100) ** 2 : S.weight;
   const pf  = (S.diet.has('vegan') || S.noTrain) ? 1.6 : 2;
@@ -780,21 +778,6 @@ function bmiWarnText() {
   if (S.goal === 'bulk' && bmi >= 30)
     return `BMI שלך הוא ${bmi.toFixed(1)} — גבוה. בתפריט מסה עם BMI כזה מומלץ להתייעץ עם תזונאי או רופא לפני שמתחילים.`;
   return null;
-}
-
-// דגלים בריאותיים = hard-stop. כליות/היריון/הנקה דורשים ליווי מקצועי וחורגים מתחום הכלי
-// (אשלגן/זרחן/נוזלים בכליות; בטיחות-מזון ורכיבים ייחודיים בהיריון) — לא בונים תפריט, מפנים למקצוען.
-function healthBlockText() {
-  const parts = [];
-  if (S.health.has('kidney'))    parts.push('מצב כליתי');
-  if (S.health.has('diabetes'))  parts.push('סוכרת');
-  if (S.health.has('pregnancy')) parts.push('היריון/הנקה');
-  if (!parts.length) return null;
-  const who = parts.length === 1 ? parts[0]
-            : parts.slice(0, -1).join(', ') + ' ו' + parts[parts.length - 1];
-  return `ב${who} התזונה דורשת התאמה אישית וליווי של דיאטן/ית קליני/ת או רופא/ה. ` +
-         `ShapEat מיועד למבוגרים בריאים ואינו מתאים למצב הזה — לא נכון לתת המלצה תזונתית גורפת במצב רגיש. ` +
-         `מומלץ לפנות לאיש מקצוע שיתאים לך תפריט בטוח. 🩺`;
 }
 
 // טיפים קלילים (לא ייעוץ קליני) — לפי דיאטה; מוצגים בתחתית התפריט
