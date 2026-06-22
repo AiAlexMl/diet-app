@@ -21,7 +21,7 @@ function saveState() {
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify({
       gender: S.gender, goal: S.goal, age: S.age, height: S.height, weight: S.weight,
-      diet: [...S.diet], allergy: [...S.allergy], time: S.time, noTrain: S.noTrain,
+      diet: [...S.diet], allergy: [...S.allergy], health: [...S.health], time: S.time, noTrain: S.noTrain,
       liked: [...S.liked], avoided: [...S.avoided],
     }));
   } catch (e) { /* localStorage חסום (מצב פרטי) — ממשיכים בלי שמירה */ }
@@ -39,6 +39,7 @@ function loadState() {
     });
     S.diet    = new Set(d.diet || []);
     S.allergy = new Set(d.allergy || []);
+    S.health  = new Set(d.health || []);
     S.time    = d.time || null;
     S.liked   = new Set(d.liked || []);
     S.avoided = new Set(d.avoided || []);
@@ -51,7 +52,7 @@ function loadState() {
     document.querySelectorAll('.chip').forEach(el => {
       const v = el.dataset.val;
       el.classList.toggle('active', S.diet.has(v));
-      el.classList.toggle('active-danger', S.allergy.has(v));
+      el.classList.toggle('active-danger', S.allergy.has(v) || S.health.has(v));
     });
     if (d.noTrain) { S.noTrain = false; toggleNoTrain(); }   // toggleNoTrain מעדכן גם את ה-UI
     else if (S.time) {
@@ -84,7 +85,7 @@ function serializeDay(day) {
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
   return {
     date: day.date, target: day.target, eaten: day.eaten, note: day.note || null,
-    warn: day.warn, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
+    warn: day.warn, tips: day.tips || null, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
     meals: day.meals.map(m => ({
       label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type, removed: m.removed || false,
       totCal: m.totCal, totP: m.totP, totC: m.totC, totF: m.totF, totFib: m.totFib,
@@ -106,7 +107,7 @@ function deserializeDay(d) {
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
   return {
     date: d.date, target: d.target, eaten: d.eaten || [], note: d.note || null,
-    warn: d.warn || {}, gLabel: d.gLabel, tLabel: d.tLabel, morningTip: d.morningTip,
+    warn: d.warn || {}, tips: d.tips || null, gLabel: d.gLabel, tLabel: d.tLabel, morningTip: d.morningTip,
     meals: d.meals.map(m => ({ ...m, items: m.items.map(item).filter(it => it.isSaladGroup || it.f) })),
   };
 }
@@ -391,6 +392,7 @@ function goToFromDetails() {
 loadState();          // שחזור העדפות מביקור קודם (אם יש)
 applyGender();         // החלת לשון זכר/נקבה לפי המין המשוחזר
 updateMacroDisplay();
+updateHealthWarn();    // אזהרה חיה לדגלים בריאותיים משוחזרים
 DAY = loadDay();      // אם יש תפריט יום שמור — נכנסים ישר אליו ("מלווה יומי")
 if (DAY) { renderDay(); }
 
@@ -409,6 +411,31 @@ function toggleAllergy(el) {
   S.allergy.has(v) ? S.allergy.delete(v) : S.allergy.add(v);
   el.classList.toggle('active-danger', S.allergy.has(v));
   saveState();
+}
+
+// דגלים בריאותיים (היריון/הנקה, כליות) — סינון בטיחות; משנים מאקרו ומציגים אזהרה חיה
+function toggleHealth(el) {
+  const v = el.dataset.val;
+  S.health.has(v) ? S.health.delete(v) : S.health.add(v);
+  el.classList.toggle('active-danger', S.health.has(v));
+  saveState();
+  updateHealthWarn();
+}
+
+// אזהרה חיה במסך 1: דגל בריאותי = הכלי לא מתאים, מפנים למקצוען (hard-stop)
+function updateHealthWarn() {
+  const box = document.getElementById('health-warn');
+  if (!box) return;
+  const msg = healthBlockText();
+  box.textContent = msg || '';
+  box.style.display = msg ? 'block' : 'none';
+}
+
+// מעבר ממסך ההעדפות: דגל בריאותי = עוצרים מיד עם כרטיס הפניה (אין טעם למלא העדפות מזון)
+function nextFromPrefs() {
+  const block = healthBlockText();
+  if (block) { renderHealthBlock(block); return; }
+  goTo(2);
 }
 
 // הערת "לא מתאמן" לפי מטרה: חיטוב — שמירת שריר; שמירה — עידוד לאימון; מסה — ריק (האזהרה האדומה היא המסר)
@@ -543,13 +570,19 @@ function renderMenu() {
   if (inputErrors().length) { goTo(0); updateMacroDisplay(); return; }   // קלט לא תקין — חזרה למסך הפרטים עם השגיאה
   if (!S.target) { alert('יש למלא פרטים אישיים'); goTo(0); return; }
 
+  // דגל בריאותי (כליות/היריון/הנקה) = hard-stop: לא בונים תפריט, מציגים כרטיס הפניה למקצוען
+  const block = healthBlockText();
+  if (block) { renderHealthBlock(block); return; }
+
   const meals = buildMenu();
   const treatMeal = meals.find(m => m.type === 'treat');
   DAY = {
     date: todayStr(), target: S.target,
     meals, eaten: meals.map(() => false),
     note: treatMeal ? treatBuildNote(treatMeal.items) : null,
-    warn: { bmi: S.bmiWarning, train: S.trainWarning, carb: S.carbWarning, menu: S.menuWarning },
+    warn: { bmi: S.bmiWarning, train: S.trainWarning, carb: S.carbWarning, menu: S.menuWarning,
+            calFloor: S.calFloorWarning },
+    tips: dietTips(),
     gLabel: { cut: 'חיטוב', maintain: 'שמירה', bulk: 'מסה' }[S.goal],
     tLabel: S.noTrain || !S.time ? 'ללא אימון'
       : { morning: 'אימון בוקר', noon: 'אימון צהריים', evening: 'אימון ערב' }[S.time],
@@ -557,6 +590,22 @@ function renderMenu() {
   };
   saveDay();
   renderDay();
+}
+
+// כרטיס הפניה למקצוען — מוצג במקום תפריט כשסומן דגל בריאותי (כליות/היריון/הנקה)
+function renderHealthBlock(msg) {
+  document.getElementById('menu-output').innerHTML = `
+    <div class="menu-header">
+      <div class="menu-title">הכלי לא מתאים למצב הזה</div>
+    </div>
+    <div class="field-error" style="display:flex;gap:8px;align-items:flex-start">
+      <span class="bmi-warning-icon">🩺</span>
+      <span>${esc(msg)}</span>
+    </div>
+    <div class="nav-btns" style="margin-top:16px">
+      <button class="btn-secondary" onclick="goTo(1)" data-m="← חזרה להעדפות" data-f="← חזרה להעדפות">← חזרה להעדפות</button>
+    </div>`;
+  goTo(4);
 }
 
 // מציג את היום השמור (DAY) — נקרא גם אחרי בנייה וגם בשחזור מ-localStorage
@@ -614,6 +663,14 @@ function renderDay() {
     html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
       <span>${esc(DAY.warn.menu)}</span>
+    </div>`;
+  }
+
+  // הערת שקיפות: היעד הועלה לרצפה הקלורית הבריאה
+  if (DAY.warn.calFloor) {
+    html += `<div class="bmi-warning info-warning">
+      <span class="bmi-warning-icon">ℹ️</span>
+      <span>${esc(DAY.warn.calFloor)}</span>
     </div>`;
   }
 
@@ -729,7 +786,14 @@ function renderDay() {
     <div class="tips-box" style="margin-top:12px">
       פעילות אנאירובית מומלצת לשמירת מסת שריר. אירובי יכול לזרז את התהליך אך אינו חובה.
     </div>
-  </div>
+  </div>`;
+
+  // טיפים קלילים (B12 לטבעוני, מים לכולם)
+  if (DAY.tips && DAY.tips.length) {
+    html += `<div class="tips-box" style="margin-top:12px">${DAY.tips.map(esc).join('<br>')}</div>`;
+  }
+
+  html += `
   <div class="nav-btns" style="margin-top:12px">
     <button class="btn-primary" onclick="if (confirmRebuild()) renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
     <button class="btn-secondary" onclick="resetApp()">התחל מחדש (איפוס)</button>
@@ -1006,6 +1070,7 @@ function resetApp() {
   S.avoided.clear();
   S.diet.clear();
   S.allergy.clear();
+  S.health.clear();
   S.time   = null;
   S.noTrain = false;
   S.goal   = 'maintain';
@@ -1019,6 +1084,8 @@ function resetApp() {
   noTrainBtn.textContent   = noTrainLabel();
   noTrainBtn.style.borderStyle = 'dashed';
   document.getElementById('time-note').style.display = 'none';
+  const healthWarn = document.getElementById('health-warn');
+  if (healthWarn) healthWarn.style.display = 'none';
   document.getElementById('like-count').textContent  = '0';
   document.getElementById('avoid-count').textContent = '0';
   try { localStorage.removeItem(STATE_KEY); } catch (e) {}
