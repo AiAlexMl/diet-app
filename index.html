@@ -112,17 +112,6 @@
     </div>
 
     <div class="section">
-      <div class="sec-title">מצב בריאותי (אופציונלי)</div>
-      <div class="chip-group">
-        <div class="chip" data-val="pregnancy" onclick="toggleHealth(this)">היריון/הנקה</div>
-        <div class="chip" data-val="kidney"    onclick="toggleHealth(this)">בעיה בכליות</div>
-        <div class="chip" data-val="diabetes"  onclick="toggleHealth(this)">סוכרת</div>
-      </div>
-      <div id="health-warn" class="field-error" style="display:none;margin-top:10px"></div>
-      <div class="info-note" style="margin-top:8px">יש לך מצב רפואי שמשפיע על התזונה או תרופות קבועות? התייעצ/י עם הרופא/ה לפני השימוש.</div>
-    </div>
-
-    <div class="section">
       <div class="sec-title">זמן אימון</div>
       <div class="time-grid">
         <div class="time-card" data-val="morning" onclick="setTime(this)">
@@ -149,7 +138,7 @@
 
     <div class="nav-btns">
       <button class="btn-secondary" onclick="goTo(0)" data-m="← חזור" data-f="← חזרי">← חזור</button>
-      <button class="btn-primary"   onclick="nextFromPrefs()" data-m="המשך ←" data-f="המשיכי ←">המשך ←</button>
+      <button class="btn-primary"   onclick="goTo(2)" data-m="המשך ←" data-f="המשיכי ←">המשך ←</button>
     </div>
   </div>
 
@@ -204,11 +193,17 @@
     <div class="disclaimer-icon">⚕️</div>
     <div class="disclaimer-title">לפני שמתחילים</div>
     <div class="disclaimer-body">
-      האפליקציה מספקת מידע כללי בלבד ואינה מחליפה ייעוץ מקצועי של תזונאי, דיאטנית או רופא.
+      ShapEat מספק מידע כללי ותפריט לדוגמה למבוגרים בריאים בלבד, ואינו מחליף ייעוץ מקצועי של רופא, דיאטן או תזונאי.
       <br><br>
-      כל שימוש באפליקציה הוא על דעת המשתמש/ת ובאחריותו/ה הבלעדית.
+      אם יש לך מצב רפואי כלשהו, את/ה נוטל/ת תרופות באופן קבוע, או בהיריון/הנקה, יש להתייעץ עם איש מקצוע לפני השימוש.
+      <br><br>
+      כל שימוש הוא על דעת המשתמש/ת ובאחריותו/ה הבלעדית.
     </div>
-    <button class="btn-primary disclaimer-btn" onclick="closeDisclaimer()">הבנתי, המשך ←</button>
+    <label class="disclaimer-check">
+      <input type="checkbox" id="disclaimer-ack" onchange="document.getElementById('disclaimer-ok').disabled = !this.checked">
+      <span>אני מאשר/ת שאני מבוגר/ת בריא/ה, ללא מצב רפואי או תרופות קבועות המחייבים מעקב תזונתי.</span>
+    </label>
+    <button class="btn-primary disclaimer-btn" id="disclaimer-ok" onclick="closeDisclaimer()" disabled>הבנתי, המשך ←</button>
   </div>
 </div>
 
