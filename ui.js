@@ -359,6 +359,12 @@ function updateMacroDisplay() {
   document.getElementById('target-disp').textContent = S.target.toLocaleString();
   document.getElementById('rmr-box').style.display   = 'flex';
 
+  // כיתוב "אומדן ראשוני" — רק כשהמספר עוד יזוז: שמירה/מסה ולפני בחירת זמן אימון.
+  // בחיטוב הגורם נשאר 1.2 גם אחרי אימון, ואחרי בחירת זמן/לא-מתאמן המספר כבר סופי — לכן מוסתר.
+  const noteEl = document.getElementById('rmr-note');
+  if (noteEl) noteEl.style.display =
+    (S.goal !== 'cut' && !S.time && !S.noTrain) ? 'block' : 'none';
+
   const warn = bmiWarnText();
   const warnBox = document.getElementById('bmi-warn-box');
   warnBox.textContent = warn || '';
