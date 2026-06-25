@@ -758,12 +758,18 @@ function renderDay() {
     html += `<div class="tips-box" style="margin-top:12px">${DAY.tips.map(esc).join('<br>')}</div>`;
   }
 
+  // הדפסה/PDF: חסומה כשיש פינוק (hasTreat מחושב למעלה) — תפריט מודפס עם פינוק יוצא בחוסר מאקרו
+  // (הפינוק שמר תקציב), ולהציג פינוק במסמך "רשמי" לא מקצועי. מסירים את הפינוק ואז מדפיסים נקי.
   html += `
   <div class="nav-btns" style="margin-top:12px">
     <button class="btn-primary" onclick="if (confirmRebuild()) renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
-    <button class="btn-secondary" onclick="window.print()">📄 שמירת התפריט</button>
+    ${hasTreat
+      ? `<button class="btn-secondary" disabled title="הסר את הפינוק כדי לשמור תפריט נקי">📄 שמירת התפריט</button>`
+      : `<button class="btn-secondary" onclick="window.print()">📄 שמירת התפריט</button>`}
     <button class="btn-secondary" onclick="resetApp()">התחל מחדש (איפוס)</button>
-  </div>
+  </div>${hasTreat
+    ? `<div class="print-hint" style="text-align:center;margin-top:6px;font-size:12px;color:var(--text-tert)">📄 כדי לשמור תפריט נקי, הסר קודם את הפינוק 🙂</div>`
+    : ''}
   <div class="coach-cta" style="text-align:center;margin-top:18px;font-size:13px;color:#8b8fa3">
     <a href="coaches.html" style="color:#4f46e5;text-decoration:none;font-weight:600">מאמן/ה?</a>
     יש לך גרסה משלך — ממותגת בשמך, למתאמנים שלך ←
