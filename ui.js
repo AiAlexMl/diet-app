@@ -419,6 +419,22 @@ document.addEventListener('keydown', e => {
   if (el) { e.preventDefault(); el.click(); }
 });
 
+// מודאל הדיסקליימר: מיקוד ראשוני + מלכודת פוקוס (Tab לא בורח אל התוכן שמאחור)
+(function setupDisclaimerModal(){
+  const dlg = document.getElementById('disclaimer-overlay');
+  if (!dlg) return;
+  if (getComputedStyle(dlg).display !== 'none')
+    setTimeout(() => document.getElementById('disclaimer-ack')?.focus(), 60);
+  dlg.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const f = [...dlg.querySelectorAll('input,button:not([disabled]),a[href]')].filter(el => el.offsetParent !== null);
+    if (!f.length) { e.preventDefault(); return; }
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+})();
+
 // ══════════════════════════════════════════
 //  מסך 2 — העדפות תזונה
 // ══════════════════════════════════════════
@@ -595,7 +611,7 @@ function renderMenu() {
 function renderBuildBlock(msg) {
   document.getElementById('menu-output').innerHTML = `
     <div class="menu-header">
-      <div class="menu-title">הכלי לא מתאים למצב הזה</div>
+      <h1 class="menu-title">הכלי לא מתאים למצב הזה</h1>
     </div>
     <div class="field-error" style="display:flex;gap:8px;align-items:flex-start">
       <span class="bmi-warning-icon">🩺</span>
@@ -621,7 +637,7 @@ function renderDay() {
   const fPct  = 100 - pPct - cPct;
 
   let html = `<div class="menu-header">
-    <div class="menu-title">התפריט שלך — ${esc(DAY.gLabel || '')}</div>
+    <h1 class="menu-title">התפריט שלך — ${esc(DAY.gLabel || '')}</h1>
     <div class="menu-sub">${esc(DAY.tLabel || '')}</div>
   </div>
   <div class="day-progress" id="day-progress"></div>`;
@@ -1068,6 +1084,7 @@ function closeDisclaimer() {
   const ack = document.getElementById('disclaimer-ack');
   if (ack && !ack.checked) return;   // הצהרה אקטיבית — לא סוגרים בלי אישור
   document.getElementById('disclaimer-overlay').style.display = 'none';
+  document.getElementById('age')?.focus();   // נגישות: מחזירים פוקוס לתוכן אחרי סגירת המודאל
 }
 
 // ── הדפסה/PDF בעמוד אחד: מכווצים את התפריט כך שייכנס לדף A4 יחיד (כל מספר ארוחות) ──

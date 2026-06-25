@@ -19,6 +19,7 @@
 <body>
 <div class="app-wrapper" id="app">
 
+  <header>
   <!-- לוגו -->
   <div class="app-logo" onclick="goHome()" role="button" tabindex="0" aria-label="דף הבית"
        title="דף הבית" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goHome();}">
@@ -37,17 +38,19 @@
     <div class="step"        id="s3"></div>
     <div class="step"        id="s4"></div>
   </div>
+  </header>
 
+  <main>
   <!-- ══ מסך 1: פרטים אישיים ══ -->
   <div class="screen active" id="screen-0">
-    <div class="screen-title">פרטים אישיים</div>
+    <h1 class="screen-title">פרטים אישיים</h1>
     <div class="screen-sub">נחשב את הצרכים התזונתיים שלך</div>
 
     <div class="section">
       <div class="grid-3">
-        <div class="field"><label>גיל</label><input type="number" id="age" value="28" min="18" max="60"></div>
-        <div class="field"><label>גובה (ס"מ)</label><input type="number" id="height" value="178" min="140" max="220"></div>
-        <div class="field"><label>משקל (ק"ג)</label><input type="number" id="weight" value="80" min="40" max="200"></div>
+        <div class="field"><label for="age">גיל</label><input type="number" id="age" value="28" min="18" max="60"></div>
+        <div class="field"><label for="height">גובה (ס"מ)</label><input type="number" id="height" value="178" min="140" max="220"></div>
+        <div class="field"><label for="weight">משקל (ק"ג)</label><input type="number" id="weight" value="80" min="40" max="200"></div>
       </div>
     </div>
 
@@ -84,7 +87,7 @@
 
   <!-- ══ מסך 2: העדפות תזונה ══ -->
   <div class="screen" id="screen-1">
-    <div class="screen-title">העדפות תזונה</div>
+    <h1 class="screen-title">העדפות תזונה</h1>
     <div class="screen-sub" data-m="סמן מה רלוונטי אליך" data-f="סמני מה רלוונטי אליך">סמן מה רלוונטי אליך</div>
 
     <div class="section">
@@ -144,7 +147,7 @@
 
   <!-- ══ מסך 3: מאכלים מועדפים ══ -->
   <div class="screen" id="screen-2">
-    <div class="screen-title" data-m="מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂" data-f="מה את אוהבת לאכול? סמני ונדאג לשאר 🙂">מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂</div>
+    <h1 class="screen-title" data-m="מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂" data-f="מה את אוהבת לאכול? סמני ונדאג לשאר 🙂">מה אתה אוהב לאכול? סמן ונדאג לשאר 🙂</h1>
     <div class="screen-sub" data-m="עבור בין הקטגוריות וסמן את המאכלים שאתה אוהב" data-f="עברי בין הקטגוריות וסמני את המאכלים שאת אוהבת">עבור בין הקטגוריות וסמן את המאכלים שאתה אוהב</div>
     <div class="cat-tabs" id="like-tabs"></div>
     <div class="food-grid" id="like-grid"></div>
@@ -159,7 +162,7 @@
 
   <!-- ══ מסך 4: מאכלים מוחרגים ══ -->
   <div class="screen" id="screen-3">
-    <div class="screen-title" data-m="יש משהו שאתה פשוט לא אוכל? 🚫" data-f="יש משהו שאת פשוט לא אוכלת? 🚫">יש משהו שאתה פשוט לא אוכל? 🚫</div>
+    <h1 class="screen-title" data-m="יש משהו שאתה פשוט לא אוכל? 🚫" data-f="יש משהו שאת פשוט לא אוכלת? 🚫">יש משהו שאתה פשוט לא אוכל? 🚫</h1>
     <div class="screen-sub" data-m="עבור בין הקטגוריות וסמן מאכלים שתרצה לא לראות בתפריט. אם אין — לחץ המשך" data-f="עברי בין הקטגוריות וסמני מאכלים שתרצי לא לראות בתפריט. אם אין — לחצי המשיכי">עבור בין הקטגוריות וסמן מאכלים שתרצה לא לראות בתפריט. אם אין — לחץ המשך</div>
     <div class="cat-tabs" id="avoid-tabs"></div>
     <div class="food-grid" id="avoid-grid"></div>
@@ -176,24 +179,25 @@
   <div class="screen" id="screen-4">
     <div id="menu-output"></div>
   </div>
+  </main>
 
 </div><!-- /app-wrapper -->
 
-<div class="site-footer" style="text-align:center;padding:16px 12px 28px;font-size:12px">
+<footer class="site-footer" style="text-align:center;padding:16px 12px 28px;font-size:12px">
   <a href="privacy.html" style="color:#8b90a3;text-decoration:none">מדיניות פרטיות</a> ·
   <a href="terms.html" style="color:#8b90a3;text-decoration:none">תנאי שימוש</a> ·
   <a href="accessibility.html" style="color:#8b90a3;text-decoration:none">הצהרת נגישות</a>
-</div>
+</footer>
 
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="ui.js"></script>
 
 <!-- חלון ויתור -->
-<div class="disclaimer-overlay" id="disclaimer-overlay">
+<div class="disclaimer-overlay" id="disclaimer-overlay" role="dialog" aria-modal="true" aria-labelledby="disc-title">
   <div class="disclaimer-box">
-    <div class="disclaimer-icon">⚕️</div>
-    <div class="disclaimer-title">לפני שמתחילים</div>
+    <div class="disclaimer-icon" aria-hidden="true">⚕️</div>
+    <h2 class="disclaimer-title" id="disc-title">לפני שמתחילים</h2>
     <div class="disclaimer-body">
       ShapEat מספק מידע כללי ותפריט לדוגמה למבוגרים בריאים בלבד, ואינו תחליף לייעוץ מקצועי של רופא, דיאטן או תזונאי.
       <br><br>
