@@ -1030,6 +1030,27 @@ function closeDisclaimer() {
   document.getElementById('disclaimer-overlay').style.display = 'none';
 }
 
+// ── הדפסה/PDF בעמוד אחד: מכווצים את התפריט כך שייכנס לדף A4 יחיד (כל מספר ארוחות) ──
+// מודדים את גובה התוכן כשהכרום מוסתר (אותה רשימת סלקטורים כמו ב-@media print ב-style.css)
+// ומחשבים zoom שמתאים לעמוד. beforeprint חל גם על window.print() מהכפתור.
+const PRINT_HIDE_SEL = '.step-bar,.disclaimer-overlay,.nav-btns,.treat-bar,.day-progress,' +
+  '.eaten-btn,.alt-btn,.meal-edit-btn,.item-remove,.treat-remove,.coach-cta,.site-footer,' +
+  '.macro-row,.food-thumb,.tips-box,.treat-tip,.day-note';
+function fitMenuToOnePage() {
+  const wrap = document.querySelector('.app-wrapper');
+  if (!wrap) return;
+  wrap.style.zoom = '';
+  const s = document.createElement('style');
+  s.textContent = PRINT_HIDE_SEL + '{display:none!important} .app-wrapper{min-height:auto!important;padding:4px 10px!important}';
+  document.head.appendChild(s);
+  const contentH = wrap.scrollHeight;     // גובה התוכן כפי שיודפס (כרום מוסתר)
+  s.remove();
+  const pageH = (297 - 20) * 96 / 25.4 * 0.96;   // A4 פחות שולי 10מ"מ, עם ~4% מרווח ביטחון
+  if (contentH > pageH) wrap.style.zoom = String(Math.max(0.6, +(pageH / contentH).toFixed(3)));
+}
+window.addEventListener('beforeprint', fitMenuToOnePage);
+window.addEventListener('afterprint', () => { const w = document.querySelector('.app-wrapper'); if (w) w.style.zoom = ''; });
+
 // ══════════════════════════════════════════
 //  איפוס מלא לתפריט חדש
 // ══════════════════════════════════════════

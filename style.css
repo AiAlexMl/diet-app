@@ -791,8 +791,12 @@ input[type="number"]:focus {
 
 /* ── הדפסה / שמירה כ-PDF: רק התפריט הנקי ── */
 @media print {
+  @page { margin: 10mm; }
   /* רקע לבן + שמירת צבעי הכרטיסים/הפסים בהדפסה */
   body { background: #fff !important; }
+  /* בלי min-height:100vh ובלי padding-bottom גדול שמנפחים את הדף; בלי צל/בלור */
+  .app-wrapper { min-height: auto !important; padding: 4px 10px !important;
+    box-shadow: none !important; background: #fff !important; backdrop-filter: none !important; }
   body, .summary-card, .macro-pill, .bar-fill, .meal-tag {
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
