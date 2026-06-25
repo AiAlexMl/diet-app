@@ -229,6 +229,9 @@ input[type="number"]:focus {
 
 /* ── כפתורי ניווט ── */
 .nav-btns { display: flex; gap: 10px; margin-top: 1.75rem; }
+/* כפתורי פעולה במסך התפריט: 3 כפתורים עם טקסט ארוך נשברים בשורה אחת -> סידור אנכי, רוחב מלא */
+.menu-actions { flex-direction: column; }
+.menu-actions .btn-primary, .menu-actions .btn-secondary { flex: none; width: 100%; }
 .btn-primary {
   flex: 1; padding: 13px;
   border-radius: var(--radius-md);

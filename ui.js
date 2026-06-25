@@ -811,7 +811,7 @@ function renderDay() {
   // הדפסה/PDF: חסומה כשיש פינוק (hasTreat מחושב למעלה) — תפריט מודפס עם פינוק יוצא בחוסר מאקרו
   // (הפינוק שמר תקציב), ולהציג פינוק במסמך "רשמי" לא מקצועי. מסירים את הפינוק ואז מדפיסים נקי.
   html += `
-  <div class="nav-btns" style="margin-top:12px">
+  <div class="nav-btns menu-actions" style="margin-top:12px">
     <button class="btn-primary" onclick="if (confirmRebuild()) renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
     ${hasTreat
       ? `<button class="btn-secondary" disabled title="הסר את הפינוק כדי לשמור תפריט נקי">📄 שמירת התפריט</button>`
