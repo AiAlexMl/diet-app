@@ -638,7 +638,7 @@ function renderDay() {
 
   let html = `<div class="menu-header">
     <h1 class="menu-title">התפריט שלך — ${esc(DAY.gLabel || '')}</h1>
-    <div class="menu-sub">${esc(DAY.tLabel || '')}</div>
+    <div class="menu-sub${DAY.tLabel === 'ללא אימון' ? ' no-train-sub' : ''}">${esc(DAY.tLabel || '')}</div>
   </div>
   <div class="day-progress" id="day-progress"></div>`;
 
