@@ -98,6 +98,6 @@ All filtering logic is tag-driven:
 
 ## TREATS (ids 200+)
 
-Separate `TREATS` array (not in `DB` — never shown in the like/avoid grids). Same per-100g schema + `unitG`/`unitLabel`, tag `treat`. Used by the planned-treat picker and the "ate something else" picker. 200 קפה הפוך, 201 קולה זירו, 202 קולה, 203 בירה, 204 חטיף שוקולד, 205 גלידה, 206 משולש פיצה, 207 המבורגר, 208 שווארמה בפיתה, 209 פלאפל בפיתה. Manual ("ידני") entries use pseudo-id **-1** and serialize by value.
+Separate `TREATS` array (not in `DB` — never shown in the like/avoid grids). Same per-100g schema + `unitG`/`unitLabel`, tag `treat`. Used by the planned-treat picker and the "ate something else" picker. 200 קפה הפוך, 201 קולה זירו, 202 קולה, 203 בירה, 204 חטיף שוקולד, 205 גלידה, 206 משולש פיצה, 207 המבורגר, 208 שווארמה בפיתה, 209 פלאפל בפיתה, 210 קפה הפוך גדול, 211 קפה הפוך (סויה). Manual ("ידני") entries use pseudo-id **-1** and serialize by value. (`cal` per-100g; displayed treat kcal = `cal × unitG/100`.)
 
-## Next available IDs: 18–19, 28–32, 59, 111+ (treats: 210+)
+## Next available IDs: 18–19, 28–32, 59, 111+ (treats: 212+)
