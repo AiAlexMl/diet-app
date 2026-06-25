@@ -408,6 +408,17 @@ updateMacroDisplay();
 DAY = loadDay();      // אם יש תפריט יום שמור — נכנסים ישר אליו ("מלווה יומי")
 if (DAY) { renderDay(); }
 
+// ── נגישות מקלדת: אלמנטים אינטראקטיביים שאינם <button> נייטיב (צ'יפים/כרטיסים/טאבים) ──
+// הסטטיים מסומנים כאן; הדינמיים מקבלים role/tabindex בתבנית. הפעלה ב-Enter/רווח דרך מאזין מואצל.
+document.querySelectorAll('.chip, .time-card').forEach(el => {
+  el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0');
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+  const el = e.target.closest && e.target.closest('.chip, .time-card, .cat-tab, .food-card, .picker-item');
+  if (el) { e.preventDefault(); el.click(); }
+});
+
 // ══════════════════════════════════════════
 //  מסך 2 — העדפות תזונה
 // ══════════════════════════════════════════
@@ -500,12 +511,12 @@ function renderGrid(mode) {
   tabsEl.innerHTML = CATS.map(c => {
     const count = DB[c].filter(f => mode === 'like' ? S.liked.has(f.id) : S.avoided.has(f.id)).length;
     const badge = count > 0 ? `<span class="tab-badge">${count}</span>` : '';
-    return `<div class="cat-tab${c === cat ? ' ' + cls : ''}" onclick="selectCat('${mode}','${c}')">${c}${badge}</div>`;
+    return `<div class="cat-tab${c === cat ? ' ' + cls : ''}" role="button" tabindex="0" onclick="selectCat('${mode}','${c}')">${c}${badge}</div>`;
   }).join('');
 
   gridEl.innerHTML = DB[cat].map(f => {
     const on = mode === 'like' ? S.liked.has(f.id) : S.avoided.has(f.id);
-    return `<div class="food-card${on ? (mode === 'like' ? ' liked' : ' avoided') : ''}"
+    return `<div class="food-card${on ? (mode === 'like' ? ' liked' : ' avoided') : ''}" role="button" tabindex="0"
                  onclick="toggleFood('${mode}',${f.id})" id="${mode}-${f.id}">
       <div class="fc-icon">${mode === 'like' ? (on ? '❤️' : '🤍') : (on ? '🚫' : '✓')}</div>
       <div class="fc-name">${esc(f.name)}</div>
@@ -822,7 +833,7 @@ function openTreatPicker() {
     <div class="picker-title">מה בא לך היום? 🍫</div>
     <div class="picker-sub">התפריט ייבנה מחדש כך שהפינוק נכנס ביעד היומי</div>
     <div class="picker-list">` + TREATS.map(tr =>
-      `<div class="picker-item" onclick="chooseTreat(${tr.id})">
+      `<div class="picker-item" role="button" tabindex="0" onclick="chooseTreat(${tr.id})">
         <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
         <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>
       </div>`).join('') + `</div>
@@ -933,7 +944,7 @@ let altCart = [];   // הפריטים שנאכלו בפועל — אפשר כמ�
 function altFoodRows(query) {
   const q = (query || '').trim();
   return ALL.filter(f => !q || f.name.includes(q)).map(f =>
-    `<div class="picker-item" onclick="altFood(${f.id})">
+    `<div class="picker-item" role="button" tabindex="0" onclick="altFood(${f.id})">
       <span>${esc(f.name)} <small>(${f.unitG ? esc(f.unitLabel || f.unitG + 'g') : '100g'})</small></span>
       <span class="picker-cal">${Math.round(f.cal * (f.unitG || 100) / 100)} קק"ל</span>
     </div>`).join('') || `<div class="picker-sub">לא נמצא — נסה את הטאב הידני</div>`;
@@ -955,7 +966,7 @@ function openAltPicker(mi) {
       <button class="ptab" onclick="altTab(this, 'alt-manual')">ידני</button>
     </div>
     <div id="alt-treats" class="picker-list">` + TREATS.map(tr =>
-      `<div class="picker-item" onclick="altFood(${tr.id})">
+      `<div class="picker-item" role="button" tabindex="0" onclick="altFood(${tr.id})">
         <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
         <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>
       </div>`).join('') + `</div>
