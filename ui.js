@@ -397,6 +397,9 @@ function goToFromDetails() {
     if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
+  // עצירה מיידית: שילוב מטרה×BMI מזיק נחסם כבר כאן (מטרה+גובה+משקל ידועים) — בלי להמתין לבחירת מאכלים
+  const block = buildBlockText();
+  if (block) { renderBuildBlock(block); return; }
   goTo(1);
 }
 loadState();          // שחזור העדפות מביקור קודם (אם יש)
