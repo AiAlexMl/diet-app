@@ -11,7 +11,7 @@
   --bg-danger:   #fff0f0;
   --text:        #111827;
   --text-sec:    #6b7280;
-  --text-tert:   #9ca3af;
+  --text-tert:   #5b6270;
   --text-info:   #4f46e5;
   --text-danger: #dc2626;
   --border:      rgba(0,0,0,0.07);
@@ -289,7 +289,7 @@ input[type="number"]:focus {
   background: var(--bg-info);
   border-radius: var(--radius-md);
   padding: 12px 14px;
-  font-size: 12px; color: var(--text-sec);
+  font-size: 12px; color: #4f5563;
   border-right: 3px solid var(--accent);
   margin-top: 10px; line-height: 1.7;
   display: none;
@@ -336,7 +336,7 @@ input[type="number"]:focus {
   border-radius: 999px; font-weight: 600;
 }
 .tag-pre  { background: var(--bg-info); color: var(--accent); border: 1px solid var(--border-info); }
-.tag-post { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.tag-post { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
 
 /* תמונת מוצר (thumbnail + hover להגדלה) */
 .food-thumb {
@@ -571,7 +571,7 @@ input[type="number"]:focus {
 .eaten-btn {
   border: 1.5px solid #10b981;
   background: #fff;
-  color: #059669;
+  color: #047857;
   font-weight: 700; font-size: 13px;
   padding: 6px 16px;
   border-radius: 999px;
