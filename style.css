@@ -807,7 +807,8 @@ input[type="number"]:focus {
   .eaten-btn, .alt-btn, .meal-edit-btn, .item-remove, .treat-remove,
   .coach-cta, .confetti-layer, .site-footer { display: none !important; }
   /* צמצום לדף אחד: בלי מאקרו פר-ארוחה, בלי תמונות, בלי טיפים (הסיכום בסוף נשאר) */
-  .macro-row, .food-thumb, .tips-box, .treat-tip, .day-note, .print-hint { display: none !important; }
+  .macro-row, .food-thumb, .tips-box, .treat-tip, .day-note, .print-hint,
+  .bmi-warning, .field-error { display: none !important; }
   /* כרטיסים צפופים יותר ולא נחתכים באמצע עמוד */
   .meal-card { break-inside: avoid; box-shadow: none !important; margin-bottom: 8px; padding: 10px 12px; }
   .summary-card { break-inside: avoid; box-shadow: none !important; }

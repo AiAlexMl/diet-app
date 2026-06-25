@@ -125,7 +125,9 @@ const DB = {
 // ── פינוקים (ids 200+) — לא חלק מה-DB ולא מופיעים במסכי הבחירה ──
 // ערכים ל-100g כמו בשאר המאגר; unitG = גודל המנה. משמשים את כפתור הפינוק ואת "אכלתי משהו אחר".
 const TREATS = [
-  { id:200, name:"קפה הפוך",        prep:"", p:1.7,  c:2.5,  f:1.4,  fib:0,   cal:25,  tags:["treat"], unitG:240, unitLabel:"כוס" },
+  { id:200, name:"קפה הפוך",            prep:"", p:2.6,  c:3.6,  f:1.9,  fib:0,   cal:46,  tags:["treat"], unitG:240, unitLabel:"כוס" },
+  { id:210, name:"קפה הפוך גדול",       prep:"", p:2.6,  c:3.6,  f:1.9,  fib:0,   cal:46,  tags:["treat"], unitG:350, unitLabel:"כוס גדולה" },
+  { id:211, name:"קפה הפוך (סויה)",     prep:"", p:2.5,  c:2.2,  f:1.6,  fib:0,   cal:40,  tags:["treat"], unitG:240, unitLabel:"כוס" },
   { id:201, name:"קולה זירו",       prep:"", p:0,    c:0,    f:0,    fib:0,   cal:0,   tags:["treat"], unitG:330, unitLabel:"פחית" },
   { id:202, name:"קולה",            prep:"", p:0,    c:10.6, f:0,    fib:0,   cal:42,  tags:["treat"], unitG:330, unitLabel:"פחית" },
   { id:203, name:"בירה",            prep:"", p:0.5,  c:3.6,  f:0,    fib:0,   cal:43,  tags:["treat"], unitG:330, unitLabel:"בקבוק" },
