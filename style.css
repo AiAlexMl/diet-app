@@ -254,6 +254,11 @@ input[type="number"]:focus {
 }
 .btn-secondary:hover { background: var(--bg-secondary); border-color: var(--accent); color: var(--accent); }
 .btn-secondary:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+/* נגישות: טבעת פוקוס לאלמנטים אינטראקטיביים — מופיעה רק בניווט מקלדת (focus-visible), לא לעכבר */
+.chip:focus-visible, .time-card:focus-visible, .cat-tab:focus-visible,
+.food-card:focus-visible, .picker-item:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
 .btn-secondary:disabled:hover { background: var(--bg); border-color: var(--border-sec); color: var(--text-sec); }
 .btn-skip {
   padding: 10px 16px;
