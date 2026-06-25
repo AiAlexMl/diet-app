@@ -176,6 +176,8 @@ function mkItem(f, g) {
     let n = Math.max(1, Math.round(g / f.unitG));
     if (f.tags.includes('bread') && !f.tags.includes('cracker'))
       n = Math.min(n, f.pita ? 1 : 2);   // ריאליזם: עד 2 פרוסות לחם / פיתה אחת לארוחה
+    else if (f.tags.includes('fruit'))
+      n = Math.min(n, Math.max(1, Math.floor(200 / f.unitG)));   // ריאליזם: עד ~200g פרי לארוחה (קלמנטינה→2, בננה/תפוח→1, תמרים קטנים→נשארים סבירים)
     g = n * f.unitG;
     dispG = n === 1 ? f.unitLabel : `${n} ${f.plural}`;
   } else if (f.unitLabel) {

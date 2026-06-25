@@ -788,3 +788,18 @@ input[type="number"]:focus {
 @media (prefers-reduced-motion: reduce) {
   .confetti-piece { display: none; }
 }
+
+/* ── הדפסה / שמירה כ-PDF: רק התפריט הנקי ── */
+@media print {
+  /* רקע לבן + שמירת צבעי הכרטיסים/הפסים בהדפסה */
+  body { background: #fff !important; }
+  body, .summary-card, .macro-pill, .bar-fill, .meal-tag {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  /* להסתיר את כל הכרום האינטראקטיבי */
+  .step-bar, .disclaimer-overlay, .nav-btns, .treat-bar, .day-progress,
+  .eaten-btn, .alt-btn, .meal-edit-btn, .item-remove, .treat-remove,
+  .coach-cta, .confetti-layer { display: none !important; }
+  /* כרטיסים לא נחתכים באמצע עמוד */
+  .meal-card, .summary-card { break-inside: avoid; box-shadow: none !important; }
+}

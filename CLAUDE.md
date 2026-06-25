@@ -38,10 +38,11 @@ Detailed rules are in `.claude/rules/`:
 - **Meal templates** (the realism engine): every meal is built from a coherent template (`MEAL_TEMPLATES`) via `buildMeal`→`chooseTemplate`→`buildFromTemplate` — not free category-mixing. Food role flags keep combos realistic. See `algorithm.md`
 - **Liked foods**: `pick()` puts liked first (both groups shuffled for variety); liked foods are never lean-swapped away
 - **One-type rules**: one tuna type per menu (max one can), one cottage type (3% or 5%)
-- **Truthful unit labels**: `plural` field foods are snapped to whole units — "3 תמרים", never "תמר אחד" hiding 72g
+- **Truthful unit labels**: `plural` field foods are snapped to whole units — "3 תמרים", never "תמר אחד" hiding 72g. Per-meal realism caps in `mkItem`: bread ≤2 slices (pita 1); **fruit ≤ ~200g/meal** (clementine→2, banana/apple→1, small dates stay generous)
 - **State persists** to `localStorage['dietai-state']` (restored on load; cleared by reset). All dynamic text rendered via `esc()` (XSS guard for future DB content)
 - **The day is the product**: generated menu persists as a day (`localStorage['shapeat-day']`) with ✓ check-offs + progress bar; **planned treats** (`S.treats`, array of TREATS ids 200+) reserve budget before build — multiple allowed (coffee + chocolate), zero-cal treats (Coke Zero) get a "free, no impact" note; **per-item removal** (✏️ edit toggle per meal → ✕ on a row) skips an item locally, with an optional "⚖️ אזן את ההמשך" action (`balanceAfterRemoval` → `rebuildRest`); **"אכלתי משהו אחר"** → `rebuildRest()` rebuilds the rest of the day in 3 tiers (rebuild / light snack / over-target banner). Details: `algorithm.md`, `architecture.md`
 - **Fiber**: `fib` per item; daily total shown in the summary (number only)
+- **Save/Print (PDF)**: menu screen has a "📄 שמירת התפריט" button → `window.print()`; a `@media print` block in `style.css` hides interactive chrome (nav/treat-bar/progress/eaten+edit buttons/`.coach-cta`/step-bar) so the browser's "save as PDF" yields a clean menu-only sheet (no build step / no library)
 
 ## Product Images
 
