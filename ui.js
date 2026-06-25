@@ -555,6 +555,10 @@ function renderMenu() {
   if (inputErrors().length) { goTo(0); updateMacroDisplay(); return; }   // קלט לא תקין — חזרה למסך הפרטים עם השגיאה
   if (!S.target) { alert('יש למלא פרטים אישיים'); goTo(0); return; }
 
+  // שילוב מטרה×BMI מזיק (חיטוב בתת-משקל / מסה בהשמנה דרגה 2) = hard-stop, מפנים למקצוען
+  const block = buildBlockText();
+  if (block) { renderBuildBlock(block); return; }
+
   const meals = buildMenu();
   const treatMeal = meals.find(m => m.type === 'treat');
   DAY = {
@@ -571,6 +575,22 @@ function renderMenu() {
   };
   saveDay();
   renderDay();
+}
+
+// כרטיס הפניה במקום תפריט — כשהשילוב מטרה×BMI מזיק (buildBlockText). לא בונה ולא שומר DAY.
+function renderBuildBlock(msg) {
+  document.getElementById('menu-output').innerHTML = `
+    <div class="menu-header">
+      <div class="menu-title">הכלי לא מתאים למצב הזה</div>
+    </div>
+    <div class="field-error" style="display:flex;gap:8px;align-items:flex-start">
+      <span class="bmi-warning-icon">🩺</span>
+      <span>${esc(msg)}</span>
+    </div>
+    <div class="nav-btns" style="margin-top:16px">
+      <button class="btn-secondary" onclick="goTo(0)">← חזרה לפרטים</button>
+    </div>`;
+  goTo(4);
 }
 
 // מציג את היום השמור (DAY) — נקרא גם אחרי בנייה וגם בשחזור מ-localStorage

@@ -26,7 +26,8 @@ Detailed rules are in `.claude/rules/`:
 - **Calorie floor**: `Math.max(target, female ? 1200 : 1500)` after goal offset
 - **Dynamic cut deficit**: `min(500, rmr × 0.20)` — scales down for low-RMR users
 - **Carb floor**: target raised so protein + fat + 100g carbs all fit (`S.carbWarning` set)
-- **BMI warnings**: cut+BMI<20 / bulk+BMI≥30 → shown live on screen 0 and in final menu
+- **BMI warnings**: cut+BMI<20 / bulk+BMI≥30 → shown live on screen 0 and in final menu (`bmiWarnText`)
+- **BMI hard-stops** (`buildBlockText` in app.js; gate in `renderMenu`→`renderBuildBlock`): harmful goal×BMI combos **refuse to build** and show a referral card instead — **cut + BMI<18.5** (deficit for underweight = clinical harm + ED red flag) and **bulk + BMI≥35** (surplus for class-2 obesity; threshold 35 not 30 because BMI can't tell muscle from fat — 30–35 stays a warning). Safety-by-design, not medical triage (refuses a harmful output from the user's own numbers)
 - **Bulk-without-training warning** (`trainWarnText`/`S.trainWarning`): bulk goal + no training → sharp red banner (surplus without resistance training = fat, not muscle); shown live on screen 1 and in the final menu
 - **Disclaimer**: entry overlay = **active self-declaration** — "general info for healthy adults; any medical condition / regular medication / pregnancy → consult first" + a **required acknowledgment checkbox** (`#disclaimer-ack`); the continue button stays `disabled` until checked and `closeDisclaimer()` is gated on it. There is **no per-condition medical screening** by design (a closed list implies the unlisted is "cleared" — `expressio unius`)
 - **Macro accuracy**: best-of-4 meal builds (lean-fat preference) + 3-stage `reconcile()` (protein → fat → carbs-only calories), extra snacks for high targets, 1.6 g/kg protein floor + `S.menuWarning` on infeasible low targets. **Full mechanics + measured accuracy: `.claude/rules/algorithm.md`**
