@@ -796,10 +796,13 @@ input[type="number"]:focus {
   body, .summary-card, .macro-pill, .bar-fill, .meal-tag {
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
-  /* להסתיר את כל הכרום האינטראקטיבי */
+  /* להסתיר את כל הכרום האינטראקטיבי + מה שלא שייך לתפריט עצמו */
   .step-bar, .disclaimer-overlay, .nav-btns, .treat-bar, .day-progress,
   .eaten-btn, .alt-btn, .meal-edit-btn, .item-remove, .treat-remove,
-  .coach-cta, .confetti-layer { display: none !important; }
-  /* כרטיסים לא נחתכים באמצע עמוד */
-  .meal-card, .summary-card { break-inside: avoid; box-shadow: none !important; }
+  .coach-cta, .confetti-layer, .site-footer { display: none !important; }
+  /* צמצום לדף אחד: בלי מאקרו פר-ארוחה, בלי תמונות, בלי טיפים (הסיכום בסוף נשאר) */
+  .macro-row, .food-thumb, .tips-box, .treat-tip, .day-note { display: none !important; }
+  /* כרטיסים צפופים יותר ולא נחתכים באמצע עמוד */
+  .meal-card { break-inside: avoid; box-shadow: none !important; margin-bottom: 8px; padding: 10px 12px; }
+  .summary-card { break-inside: avoid; box-shadow: none !important; }
 }
