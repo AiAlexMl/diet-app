@@ -131,7 +131,7 @@ const TREATS = [
   { id:210, name:"קפה הפוך גדול",       prep:"", p:2.6,  c:3.6,  f:1.9,  fib:0,   cal:46,  tags:["treat"], unitG:350, unitLabel:"כוס גדולה (350 מ\"ל)" },
   { id:211, name:"קפה הפוך (סויה)",     prep:"", p:2.5,  c:2.2,  f:1.6,  fib:0,   cal:40,  tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)" },
   { id:213, name:"קפה שחור",            prep:"", p:0,    c:0,    f:0,    fib:0,   cal:0,   tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)" },
-  { id:214, name:"נס קפה",              prep:"", p:0.1,  c:0.3,  f:0,    fib:0,   cal:2,   tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)" },
+  { id:214, name:"נס קפה (עם חלב)",     prep:"", p:1.4,  c:2.4,  f:0.9,  fib:0,   cal:21,  tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)" },
   { id:201, name:"קולה זירו",       prep:"", p:0,    c:0,    f:0,    fib:0,   cal:0,   tags:["treat"], unitG:330, unitLabel:"פחית (330 מ\"ל)" },
   { id:202, name:"קולה",            prep:"", p:0,    c:10.6, f:0,    fib:0,   cal:42,  tags:["treat"], unitG:330, unitLabel:"פחית (330 מ\"ל)" },
   { id:203, name:"בירה",            prep:"", p:0.5,  c:3.6,  f:0,    fib:0,   cal:43,  tags:["treat"], unitG:330, unitLabel:"בקבוק (330 מ\"ל)" },
