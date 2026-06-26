@@ -541,6 +541,38 @@ function buildMealBest(type, budget, used, ctx) {
   return best || [];
 }
 
+// ארוחה ש"איבדה" את הבשר בריכוז (אוכלי-כול): במקום פחמימה+סלט חשופה, *משאירים* את הפחמימה
+// (חיוני — היא מנוף הקלוריות הגמיש של היום) ורק *מוסיפים עוגן חלבון קל* בהגרלה משוקללת:
+// ביצה (~50%), קוטג'/יוגורט (~33%), קטנייה (~17%, "כבדה" → משקל נמוך). ביצה/קטנייה גמישים
+// (שלב 1 מאזן אותם); קוטג' קבוע. נפילה-לאחור לפי משקל יורד. מחזיר true אם נוסף עוגן.
+function convertDemeatedMeal(meal, used, ctx) {
+  const cal = meal.budget || meal.totCal || 500;
+  const protShare = S.proteinG * cal / Math.max(S.target, 1);   // יעד חלבון מקורב לארוחה
+  const anchor = (filter, calPct, max) => {
+    const pool = ALL.filter(f => filter(f) && allowed(f) && !used.has(f.id));
+    return pool.length ? pick(pool, used, cal * calPct, protShare, max) : null;
+  };
+  const strats = [
+    { w: 3, build: () => anchor(f => f.tags.includes('egg'), .35, 200) },                          // ביצים + פחמימה + סלט
+    { w: 2, build: () => anchor(f => f.id === 20 || f.id === 21 || isYogurt(f), .4, 250) },         // קוטג'/יוגורט + פחמימה
+    { w: 1, build: () => { const it = anchor(f => f.tags.includes('legume') && !f.dip && f.p >= 7, .4, 250);   // קטנייה עתירת-חלבון (עדשים/חומוס/שעועית) — לא אפונה
+                           if (it) { it._minG = Math.min(it.g, 120);                                // רצפה כדי ששלב-1 לא יכווץ אותה לסמלית
+                             meal.items.forEach(x => {                                               // תוחמים את הפחמימה כשיש קטנייה (העודף לארוחת הבשר), כדי שלא יהיה "הר"
+                               if (isElasticGrain(x.f)) x._maxG = 250;                               // דגן ≤250g
+                               else if (x.f && x.f.plural && x.f.unitG && x.f.tags.includes('starch')) x._maxG = 2 * x.f.unitG; }); }  // עמילן ≤2 יחידות
+                           return it; } },
+  ];
+  while (strats.length) {
+    const total = strats.reduce((a, s) => a + s.w, 0);
+    let r = Math.random() * total, idx = 0;
+    for (let i = 0; i < strats.length; i++) { r -= strats[i].w; if (r <= 0) { idx = i; break; } }
+    const item = strats[idx].build();
+    if (item) { use(used, item); meal.items.unshift(item); return true; }   // העוגן בראש הארוחה
+    strats.splice(idx, 1);   // אסטרטגיה נכשלה — נפילה לאחור
+  }
+  return false;
+}
+
 // ══════════════════════════════════════════
 //  יישור מאקרו ליעד — reconcile (חלבון ±7% → שומן ±8% → קלוריות ±4%)
 // ══════════════════════════════════════════
@@ -569,7 +601,8 @@ function reCracker(it, targetG) {  // פריכיות לפי מספר יחידו�
   setMacros(it, it.f, c.g);
 }
 function reUnit(it, count) {     // ירק עמילני לפי יחידות שלמות (1–3, תקרת CARBCAP): "2 תפוחי אדמה בינוניים"
-  const maxN = Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG)));
+  let maxN = Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG)));
+  if (it._maxG) maxN = Math.max(1, Math.min(maxN, Math.floor(it._maxG / it.f.unitG)));   // תקרת פר-פריט (למשל בארוחת קטניות)
   count = Math.max(1, Math.min(maxN, count || 1));
   it.g = count * it.f.unitG;
   it.dispG = count === 1 ? it.f.unitLabel : `${count} ${it.f.plural}`;
@@ -682,7 +715,8 @@ function adjustFat(meals) {
 
 // יישור מאקרו ב-3 שלבים: (1) חלבון ±7% (2) שומן ±8% (3) פחמימות → קלוריות ±4%.
 // פריטים בעלי "כמות טבעית" (פרוסה/בננה/קופסה/פריכייה) לא משתנים בשלב הקלוריות.
-function reconcile(meals) {
+function reconcile(meals, used, ctx) {
+  used = used || new Map(); ctx = ctx || { usedCarbCats: new Set() };
   const items = () => meals.flatMap(m => m.items);
   const isCarb = it => it.f && !it.f.unitLabel &&
     (it.f.tags.includes('hot_carb') || it.f.tags.includes('grain') || it.f.tags.includes('starch'));
@@ -710,7 +744,17 @@ function reconcile(meals) {
       const projTot = meals.reduce((s, m) => s + m.totP, 0) - it.p + Math.max(it.p, flooredP);
       if (k > 0 && projTot > S.proteinG * 1.15) {
         const meal = mealOf(it);
-        if (meal) { meal.items = meal.items.filter(x => x !== it); if (!meal.items.length) meal.removed = true; recalcMeal(meal); }
+        if (meal) {
+          meal.items = meal.items.filter(x => x !== it);
+          const prev = used.get(it.f.id) || 0; const left = prev - it.g;   // משחררים את הבשר שהוסר מ-used
+          if (left > 0) used.set(it.f.id, left); else used.delete(it.f.id);
+          // במקום פחמימה+סלט חשופה: משאירים את הפחמימה ומוסיפים עוגן חלבון קל. טבעוני/צמחוני לא נכנס.
+          let converted = false;
+          if (!S.diet.has('vegan') && !S.diet.has('vegetarian'))
+            converted = convertDemeatedMeal(meal, used, ctx);
+          if (!converted && !meal.items.length) meal.removed = true;
+          recalcMeal(meal);
+        }
       } else if (it.g < (it._minG || 0)) {
         reG(it, it._minG);
         const meal = mealOf(it);
@@ -755,8 +799,8 @@ function reconcile(meals) {
     const isUnitCarb = it => it.f && it.f.plural && it.f.unitG && it.f.tags.includes('starch');   // בטטה/תפו"א/תירס — 1–3 יחידות
     const isCount   = it => isBread(it) || isCracker(it) || isUnitCarb(it);
     const maxOf = it => isBread(it) ? it.f.unitG * 2 : isCracker(it) ? it.f.unitG * crackerMaxN()
-      : isUnitCarb(it) ? Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG))) * it.f.unitG
-      : Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
+      : isUnitCarb(it) ? Math.min(it._maxG || 99999, Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG))) * it.f.unitG)
+      : Math.min(it._maxG || 99999, it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
     const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
     const grams = items().filter(it => it.f && !it.f.isEgg && !it.f.condiment && !it.isSaladGroup &&
       it.f.id !== 20 && it.f.id !== 21 && (!it.f.unitLabel || isCount(it)));
@@ -773,7 +817,7 @@ function reconcile(meals) {
       if (isBread(it))        reBread(it, Math.round(targetCal / (it.f.cal * it.f.unitG / 100)));
       else if (isCracker(it)) reCracker(it, targetG);
       else if (isUnitCarb(it)) reUnit(it, Math.round(targetCal / (it.f.cal * it.f.unitG / 100)));
-      else { const cap = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
+      else { const cap = Math.min(it._maxG || 99999, it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
              reG(it, Math.max(it.f.unitG || 30, Math.min(Math.round(targetG), cap))); }
     });
     meals.forEach(recalcMeal);
@@ -801,6 +845,39 @@ function reconcile(meals) {
     if (dCalF > S.target * (1 + CAL_TOL))
       S.menuWarning = 'עם ההעדפות והיעד הנוכחיים קשה לעמוד בדיוק ביעד הקלורי — חלק מהמאכלים שסומנו עשירים בשומן או דלים בחלבון. ניסינו לאזן; כדי לדייק כדאי להסיר חלק מהמאכלים השמנים המועדפים או להתאים מעט את יעד הקלוריות.';
   }
+
+  // פיצול "ערימת פחמימה" בארוחה חמה (דו-כיווני): הפחמימה הגמישה הכבדה ביותר — דגן בגרמים או
+  // עמילן ביחידות — שעוברת ~350 קל' מתפצלת לחצי + תוספת פחמימה *מסוג אחר* (דגן→בטטה, בטטה→דגן).
+  // מעבירים קלוריות 1:1 (מאקרו וקלוריות נשמרים). פותר "הר אורז" וגם "3 בטטות". פיצול אחד לארוחה.
+  const SPLIT_CAL = 350;
+  meals.forEach(m => {
+    if (m.removed || m.type !== 'hot') return;
+    // לא מפצלים פחמימה כשכבר יש קטנייה בארוחה — קטנייה עמילנית בעצמה, ופיצול היה יוצר 3 מקורות
+    // פחמימה ("צלחת עמוסה": שעועית+פסטה+תפו"א). משאירים פחמימה אחת ("שעועית + פסטה").
+    if (m.items.some(it => it.f && it.f.tags.includes('legume') && !it.f.dip)) return;
+    const isGrainItem  = it => it.f && !it.f.unitLabel && !it.f.tags.includes('breakfast') &&
+      (it.f.tags.includes('grain') || it.f.tags.includes('hot_carb')) && !it.f.tags.includes('starch');
+    const isStarchItem = it => it.f && it.f.plural && it.f.unitG && it.f.tags.includes('starch');
+    const big = m.items.filter(it => isGrainItem(it) || isStarchItem(it)).sort((a, b) => b.cal - a.cal)[0];
+    if (!big || big.cal <= SPLIT_CAL) return;
+    const moveCal = big.cal * 0.5;
+    if (isGrainItem(big)) {   // דגן ענק → להוסיף עמילן
+      const st = ALL.find(f => f.tags.includes('starch') && f.plural && f.unitG && allowed(f) && !used.has(f.id) && !m.items.some(x => x.f && x.f.id === f.id));
+      if (!st) return;
+      const units = Math.max(1, Math.min(2, Math.round(moveCal / (st.cal * st.unitG / 100))));
+      const sItem = mkItem(st, units * st.unitG); use(used, sItem);
+      reG(big, Math.max(big.f.unitG || 30, Math.round((big.cal - sItem.cal) / big.f.cal * 100)));
+      m.items.push(sItem);
+    } else {                  // ערימת עמילן → להוסיף דגן ולהקטין את העמילן ביחידות
+      const gr = ALL.find(f => isElasticGrain(f) && !f.tags.includes('breakfast') && allowed(f) && !used.has(f.id) && !m.items.some(x => x.f && x.f.id === f.id));
+      if (!gr) return;
+      const gItem = mkItem(gr, Math.max(gr.unitG || 40, Math.round(moveCal / gr.cal * 100))); use(used, gItem);
+      const newUnits = Math.max(1, Math.round((big.cal - gItem.cal) / (big.f.cal * big.f.unitG / 100)));
+      reUnit(big, newUnits);
+      m.items.push(gItem);
+    }
+    recalcMeal(m);
+  });
 }
 
 // ══════════════════════════════════════════
@@ -918,7 +995,7 @@ function buildMenu() {
     }
   }
 
-  reconcile(meals);   // יישור מאקרו ליעד (מול היעד המוקטן אם יש פינוק)
+  reconcile(meals, used, ctx);   // יישור מאקרו ליעד (מול היעד המוקטן אם יש פינוק)
 
   S.target = fullTarget;                    // שחזור היעד המלא לתצוגה ולפס ההתקדמות
   if (treatMeal) meals.push(treatMeal);     // הפינוק מוצג ככרטיס משלו, מחוץ ל-reconcile
