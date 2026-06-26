@@ -766,6 +766,7 @@ function renderDay() {
       <div class="macro-pill"><div class="val">${m.totF}g</div><div class="lbl">שומן</div></div>
     </div>
     <div class="meal-actions">
+      ${m.type !== 'treat' ? `<button class="alt-btn add-item-btn" onclick="openAddItemPicker(${mi})">➕ הוסף פריט</button>` : ''}
       ${m.type !== 'treat' ? `<button class="alt-btn" onclick="openAltPicker(${mi})">🔄 אכלתי משהו אחר</button>` : ''}
       <button class="eaten-btn${DAY.eaten[mi] ? ' on' : ''}" onclick="toggleEaten(${mi})">${DAY.eaten[mi] ? '✓ נאכלה' : 'אכלתי ✓'}</button>
     </div></div>`;
@@ -988,7 +989,9 @@ function openAltPicker(mi) {
       </div>`).join('') + `</div>
     <div id="alt-foods" class="picker-pane" style="display:none">
       <input id="alt-search" class="picker-input" placeholder="חיפוש מאכל..." oninput="document.getElementById('alt-food-list').innerHTML = altFoodRows(this.value)">
-      <input id="alt-grams" class="picker-input" type="number" min="10" placeholder="כמות בגרמים (ריק = מנה רגילה)">
+      <input id="alt-grams" class="picker-input" type="number" min="1" inputmode="numeric" placeholder="כמות בגרמים (ריק = מנה רגילה)">
+      <button class="btn-secondary" style="width:100%;margin-bottom:8px" onclick="altFoodTop()">➕ הוסף את המאכל</button>
+      <div class="picker-sub" style="margin-bottom:6px">או בחר/י ישירות מהרשימה:</div>
       <div id="alt-food-list" class="picker-list">${altFoodRows('')}</div>
     </div>
     <div id="alt-manual" class="picker-pane" style="display:none">
@@ -1052,6 +1055,66 @@ function altFood(id) {
   const g = (gIn && parseInt(gIn.value)) || f.unitG || 100;
   altCart.push(mkItem(f, g));
   renderAltCart();
+}
+
+// הוספת המאכל המבוקש לפי החיפוש + הגרמים, בלי צורך להגיע לרשימה (חשוב במובייל כשהמקלדת פתוחה)
+function altFoodTop() {
+  const q = (document.getElementById('alt-search')?.value || '').trim();
+  const f = ALL.find(x => allowed(x) && (!q || x.name.includes(q)));
+  if (f) altFood(f.id);
+}
+
+// ── הוספת פריט לארוחה (מצב עריכה) — מוסיף ל-DAY.meals[mi] בלי לבנות מחדש (פילוסופיית "skip") ──
+let addItemMi = null;
+function aiRows(query) {
+  const q = (query || '').trim();
+  return ALL.filter(f => allowed(f) && (!q || f.name.includes(q))).slice(0, 80).map(f =>
+    `<div class="picker-item" role="button" tabindex="0" onclick="aiAdd(${f.id})">
+      <span>${esc(f.name)} <small>(${f.unitG ? esc(f.unitLabel || f.unitG + 'g') : '100g'})</small></span>
+      <span class="picker-cal">${Math.round(f.cal * (f.unitG || 100) / 100)} קק"ל</span>
+    </div>`).join('') || `<div class="picker-sub">לא נמצא מאכל</div>`;
+}
+function openAddItemPicker(mi) {
+  closeAddItemPicker();
+  addItemMi = mi;
+  const ov = document.createElement('div');
+  ov.className = 'picker-overlay'; ov.id = 'add-item-picker';
+  ov.innerHTML = `<div class="picker-box">
+    <div class="picker-title">הוספת פריט לארוחה ➕</div>
+    <div class="picker-sub">חיפוש מאכל, כמות בגרמים (אופציונלי), והוספה</div>
+    <input id="ai-search" class="picker-input" placeholder="חיפוש מאכל..." oninput="document.getElementById('ai-list').innerHTML = aiRows(this.value)">
+    <input id="ai-grams" class="picker-input" type="number" min="1" inputmode="numeric" placeholder="כמות בגרמים (ריק = מנה רגילה)">
+    <button class="btn-secondary" style="width:100%;margin-bottom:8px" onclick="aiAddTop()">➕ הוסף את המאכל</button>
+    <div class="picker-sub" style="margin-bottom:6px">או בחר/י מהרשימה:</div>
+    <div id="ai-list" class="picker-list">${aiRows('')}</div>
+    <button class="btn-primary picker-cancel" onclick="closeAddItemPicker()">סיום</button>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) closeAddItemPicker(); });
+  document.body.appendChild(ov);
+}
+function closeAddItemPicker() {
+  const el = document.getElementById('add-item-picker');
+  if (el) el.remove();
+  addItemMi = null;
+}
+function aiAddTop() {
+  const q = (document.getElementById('ai-search')?.value || '').trim();
+  const f = ALL.find(x => allowed(x) && (!q || x.name.includes(q)));
+  if (f) aiAdd(f.id);
+}
+function aiAdd(id) {
+  if (!DAY || addItemMi == null) return;
+  const f = FOOD_BY_ID[id]; if (!f) return;
+  const mi = addItemMi;
+  const gIn = document.getElementById('ai-grams');
+  const g = (gIn && parseInt(gIn.value)) || f.unitG || 100;
+  const m = DAY.meals[mi]; if (!m) return;
+  m.items.push(mkItem(f, g)); m.removed = false;
+  recalcMeal(m); saveDay();
+  DAY.note = 'הפריט נוסף לארוחה ✓ — שאר היום לא השתנה.';
+  renderDay();   // חלון ההוספה על ה-body ולכן נשאר פתוח
+  document.getElementById(`meal-card-${mi}`)?.classList.add('editing');   // משאירים את הארוחה במצב עריכה
+  addItemMi = mi;
 }
 
 function altManual() {

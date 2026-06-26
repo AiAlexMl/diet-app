@@ -115,6 +115,7 @@ function allowed(f) {
   if (a.has('sesame')  && f.tags.includes('sesame'))     return false;
   if (d.has('vegan')   && (f.tags.includes('meat') || f.tags.includes('fish') ||
                             f.tags.includes('dairy')|| f.tags.includes('egg'))) return false;
+  if (d.has('vegan')   && f.id === 111) return false;   // דבש אינו טבעוני (סילן כן)
   if (d.has('vegetarian') && (f.tags.includes('meat') || f.tags.includes('fish'))) return false;
   if (d.has('lactose_free') && f.tags.includes('dairy')) return false;
   if (d.has('gluten_free') && f.tags.includes('gluten')) return false;   // ללא גלוטן — מחריג חיטה/שיפון/שיבולת שועל וכו'
@@ -227,7 +228,13 @@ function use(used, item) {
 // מאפשר ל-reconcile לכוונן את השמן (מנוף שומן חלק) ולעדכן את התצוגה והמאקרו.
 function recalcSalad(sg) {
   const comps = sg._comps, oil = sg._oil, oilG = sg._oilG || 0;
-  const fmtPart = (f, g) => f.unitLabel || `${g}g`;
+  const fmtPart = (f, g) => {
+    if (f.plural && f.unitG) {   // יחידות שלמות (זיתים) — "6 זיתים", לא "זית אחד" המסתיר 30g
+      const n = Math.max(1, Math.round(g / f.unitG));
+      return n === 1 ? f.unitLabel : `${n} ${f.plural}`;
+    }
+    return f.unitLabel || `${g}g`;
+  };
   const parts = comps.map(c => fmtPart(c.f, c.g));
   if (oil && oilG > 0) parts.push(oilG === 5 ? 'כפית שמן זית' : `${oilG / 5} כפיות שמן זית`);
   sg.parts = parts;
@@ -271,7 +278,7 @@ function buildSalad(used) {
   // תוספת מלוחה לסלט: אבוקדו/זיתים (אף פעם לא עם פרי!) — אם אהוב או ~30%
   const exPool = sortByLiked(ALL.filter(f => (f.id === 87 || f.id === 93) && allowed(f) && !used.has(f.id)));
   if (exPool.length && (S.liked.has(exPool[0].id) || Math.random() < 0.3))
-    comps.push({ f: exPool[0], g: exPool[0].unitG || 50 });
+    comps.push({ f: exPool[0], g: exPool[0].id === 93 ? 30 : (exPool[0].unitG || 50) });   // זיתים: מנת סלט ~6 יחידות
 
   // שמן זית — חובה בסלט (אם מותר לפי העדפות)
   const oil = ALL.find(f => f.id === 86);
@@ -326,10 +333,12 @@ const MEAL_TEMPLATES = {
     { name:'yogurt_bowl', weight:2, slots:[
       { match:isYogurt,      calPct:.5, protPct:.8, max:250 },
       { match:_tag('granola'), calPct:.3, max:60, optional:true },   // גרנולה בלבד (לא שיבולת מבושלת)
+      { match:_tag('sweet_topping'), calPct:.1, max:30, optional:true },   // דבש/סילן (כלום/אחד מהם)
       { match:_tag('fruit'), calPct:.2, max:200, optional:true },
     ]},
     { name:'porridge',    weight:2, slots:[
       { match:f => f.id === 106, calPct:.6, max:350 },
+      { match:_tag('sweet_topping'), calPct:.1, max:30, optional:true },   // דבש/סילן
       { match:_tag('fruit'),     calPct:.4, max:200, optional:true },
     ]},
     { name:'cornflakes',  weight:2, slots:[
@@ -339,6 +348,7 @@ const MEAL_TEMPLATES = {
     ]},
     { name:'oats_water',  weight:1, slots:[   // צמחוני/טבעוני וגיוון: שיבולת במים
       { match:f => f.id === 41, calPct:.5, max:300 },
+      { match:_tag('sweet_topping'), calPct:.1, max:30, optional:true },   // דבש/סילן
       { match:_tag('fruit'), calPct:.3, max:200, optional:true },
       { match:_tag('nuts'), calPct:.2, max:30, optional:true },   // אגוזים בלבד
     ]},
