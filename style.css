@@ -395,6 +395,9 @@ input[type="number"]:focus {
 }
 .item-remove:hover, .treat-remove:hover { background: #dc2626; color: #fff; }
 .meal-card.editing .item-remove { display: inline-flex; align-items: center; justify-content: center; }
+/* כפתור "הוסף פריט" — מוצג רק במצב עריכה (כמו ה-✕ להסרה) */
+.add-item-btn { display: none; }
+.meal-card.editing .add-item-btn { display: inline-flex; }
 .treat-remove { display: inline-flex; align-items: center; justify-content: center; }
 
 /* כפתור פעולה בתוך הודעת היום ("אזן את ההמשך") */

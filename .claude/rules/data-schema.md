@@ -98,6 +98,9 @@ All filtering logic is tag-driven:
 
 ## TREATS (ids 200+)
 
-Separate `TREATS` array (not in `DB` — never shown in the like/avoid grids). Same per-100g schema + `unitG`/`unitLabel`, tag `treat`. Used by the planned-treat picker and the "ate something else" picker. 200 קפה הפוך, 201 קולה זירו, 202 קולה, 203 בירה, 204 חטיף שוקולד, 205 גלידה, 206 משולש פיצה, 207 המבורגר, 208 שווארמה בפיתה, 209 פלאפל בפיתה, 210 קפה הפוך גדול, 211 קפה הפוך (סויה). Manual ("ידני") entries use pseudo-id **-1** and serialize by value. (`cal` per-100g; displayed treat kcal = `cal × unitG/100`.)
+Separate `TREATS` array (not in `DB` — never shown in the like/avoid grids). Same per-100g schema + `unitG`/`unitLabel`, tag `treat`. Used by the planned-treat picker and the "ate something else" picker. 200 קפה הפוך, 201 קולה זירו, 202 קולה, 203 בירה, 204 חטיף שוקולד, 205 גלידה, 206 משולש פיצה, 207 המבורגר, 208 שווארמה בפיתה, 209 פלאפל בפיתה, 210 קפה הפוך גדול, 211 קפה הפוך (סויה), 212 שוקולד (פס קטן ~70 קל'), 213 קפה שחור (cal:0), 214 נס קפה. Manual ("ידני") entries use pseudo-id **-1** and serialize by value. (`cal` per-100g; displayed treat kcal = `cal × unitG/100`; treat unitLabels carry volume/weight in parens.)
 
-## Next available IDs: 18–19, 28–32, 59, 111+ (treats: 212+)
+## Sweet toppings (דבש 111, סילן 112)
+DB foods with tag `sweet_topping` + `topping:true` — appear only via the optional sweet-topping slot in breakfast templates (yogurt_bowl/porridge/oats_water), independently (none/honey/silan). Honey (111) is **not vegan** (excluded in `allowed()`); silan (112) is. Olives (93) are now per-unit (`unitG:5`, `plural:"זיתים"`); `recalcSalad`'s `fmtPart` snaps plural foods to "N זיתים".
+
+## Next available IDs: 18–19, 28–32, 59, 113+ (treats: 215+)
