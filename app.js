@@ -699,16 +699,21 @@ function reconcile(meals) {
   // מהיעד — מורידים ממנה את הבשר (נשארת פחמימה+ירק). במקרה קיצון (משקל נמוך) = ארוחה בשרית אחת.
   // הפחמימות יסגרו את הפרש הקלוריות ב-Stage 3.
   {
-    const mains = items().filter(it => it._mainProt).sort((a, b) => b.g - a.g);
+    // הארוחה ששורדת מועדפת להיות צמודת-אימון (tag pre/post), ואז הגדולה בגרמים.
+    // תזמון מול אימון משני ל-ISSN, אך כשמרכזים ממילא לארוחה אחת — שתשב על האימון.
+    const mealOf = it => meals.find(m => m.items.includes(it));
+    const isWk = it => { const m = mealOf(it); return m && m.tag ? 1 : 0; };
+    const mains = items().filter(it => it._mainProt)
+      .sort((a, b) => (isWk(b) - isWk(a)) || (b.g - a.g));
     mains.forEach((it, k) => {
       const flooredP = it.f.p * (it._minG || 0) / 100;
       const projTot = meals.reduce((s, m) => s + m.totP, 0) - it.p + Math.max(it.p, flooredP);
       if (k > 0 && projTot > S.proteinG * 1.15) {
-        const meal = meals.find(m => m.items.includes(it));
+        const meal = mealOf(it);
         if (meal) { meal.items = meal.items.filter(x => x !== it); if (!meal.items.length) meal.removed = true; recalcMeal(meal); }
       } else if (it.g < (it._minG || 0)) {
         reG(it, it._minG);
-        const meal = meals.find(m => m.items.includes(it));
+        const meal = mealOf(it);
         if (meal) recalcMeal(meal);
       }
     });
