@@ -37,6 +37,8 @@ const isElasticGrain = f => f && !f.unitLabel && (f.tags.includes('hot_carb') ||
 const grainCap = f => f.tags.includes('breakfast')
   ? ({ cut: 280, maintain: 300, bulk: 350 }[S.goal] || 350)   // שיבולת שועל — ארוחת בוקר, תקרה הדוקה
   : ({ cut: 280, maintain: 350, bulk: 450 }[S.goal] || 450);
+// רצפת מנת-חלבון מרכזית (בשר/דג בארוחה חמה) — מנה ריאליסטית, לא 30g. goal-aware, ניתן לכיול.
+const mainProtFloor = () => ({ cut: 70, maintain: 85, bulk: 90 }[S.goal] || 85);
 
 // ── קבוצות וריאנטים: אחד מכל קבוצה לתפריט — נאכף בסינון של pick ──
 // קוטג' 3%/5% (לא שניהם); ביצים M/L/XL (חביתה אחת ביום — מזהים שונים ולכן used לא תופס לבד)
@@ -477,6 +479,10 @@ function buildFromTemplate(tpl, cal, used, ctx) {
       item = pick(pool, used, cal * (s.calPct || .3), s.protPct ? protShare * s.protPct : 0, s.max || 250);
     }
     if (!item) continue;
+    // מנת חלבון מרכזית (בשר/דג בארוחה חמה, protPct) — רצפת מנה ריאליסטית כדי שלא תצא זעירה (30g)
+    if (s.protPct && item.f && (item.f.tags.includes('meat') || item.f.tags.includes('fish')) && !item.f.tags.includes('tuna')) {
+      item._mainProt = true; item._minG = mainProtFloor();
+    }
     if (item.f) item.f.tags.forEach(t => mealTags.add(t));   // עדכון תגי הארוחה (סלט = ירקות בלבד, לא רלוונטי לכשרות)
     // ממרח רק כשאין כבר חלבון בארוחה (קוטג'/ביצה/טונה ⇐ אין צורך בממרח)
     let spreadItem = null;
@@ -685,8 +691,28 @@ function reconcile(meals) {
   const clampG = (it, g) => {
     if (it.f.unitG) g = Math.round(g / it.f.unitG) * it.f.unitG;
     const max = Math.min(it.f.maxMeal || 99999, it.f.maxDay || 99999, 350);   // תקרת מנה לשפיות
-    return Math.max(it.f.unitG || 30, Math.min(g, max));
+    return Math.max(it._minG || it.f.unitG || 30, Math.min(g, max));   // רצפת מנה מרכזית (_minG) מכובדת בכל שלבי האיזון
   };
+
+  // רצפת מנת-חלבון מרכזית + ריכוז: מבטיחים מנת בשר/דג ריאליסטית (לא 30g) ולא מנפחים חלבון.
+  // הארוחה הבשרית הגדולה ביותר נשמרת ומורמת לרצפה; ארוחת-בשר *נוספת* שתדחוף את החלבון >115%
+  // מהיעד — מורידים ממנה את הבשר (נשארת פחמימה+ירק). במקרה קיצון (משקל נמוך) = ארוחה בשרית אחת.
+  // הפחמימות יסגרו את הפרש הקלוריות ב-Stage 3.
+  {
+    const mains = items().filter(it => it._mainProt).sort((a, b) => b.g - a.g);
+    mains.forEach((it, k) => {
+      const flooredP = it.f.p * (it._minG || 0) / 100;
+      const projTot = meals.reduce((s, m) => s + m.totP, 0) - it.p + Math.max(it.p, flooredP);
+      if (k > 0 && projTot > S.proteinG * 1.15) {
+        const meal = meals.find(m => m.items.includes(it));
+        if (meal) { meal.items = meal.items.filter(x => x !== it); if (!meal.items.length) meal.removed = true; recalcMeal(meal); }
+      } else if (it.g < (it._minG || 0)) {
+        reG(it, it._minG);
+        const meal = meals.find(m => m.items.includes(it));
+        if (meal) recalcMeal(meal);
+      }
+    });
+  }
 
   for (let outer = 0; outer < 6; outer++) {
     // ── שלב 1: חלבון → ±10% ──
