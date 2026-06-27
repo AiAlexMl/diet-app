@@ -7,7 +7,7 @@
 const DB = {
   "חלבון מן החי": [
     { id:2,  name:"חזה עוף אפוי",        prep:"אפוי בתנור", p:32.0, c:0.0,  f:4.2,  fib:0,   cal:175, tags:["meat"] },
-    { id:3,  name:"שניצל עוף",           prep:"מטוגן",      p:22.0, c:14.0, f:15.0, fib:1.0, cal:275, tags:["meat","gluten"] },
+    { id:3,  name:"שניצל עוף",           prep:"מטוגן",      p:22.0, c:14.0, f:15.0, fib:1.0, cal:275, tags:["meat","gluten"], containsEgg:true },   // ציפוי הפירורים מכיל ביצה — מוחרג לאלרגי-ביצה
     { id:4,  name:"שוק עוף",             prep:"אפוי",       p:28.5, c:0.0,  f:11.2, fib:0,   cal:216, tags:["meat"] },
     { id:5,  name:"חזה הודו",            prep:"מבושל/אפוי", p:29.9, c:0.0,  f:3.5,  fib:0,   cal:157, tags:["meat"] },
     { id:6,  name:"בשר בקר טחון",        prep:"מבושל",      p:26.0, c:0.0,  f:8.0,  fib:0,   cal:175, tags:["meat"], optIn:true },
@@ -44,7 +44,7 @@ const DB = {
     { id:40, name:"פיתה לבנה",          prep:"", p:7.5, c:52.0, f:1.2, fib:2.2, cal:255, tags:["grain","bread","gluten"], unitG:65,  unitLabel:"פיתה אחת", plural:"פיתות", pita:true },
     { id:41, name:"שיבולת שועל במים",   prep:"מבושל", p:2.5, c:12.0, f:1.5, fib:1.7, cal:71,  tags:["grain","breakfast","gluten"] },
     { id:106,name:"שיבולת שועל בחלב",   prep:"מבושל", p:4.8, c:15.0, f:3.8, fib:1.6, cal:116, tags:["grain","breakfast","gluten"], containsMilk:true, complete:true },
-    { id:107,name:"גרנולה",             prep:"", p:9.0, c:64.0, f:15.0, fib:7.0, cal:450, tags:["grain","granola","gluten"], unitG:45, unitLabel:"מנה (45g)" },
+    { id:107,name:"גרנולה",             prep:"", p:9.0, c:64.0, f:15.0, fib:7.0, cal:450, tags:["grain","granola","gluten"], containsNuts:true, unitG:45, unitLabel:"מנה (45g)" },
     { id:111,name:"דבש",                prep:"", p:0.3, c:82.0, f:0,    fib:0,   cal:304, tags:["sweet_topping"], topping:true, unitG:10, unitLabel:"כפית (10g)" },
     { id:112,name:"סילן",               prep:"", p:1.5, c:73.0, f:0,    fib:0.5, cal:290, tags:["sweet_topping"], topping:true, unitG:15, unitLabel:"כפית (15g)" },
     { id:108,name:"קורנפלקס",           prep:"", p:7.0, c:84.0, f:0.4, fib:3.0, cal:357, tags:["grain","cereal","gluten"],  unitG:30, unitLabel:"מנה (30g)" },
@@ -65,7 +65,7 @@ const DB = {
   "קטניות": [
     { id:50, name:"עדשים מבושלות",      prep:"", p:9.0,  c:20.1, f:0.4, fib:7.9, cal:116, tags:["legume"] },
     { id:51, name:"חומוס מבושל",        prep:"", p:8.9,  c:27.4, f:2.6, fib:7.6, cal:164, tags:["legume"] },
-    { id:52, name:"חומוס ממרח",         prep:"", p:7.9,  c:14.3, f:9.6, fib:6.0, cal:177, tags:["legume"], dip:true },
+    { id:52, name:"חומוס ממרח",         prep:"", p:7.9,  c:14.3, f:9.6, fib:6.0, cal:177, tags:["legume","sesame"], dip:true },   // ממרח חומוס מכיל טחינה (שומשום) — מוחרג לאלרגיים
     { id:53, name:"שעועית לבנה",        prep:"", p:9.7,  c:25.4, f:0.4, fib:6.3, cal:139, tags:["legume"] },
     { id:54, name:"שעועית שחורה",       prep:"", p:8.9,  c:23.7, f:0.5, fib:8.7, cal:132, tags:["legume"] },
     { id:55, name:"אפונה מבושלת",       prep:"", p:5.4,  c:15.6, f:0.2, fib:5.5, cal:84,  tags:["legume"] },
@@ -116,11 +116,11 @@ const DB = {
     { id:93, name:"זיתים",              prep:"", p:0.9,  c:5.0,  f:13.0,  fib:3.2,  cal:120, tags:["fat"],            unitG:5,   unitLabel:"זית אחד", plural:"זיתים" },
   ],
   "תוספים": [
-    { id:96, name:"אבקת חלבון מי גבינה", prep:"", p:75.0, c:7.0, f:5.0, fib:1.0, cal:380, tags:["supplement"], unitG:30, unitLabel:"סקופ אחד (30g)" },
+    { id:96, name:"אבקת חלבון מי גבינה", prep:"", p:75.0, c:7.0, f:5.0, fib:1.0, cal:380, tags:["supplement"], containsMilk:true, unitG:30, unitLabel:"סקופ אחד (30g)" },   // וויי = מוצר חלב — מחריג טבעוני/lactose (לטבעונים יש אבקת חלבון צמחי 97)
     { id:97, name:"אבקת חלבון צמחי",    prep:"", p:70.0, c:8.0, f:6.0, fib:3.0, cal:360, tags:["supplement"], unitG:30, unitLabel:"סקופ אחד (30g)" },
-    { id:98, name:"קזאין",              prep:"", p:72.0, c:9.0, f:4.5, fib:1.0, cal:370, tags:["supplement"], unitG:30, unitLabel:"סקופ אחד (30g)" },
-    { id:99, name:"בר חלבון",           prep:"", p:21.0, c:20.0,f:6.0, fib:5.0, cal:190, tags:["supplement"], unitG:60, unitLabel:"בר אחד (60g)" },
-    { id:101,name:"חטיף אנרגיה",       prep:"", p:9.0,  c:64.0,f:7.0, fib:4.0, cal:380, tags:["supplement","gluten"], unitG:65, unitLabel:"חטיף אחד (65g)" },
+    { id:98, name:"קזאין",              prep:"", p:72.0, c:9.0, f:4.5, fib:1.0, cal:370, tags:["supplement"], containsMilk:true, unitG:30, unitLabel:"סקופ אחד (30g)" },   // קזאין = מוצר חלב — מחריג טבעוני/lactose
+    { id:99, name:"בר חלבון",           prep:"", p:21.0, c:20.0,f:6.0, fib:5.0, cal:190, tags:["supplement"], containsMilk:true, containsNuts:true, unitG:60, unitLabel:"בר אחד (60g)" },   // ברי חלבון לרוב על בסיס חלב + מכילים אגוזים
+    { id:101,name:"חטיף אנרגיה",       prep:"", p:9.0,  c:64.0,f:7.0, fib:4.0, cal:380, tags:["supplement","gluten"], containsNuts:true, unitG:65, unitLabel:"חטיף אחד (65g)" },
   ],
 };
 

@@ -34,9 +34,13 @@ const tunaUsed = used => [...TUNA_IDS].some(id => used.has(id));
 // ── תקרת מנת דגן-בגרמים, תלוית-מטרה: במסה (משקל/יעד גבוה) מנות גדולות הגיוניות, בחיטוב לא.
 // שיבולת שועל (תג breakfast) מקבלת תקרה הדוקה יותר — ארוחת בוקר, לא מאגר הקלוריות של היום.
 const isElasticGrain = f => f && !f.unitLabel && (f.tags.includes('hot_carb') || f.tags.includes('grain'));
+// ארוחה חמה יחידה ביום (בוקר/ללא-אימון) — שם הדגן הבודד הוא מנוף הקלוריות העיקרי. צהריים/ערב = 2 ארוחות חמות.
+const singleHotMeal = () => S.noTrain || (S.time !== 'noon' && S.time !== 'evening');
 const grainCap = f => f.tags.includes('breakfast')
   ? ({ cut: 280, maintain: 300, bulk: 350 }[S.goal] || 350)   // שיבולת שועל — ארוחת בוקר, תקרה הדוקה
-  : ({ cut: 280, maintain: 350, bulk: 450 }[S.goal] || 450);
+  : singleHotMeal()
+    ? ({ cut: 320, maintain: 480, bulk: 600 }[S.goal] || 480)   // ארוחה חמה יחידה — תקרה גבוהה (הפיצול שומר על מנות ריאליסטיות); נחוץ לסגירת היעד
+    : ({ cut: 280, maintain: 350, bulk: 450 }[S.goal] || 450);  // רב-ארוחות-חמות (צהריים/ערב) — תקרה רגילה, ללא שינוי
 // רצפת מנת-חלבון מרכזית (בשר/דג בארוחה חמה) — מנה ריאליסטית, לא 30g. goal-aware, ניתן לכיול.
 const mainProtFloor = () => ({ cut: 70, maintain: 85, bulk: 90 }[S.goal] || 85);
 
@@ -109,9 +113,9 @@ function calcMacro() {
 function allowed(f) {
   if (S.avoided.has(f.id)) return false;
   const a = S.allergy, d = S.diet;
-  if (a.has('eggs')    && f.tags.includes('egg'))        return false;
+  if (a.has('eggs')    && (f.tags.includes('egg') || f.containsEgg))   return false;   // ביצה מפורשת + מאכלים עם ציפוי/ביצה (שניצל)
   if (a.has('fish')    && f.tags.includes('fish'))       return false;
-  if (a.has('nuts')    && f.tags.includes('nuts'))       return false;
+  if (a.has('nuts')    && (f.tags.includes('nuts') || f.containsNuts)) return false;   // אגוזים מפורשים + מאכלים שעלולים להכיל (גרנולה/חטיף אנרגיה)
   if (a.has('peanuts') && f.tags.includes('peanuts'))    return false;
   if (a.has('soy')     && f.tags.includes('soy'))        return false;
   if (a.has('sesame')  && f.tags.includes('sesame'))     return false;
@@ -463,8 +467,13 @@ function buildFromTemplate(tpl, cal, used, ctx) {
         const getCarbCat = f => f.tags.find(t => t === 'grain' || t === 'starch') || 'other';
         const allHc = ALL.filter(f => f.tags.includes('hot_carb'));
         const cats = (ctx && ctx.usedCarbCats) || new Set();
-        const prefHc = allHc.filter(f => !cats.has(getCarbCat(f)));
-        item = pick(prefHc.length ? prefHc : allHc, used, cal * (s.calPct || .4), 0, s.max || 250);
+        // ארוחה חמה יחידה: מעדיפים דגן גמיש (מנוף קלוריות — שם היום נתקע מתחת ליעד), והבטטה לגיוון
+        // מגיעה דרך פיצול-הפחמימה. צהריים/ערב: גיוון קטגוריה כרגיל (עמילן יכול להיות הפחמימה המרכזית).
+        const elastic = allHc.filter(f => isElasticGrain(f));
+        const base = (singleHotMeal() && elastic.length) ? elastic : allHc;
+        const prefHc = base.filter(f => !cats.has(getCarbCat(f)));
+        item = pick(prefHc.length ? prefHc : base, used, cal * (s.calPct || .4), 0, s.max || 250);
+        if (!item && base !== allHc) item = pick(allHc, used, cal * (s.calPct || .4), 0, s.max || 250);   // נפילה לעמילן אם הדגן נחסם
         if (item) cats.add(getCarbCat(item.f));
       }
     } else if (s.special === 'dip') {
@@ -846,6 +855,27 @@ function reconcile(meals, used, ctx) {
       S.menuWarning = 'עם ההעדפות והיעד הנוכחיים קשה לעמוד בדיוק ביעד הקלורי — חלק מהמאכלים שסומנו עשירים בשומן או דלים בחלבון. ניסינו לאזן; כדי לדייק כדאי להסיר חלק מהמאכלים השמנים המועדפים או להתאים מעט את יעד הקלוריות.';
   }
 
+  // השלמת תת-השגה: אם נשארנו מתחת ליעד והדגן הגמיש לא מוצה — מגדילים אותו ישירות לסגירת הפער.
+  // (פיזור שלב-3 פרופורציונלי-לקלוריות, אז דגן בודד מול הרבה מנופים-יחידתיים תקועים בתקרה לא תמיד
+  // מתמלא ב-6 איטרציות; קורה בעיקר בארוחה חמה יחידה/דיאטה מגבילה.) הפיצול שאחרי ישמור על ריאליות.
+  if (singleHotMeal()) {
+    let under = S.target - meals.reduce((s, m) => s + m.totCal, 0);
+    if (under > S.target * CAL_TOL) {
+      const capOf = it => Math.min(it._maxG || 99999, it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
+      const elG = items().filter(it => isElasticGrain(it.f) && it.g < capOf(it))
+        .sort((a, b) => (capOf(b) - b.g) - (capOf(a) - a.g));   // הכי הרבה מקום קודם
+      for (const it of elG) {
+        if (under <= S.target * CAL_TOL) break;
+        const addG = Math.min(capOf(it) - it.g, Math.round(under / it.f.cal * 100));
+        if (addG <= 0) continue;
+        const before = it.cal;
+        reG(it, it.g + addG);
+        under -= (it.cal - before);
+      }
+      meals.forEach(recalcMeal);
+    }
+  }
+
   // פיצול "ערימת פחמימה" בארוחה חמה (דו-כיווני): הפחמימה הגמישה הכבדה ביותר — דגן בגרמים או
   // עמילן ביחידות — שעוברת ~350 קל' מתפצלת לחצי + תוספת פחמימה *מסוג אחר* (דגן→בטטה, בטטה→דגן).
   // מעבירים קלוריות 1:1 (מאקרו וקלוריות נשמרים). פותר "הר אורז" וגם "3 בטטות". פיצול אחד לארוחה.
@@ -1176,9 +1206,12 @@ function rebalanceDay(meals, eaten) {
 // על יותר ארוחות ולא לדחוס מנות ענק (מפתחי גוף אוכלים 5–6 ארוחות).
 function mealPlan(key, target) {
   const defs = MEAL_TIMES[key].map(d => ({ ...d }));
-  const extra = target > 2900 ? 3 : target > 2400 ? 2 : target > 2100 ? 1 : 0;   // ספים הונמכו כשהלחם הוגבל ל-2 פרוסות
-  const slots = [{ time: '10:30' }, { time: '16:00' }, { time: '21:30' }];
-  for (let i = 0; i < extra; i++)
+  let extra = target > 2900 ? 3 : target > 2400 ? 2 : target > 2100 ? 1 : 0;   // ספים הונמכו כשהלחם הוגבל ל-2 פרוסות
+  // ארוחה חמה יחידה (בוקר/ללא-אימון) עם יעד גבוה: נשנוש נוסף, כדי שהמנה החמה היחידה לא תישא
+  // ~50% מהיום (קורה בעיקר בדיאטה מגבילה שבה שאר הארוחות לא מתמלאות). מפזר לארוחות סבירות יותר.
+  if ((key === 'noTrain' || key === 'morning') && target > 2200) extra += 1;
+  const slots = [{ time: '10:30' }, { time: '16:00' }, { time: '21:30' }, { time: '14:30' }];
+  for (let i = 0; i < extra && i < slots.length; i++)
     defs.push({ label: 'נשנוש נוסף', icon: 'coffee', time: slots[i].time, pct: 0.13, tag: null, type: 'snack', big: false });
   defs.sort((a, b) => a.time.localeCompare(b.time));
   const sum = defs.reduce((s, d) => s + d.pct, 0) || 1;
