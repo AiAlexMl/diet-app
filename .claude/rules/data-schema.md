@@ -71,7 +71,8 @@ All filtering logic is tag-driven:
 - `isEgg:true` — triggers `eggDisplay(g, unitG, size)` in `mkItem()`; displayed as "חביתה מביצה אחת (L)" etc.
 - `halfLabel` — used for cottage cheese half-container display (ids 20–21 only)
 - `vegOnly:true` — only allowed for vegan/vegetarian diets (tofu id 56, seitan id 58 — note seitan also carries `gluten`, so GF vegans don't get it). Checked in `allowed()`
-- `containsMilk:true` — excluded for vegan/lactose_free (e.g., oatmeal-with-milk id 106). Checked in `allowed()`
+- `containsMilk:true` — excluded for vegan/lactose_free (oatmeal-with-milk 106; **whey 96 + casein 98** — milk-derived supplements, so a vegan/lactose user gets plant protein 97 instead; **protein bar 99**). Checked in `allowed()`
+- **Hidden-allergen fields** (`containsNuts` / `containsEgg`) — for composite/processed foods whose allergen isn't a food-role tag, so they can't use the bare tag (e.g. `nuts` would route granola into nut slots / `reNuts`). `allowed()` excludes them for the matching allergy alongside the explicit tag: `containsNuts` on **granola 107, energy bar 101, protein bar 99**; `containsEgg` on **schnitzel 3** (breading); `sesame` **tag** is side-effect-free so hummus-spread 52 (contains tahini) just adds it directly. Explicit allergen foods stay tag-based: `nuts` (88/89/90), `sesame` (tahini 91), `peanuts` (PB 92), `soy` (tofu 56/edamame 57).
 - `condiment:true` — olive oil (86), tahini (91), peanut butter (92); never standalone, only via `makeSpread` on bread/cracker
 - `drink:true` — milk (27); only the cornflakes `milk` slot, never a protein
 - `complete:true` — self-contained meal (oatmeal-with-milk 106); its template has no protein slot
