@@ -146,3 +146,5 @@ Liked foods always outrank non-liked (liked group comes first); both groups are 
 - `displayName` set only for eggs: "חביתה מביצה אחת (L)"; `dispG` is `''`
 - All other items: `displayName` is `undefined`; `dispG` holds the portion string
 - `fib` — fiber grams for the served portion (`f.fib || 0`); meals sum it to `totFib`, daily total shown in the summary (number only, no target hint)
+
+**Per-meal realism caps** (`mkItem`): bread ≤2 slices (pita 1); **fruit ≤ ~200 g/meal** (clementine→2, banana/apple→1, small dates stay generous) — so a single meal never shows an unrealistic fruit/bread pile even when the calorie budget would allow it.

@@ -88,9 +88,12 @@ Shown on page load via HTML (`.disclaimer-overlay` always visible at start). `cl
 - **Summary card**: gradient purple/blue with font-weight 800 on numbers
 - **RTL**: `direction: rtl` on body; all layout is RTL-first
 
+## Save / Print to PDF (implemented)
+
+The menu screen has a "📄 שמירת התפריט" button → `window.print()`. A `@media print` block in `style.css` hides the interactive chrome (nav / treat-bar / progress / eaten+edit buttons / `.coach-cta` / step-bar) so the browser's "save as PDF" yields a clean menu-only sheet — no build step, no library.
+
 ## Planned Features
 
 - Interactive food swap on the menu screen
-- Save menu / export to PDF
 - Coach/trainer version
 - Integration with FoodsDictionary API
