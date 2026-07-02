@@ -232,13 +232,25 @@
     status.setAttribute('aria-live', 'polite');
     function setStatus(t) { status.textContent = t; }
 
+    // רגע ההסכמה — הפניה מפורשת למדיניות הפרטיות
+    const legal = document.createElement('p');
+    legal.className = 'auth-legal';
+    legal.appendChild(document.createTextNode('בהתחברות אתה מאשר את '));
+    const pl = document.createElement('a');
+    pl.href = 'privacy.html';
+    pl.target = '_blank';
+    pl.rel = 'noopener';
+    pl.textContent = 'מדיניות הפרטיות';
+    legal.appendChild(pl);
+    legal.appendChild(document.createTextNode(' — ההעדפות והתפריטים שלך יישמרו בענן לחשבונך בלבד.'));
+
     const x = document.createElement('button');
     x.className = 'auth-close';
     x.textContent = '✕';
     x.setAttribute('aria-label', 'סגירה');
     x.onclick = closeLogin;
 
-    box.append(x, h, p, gBtn, div, email, mBtn, status);
+    box.append(x, h, p, gBtn, div, email, mBtn, status, legal);
     authEl.appendChild(box);
     document.body.appendChild(authEl);
 
