@@ -9,8 +9,8 @@
   'use strict';
 
   // ── קונפיג: ה-anon key ציבורי במתכוון (RLS הוא ההגנה). ריק ⇒ השכבה לא רצה ──
-  const SUPA_URL  = '';   // TODO: https://<project-ref>.supabase.co
-  const SUPA_ANON = '';   // TODO: anon public key
+  const SUPA_URL  = 'https://kjlxgamalfzdjtjxfzun.supabase.co';
+  const SUPA_ANON = 'sb_publishable_cUbB5SU30DWzSdFmP2T24w_lc4PjF9f';
 
   if (!SUPA_URL || !SUPA_ANON || !window.supabase) return;
 
