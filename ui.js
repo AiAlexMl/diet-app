@@ -70,7 +70,8 @@ const DAY_KEY = 'shapeat-day';
 let DAY = null;   // { date, target, meals(live), eaten[], warn{bmi,carb,menu}, gLabel, tLabel }
 
 const FOOD_BY_ID = Object.fromEntries([...ALL, ...TREATS].map(f => [f.id, f]));
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// תאריך מקומי (לא UTC!) — toISOString החליף יום רק ב-02:00/03:00 שעון ישראל
+const todayStr = () => new Date().toLocaleDateString('en-CA');
 
 // פריט → נתונים שטוחים (בלי refs); משחזרים את f לפי id (תקף גם אחרי adjustEgg/lean-swap)
 function serializeDay(day) {

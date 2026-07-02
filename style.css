@@ -78,6 +78,19 @@ body {
   color: var(--text-tert);
   letter-spacing: 0.3px;
 }
+/* ── מיתוג מאמן (white-label, מוזרק ע"י coach-theme.js) ── */
+.coach-monogram {
+  width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff; font-weight: 800; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+.coach-powered {
+  font-size: 10px; font-weight: 500;
+  color: var(--text-tert);
+  letter-spacing: 0.2px; margin-top: 2px;
+}
 
 /* ── שורת התקדמות ── */
 .step-bar { display: flex; gap: 6px; margin-bottom: 2rem; }
