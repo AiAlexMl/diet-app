@@ -220,7 +220,9 @@
         const { error } = await sb.auth.signInWithOtp({
           email: v, options: { emailRedirectTo: location.origin + location.pathname },
         });
-        setStatus(error ? 'השליחה נכשלה, נסה שוב' : 'שלחנו קישור למייל — בדוק את תיבת הדואר');
+        setStatus(!error ? 'שלחנו קישור למייל. פתח אותו במכשיר שבו תרצה להתחבר'
+          : error.status === 429 ? 'נשלחו יותר מדי מיילים. נסה שוב בעוד כשעה'
+          : 'השליחה נכשלה, נסה שוב');
       } catch (e) { setStatus('השליחה נכשלה, נסה שוב'); }
       mBtn.disabled = false;
     };
