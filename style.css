@@ -94,6 +94,8 @@ body {
 }
 /* fallback בלבד: כשאין footer והשורה נופלת מתחת ללוגו */
 .logo-stack .coach-powered { font-size: 10px; margin: 2px 0 0; }
+/* בעמוד ממותג אין גיוס מאמנים — ה-CTA של ShapEat מוסתר */
+.coach-branded .coach-cta { display: none; }
 
 /* ── שורת התקדמות ── */
 .step-bar { display: flex; gap: 6px; margin-bottom: 2rem; }

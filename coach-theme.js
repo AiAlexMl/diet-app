@@ -62,6 +62,7 @@
   function apply(c) {
     // צבעים — מיד (לפני רינדור), רק אחרי ולידציה וסף ניגודיות
     const root = document.documentElement;
+    root.classList.add('coach-branded');   // מסתיר את ה-CTA "מאמן/ה?" — לא מגייסים מאמנים על גב מתאמנים של מאמן
     if (HEX_RE.test(c.color || '')) {
       const main = ensureContrast(c.color);
       root.style.setProperty('--accent', main);
