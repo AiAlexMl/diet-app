@@ -87,10 +87,13 @@ body {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
 }
 .coach-powered {
-  font-size: 10px; font-weight: 500;
-  color: var(--text-tert);
-  letter-spacing: 0.2px; margin-top: 2px;
+  font-size: 12px; font-weight: 500;
+  color: #8b90a3;                 /* כמו קישורי ה-footer */
+  letter-spacing: 0.2px;
+  margin-bottom: 6px;
 }
+/* fallback בלבד: כשאין footer והשורה נופלת מתחת ללוגו */
+.logo-stack .coach-powered { font-size: 10px; margin: 2px 0 0; }
 
 /* ── שורת התקדמות ── */
 .step-bar { display: flex; gap: 6px; margin-bottom: 2rem; }

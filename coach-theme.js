@@ -95,11 +95,15 @@
       if (tag && typeof c.tagline === 'string' && c.tagline.trim())
         tag.textContent = c.tagline.slice(0, 80).trim();
 
-      // מיגון משפטי — שורה קבועה, לא ניתנת להסרה דרך coaches.json
-      const pb = document.createElement('span');
+      // מיגון משפטי — שורה קבועה, לא ניתנת להסרה דרך coaches.json.
+      // יושבת ב-footer עם שאר האותיות הקטנות; אם ה-footer חסר — נופלת חזרה מתחת ללוגו,
+      // כדי שהשורה תמיד תופיע איפשהו בעמוד ממותג.
+      const pb = document.createElement('div');
       pb.className = 'coach-powered';
       pb.textContent = 'מופעל ע"י ShapEat · תפריט לדוגמה מחושב אוטומטית';
-      stack.appendChild(pb);
+      const footer = document.querySelector('.site-footer');
+      if (footer) footer.insertBefore(pb, footer.firstChild);
+      else stack.appendChild(pb);
     });
   }
 })();
