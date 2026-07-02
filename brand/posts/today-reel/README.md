@@ -22,4 +22,4 @@ npx hyperframes lint && npx hyperframes validate && npx hyperframes inspect
 npx hyperframes render --quality high --output renders/today-is-the-product.mp4
 ```
 
-הכיתוב לפרסום + סטטוס: `../POST-LOG.md` (#7).
+הכיתוב לפרסום + סטטוס: `internal/POST-LOG.md` (#7, בריפו הפנימי).

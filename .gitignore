@@ -4,3 +4,4 @@ brand/posts/coach-demo-video/*.webm
 brand/posts/coach-demo-video/frame-*.png
 brand/posts/coach-demo-video/chk-*.png
 .playwright-mcp/
+internal/
