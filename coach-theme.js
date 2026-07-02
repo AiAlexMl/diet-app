@@ -101,7 +101,12 @@
       // כדי שהשורה תמיד תופיע איפשהו בעמוד ממותג.
       const pb = document.createElement('div');
       pb.className = 'coach-powered';
-      pb.textContent = 'מופעל ע"י ShapEat · תפריט לדוגמה מחושב אוטומטית';
+      const ic = document.createElement('img');
+      ic.src = 'brand/AVATAR-shapeat.png';
+      ic.alt = '';                               // דקורטיבי — הטקסט אומר ShapEat
+      ic.className = 'coach-powered-logo';
+      pb.appendChild(ic);
+      pb.appendChild(document.createTextNode('מופעל ע"י ShapEat · תפריט לדוגמה מחושב אוטומטית'));
       const footer = document.querySelector('.site-footer');
       if (footer) footer.insertBefore(pb, footer.firstChild);
       else stack.appendChild(pb);
