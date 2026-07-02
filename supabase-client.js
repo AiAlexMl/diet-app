@@ -190,9 +190,27 @@
     p.className = 'auth-sub';
     p.textContent = 'ההעדפות והימים שלך יישמרו לחשבון ויהיו זמינים מכל מכשיר.';
 
+    // הסכמה אקטיבית (כמו הדיסקליימר): הכפתורים נעולים עד סימון
+    const consent = document.createElement('label');
+    consent.className = 'auth-consent';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    const ctxt = document.createElement('span');
+    ctxt.appendChild(document.createTextNode('אני מאשר/ת את '));
+    const pl = document.createElement('a');
+    pl.href = 'privacy.html';
+    pl.target = '_blank';
+    pl.rel = 'noopener';
+    pl.textContent = 'מדיניות הפרטיות';
+    ctxt.appendChild(pl);
+    ctxt.appendChild(document.createTextNode(' ואת שמירת ההעדפות והתפריטים שלי בענן, לחשבוני בלבד.'));
+    consent.append(cb, ctxt);
+    cb.addEventListener('change', () => { gBtn.disabled = mBtn.disabled = !cb.checked; });
+
     const gBtn = document.createElement('button');
     gBtn.className = 'auth-google';
     gBtn.textContent = 'המשך עם Google';
+    gBtn.disabled = true;
     gBtn.onclick = () => {
       sb.auth.signInWithOAuth({
         provider: 'google',
@@ -212,6 +230,7 @@
     const mBtn = document.createElement('button');
     mBtn.className = 'auth-magic';
     mBtn.textContent = 'שלחו לי קישור התחברות';
+    mBtn.disabled = true;
     mBtn.onclick = async () => {
       const v = (email.value || '').trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { setStatus('כתובת אימייל לא תקינה'); return; }
@@ -224,7 +243,7 @@
           : error.status === 429 ? 'נשלחו יותר מדי מיילים. נסה שוב בעוד כשעה'
           : 'השליחה נכשלה, נסה שוב');
       } catch (e) { setStatus('השליחה נכשלה, נסה שוב'); }
-      mBtn.disabled = false;
+      mBtn.disabled = !cb.checked;
     };
 
     const status = document.createElement('p');
@@ -232,30 +251,18 @@
     status.setAttribute('aria-live', 'polite');
     function setStatus(t) { status.textContent = t; }
 
-    // רגע ההסכמה — הפניה מפורשת למדיניות הפרטיות
-    const legal = document.createElement('p');
-    legal.className = 'auth-legal';
-    legal.appendChild(document.createTextNode('בהתחברות אתה מאשר את '));
-    const pl = document.createElement('a');
-    pl.href = 'privacy.html';
-    pl.target = '_blank';
-    pl.rel = 'noopener';
-    pl.textContent = 'מדיניות הפרטיות';
-    legal.appendChild(pl);
-    legal.appendChild(document.createTextNode(' — ההעדפות והתפריטים שלך יישמרו בענן לחשבונך בלבד.'));
-
     const x = document.createElement('button');
     x.className = 'auth-close';
     x.textContent = '✕';
     x.setAttribute('aria-label', 'סגירה');
     x.onclick = closeLogin;
 
-    box.append(x, h, p, gBtn, div, email, mBtn, status, legal);
+    box.append(x, h, p, consent, gBtn, div, email, mBtn, status);
     authEl.appendChild(box);
     document.body.appendChild(authEl);
 
     // focus-trap בסיסי (כמו מודאל הדיסקליימר): Esc סוגר, Tab נשאר בתוך המודאל
-    gBtn.focus();
+    cb.focus();
     authEl.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeLogin();
       if (e.key === 'Tab') {
