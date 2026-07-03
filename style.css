@@ -172,6 +172,93 @@ body {
 }
 @media print { .sync-banner, .auth-overlay { display: none !important; } }
 
+/* ── toast כללי (משתמש ב-keyframes toast-pop) ── */
+.app-toast {
+  position: fixed; bottom: 90px; left: 50%;
+  transform: translateX(-50%); z-index: 120;
+  background: #1f2333; color: #fff;
+  font-size: 14px; font-weight: 600;
+  padding: 11px 20px; border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  max-width: 90vw; text-align: center;
+  animation: toast-pop 2.4s ease forwards;
+}
+
+/* ── אייקון חשבון בכותרת (מוזרק ע"י supabase-client.js) ── */
+header { position: relative; }
+.account-btn {
+  position: absolute; top: 6px; inset-inline-end: 0;
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1.5px solid var(--border-sec);
+  background: var(--bg); color: var(--text-tert);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-sm); transition: all .2s;
+}
+.account-btn:hover { border-color: var(--accent); color: var(--accent); }
+.account-btn.connected { border-color: var(--accent); color: var(--accent); }
+.account-btn.connected::after {
+  content: ''; position: absolute; top: -1px; inset-inline-end: -1px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #10b981; border: 1.5px solid var(--bg);
+}
+
+/* ── מודאל "החשבון שלי" (על בסיס .auth-box) ── */
+.account-box {
+  max-width: 430px; width: 100%;
+  max-height: 84vh; display: flex; flex-direction: column;
+  text-align: right;
+}
+.account-box h3 { text-align: center; }
+.account-email { font-size: 13px; color: var(--text-tert); direction: ltr; text-align: center; margin: 0 0 14px; }
+.account-tabs { display: flex; gap: 8px; margin-bottom: 12px; justify-content: center; }
+.account-tab {
+  padding: 7px 20px; border-radius: 999px;
+  border: 1.5px solid var(--border-sec);
+  background: var(--bg); color: var(--text-sec);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s;
+}
+.account-tab.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent; color: #fff;
+}
+.account-list { overflow-y: auto; flex: 1; min-height: 120px; }
+.account-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; margin-bottom: 8px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  cursor: pointer; font-size: 13.5px; transition: border-color .2s;
+}
+.account-row:hover { border-color: var(--accent); }
+.account-row .row-date { font-weight: 700; }
+.account-row .row-meta { color: var(--text-tert); margin-inline-start: auto; font-size: 12.5px; }
+.row-del {
+  border: none; background: none; color: var(--text-tert);
+  cursor: pointer; font-size: 14px; padding: 2px 6px; flex-shrink: 0;
+}
+.row-del:hover { color: var(--text-danger); }
+.account-empty { text-align: center; color: var(--text-tert); font-size: 13px; padding: 28px 0; }
+.account-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+.account-logout {
+  padding: 8px 16px; border-radius: 999px;
+  border: 1.5px solid var(--border-sec);
+  background: var(--bg); color: var(--text-sec);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.account-logout:hover { border-color: var(--accent); color: var(--accent); }
+.account-delete {
+  border: none; background: none; color: var(--text-danger);
+  font-size: 12px; cursor: pointer; opacity: .85;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.account-delete:hover { opacity: 1; }
+/* תצוגת יום קריאה-בלבד בתוך המודאל */
+.ro-day { overflow-y: auto; flex: 1; }
+.ro-day .meal-card { box-shadow: none; }
+.ro-back { margin-bottom: 12px; }
+
 /* ── שורת התקדמות ── */
 .step-bar { display: flex; gap: 6px; margin-bottom: 2rem; }
 .step {
@@ -322,9 +409,24 @@ input[type="number"]:focus {
 
 /* ── כפתורי ניווט ── */
 .nav-btns { display: flex; gap: 10px; margin-top: 1.75rem; }
-/* כפתורי פעולה במסך התפריט: 3 כפתורים עם טקסט ארוך נשברים בשורה אחת -> סידור אנכי, רוחב מלא */
-.menu-actions { flex-direction: column; }
-.menu-actions .btn-primary, .menu-actions .btn-secondary { flex: none; width: 100%; }
+/* פעולות שקטות במסך התפריט — "היום הוא המוצר", ייצור תפריט חוזר הוא משני */
+.menu-quiet-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+.pill-btn {
+  padding: 9px 18px; border-radius: 999px;
+  border: 1.5px solid var(--border-sec);
+  background: var(--bg); color: var(--text-sec);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all .2s; box-shadow: var(--shadow-sm);
+}
+.pill-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pill-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.reset-link {
+  display: block; margin: 12px auto 0;
+  border: none; background: none;
+  color: var(--text-tert); font-size: 12px; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; opacity: .8;
+}
+.reset-link:hover { opacity: 1; color: var(--text-danger); }
 .btn-primary {
   flex: 1; padding: 13px;
   border-radius: var(--radius-md);
@@ -395,9 +497,22 @@ input[type="number"]:focus {
 .menu-header {
   display: flex; justify-content: space-between;
   align-items: baseline; margin-bottom: 1.5rem;
+  position: relative; padding-inline-end: 48px;   /* מקום ללב */
 }
 .menu-title { font-size: 20px; font-weight: 700; letter-spacing: -0.2px; }
 .menu-sub   { font-size: 13px; color: var(--text-tert); }
+
+/* לב — שמירת התפריט למועדפים (snapshot; לחיצה חוזרת מעדכנת) */
+.fav-heart {
+  position: absolute; inset-inline-end: 0; top: -6px;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1.5px solid var(--border-sec);
+  background: var(--bg); color: var(--text-tert);
+  font-size: 19px; line-height: 1; cursor: pointer;
+  box-shadow: var(--shadow-sm); transition: all .2s;
+}
+.fav-heart:hover { border-color: #fda4af; color: #e11d48; transform: translateY(-1px); }
+.fav-heart.on { color: #e11d48; border-color: #fecdd3; background: #fff1f2; }
 
 /* כרטיס ארוחה */
 .meal-card {
@@ -909,7 +1024,8 @@ input[type="number"]:focus {
   /* להסתיר את כל הכרום האינטראקטיבי + מה שלא שייך לתפריט עצמו */
   .step-bar, .disclaimer-overlay, .nav-btns, .treat-bar, .day-progress,
   .eaten-btn, .alt-btn, .meal-edit-btn, .item-remove, .treat-remove,
-  .coach-cta, .confetti-layer, .site-footer { display: none !important; }
+  .coach-cta, .confetti-layer, .site-footer,
+  .fav-heart, .menu-quiet-actions, .reset-link, .account-btn, .app-toast { display: none !important; }
   /* צמצום לדף אחד: בלי מאקרו פר-ארוחה, בלי תמונות, בלי טיפים (הסיכום בסוף נשאר) */
   .macro-row, .food-thumb, .tips-box, .treat-tip, .day-note, .print-hint,
   .bmi-warning, .field-error, .no-train-sub { display: none !important; }

@@ -144,6 +144,88 @@ function clearDay() {
   try { localStorage.removeItem(DAY_KEY); } catch (e) {}
 }
 
+// ══════════════════════════════════════════
+//  מועדפים — snapshot של תפריט יום ("לב"). מקומי-קודם; הענן מתמזג דרך supabase-client.
+//  בכוונה resetApp/clearDay לא נוגעים כאן — תפריט ששמרת שורד איפוס.
+// ══════════════════════════════════════════
+const FAV_KEY = 'shapeat-favorites';
+const FAV_CAP = 30;
+
+function listFavorites() {
+  try {
+    const l = JSON.parse(localStorage.getItem(FAV_KEY));
+    return Array.isArray(l) ? l.sort((a, b) => (a.saved_at < b.saved_at ? 1 : -1)) : [];
+  } catch (e) { return []; }
+}
+
+function writeFavorites(list) {
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(list)); } catch (e) {}
+}
+
+// שומר/מעדכן את התפריט הנוכחי. לחיצה חוזרת באותו יום מעדכנת את הצילום (לא כפילות, לא ביטול).
+// מחזיר {fav, created} — ה-hook של שכבת הסנכרון (supabase-client עוטף את הפונקציה).
+function saveFavorite() {
+  if (!DAY) return null;
+  const list = listFavorites();
+  const now = new Date().toISOString();
+  let fav = list.find(f => f.date === DAY.date);
+  let created = false;
+  if (fav) {
+    fav.payload = serializeDay(DAY);
+    fav.saved_at = now;
+    showToast('התפריט עודכן במועדפים ✓');
+  } else {
+    created = true;
+    fav = { fav_id: crypto.randomUUID(), date: DAY.date, saved_at: now, payload: serializeDay(DAY) };
+    list.unshift(fav);
+    while (list.length > FAV_CAP) list.pop();   // הרשימה ממוינת חדש→ישן; מפילים את הישן
+    showToast('התפריט נשמר ✓');
+  }
+  writeFavorites(list);
+  updateFavHeart();
+  // רמז חד-פעמי לאנונימי: השמירה מקומית עד שיש חשבון
+  try {
+    const connected = window.shapeatAccount && window.shapeatAccount.isConnected();
+    if (!connected && !localStorage.getItem('shapeat-fav-hint')) {
+      localStorage.setItem('shapeat-fav-hint', '1');
+      setTimeout(() => showToast('נשמר במכשיר · התחברות תגבה ותציג בהיסטוריה', 4200), 1600);
+    }
+  } catch (e) {}
+  return { fav, created };
+}
+
+function toggleFavoriteToday() { saveFavorite(); }
+
+// הסרה — רק ממסך ההיסטוריה. מחזיר את שהוסר (hook לסנכרון).
+function removeFavorite(favId) {
+  const list = listFavorites();
+  const removed = list.find(f => f.fav_id === favId) || null;
+  writeFavorites(list.filter(f => f.fav_id !== favId));
+  updateFavHeart();
+  return removed;
+}
+
+function updateFavHeart() {
+  const b = document.getElementById('fav-heart');
+  if (!b) return;
+  const saved = listFavorites().some(f => f.date === todayStr());
+  b.classList.toggle('on', saved);
+  b.textContent = saved ? '♥' : '♡';
+  b.title = saved ? 'שמור במועדפים ✓ (לחיצה תעדכן)' : 'שמור למועדפים';
+}
+
+// toast קטן לכל האפליקציה (משתמש ב-keyframes toast-pop הקיימים)
+function showToast(msg, ms) {
+  document.querySelectorAll('.app-toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'app-toast';
+  t.textContent = msg;
+  const dur = ms || 2400;
+  t.style.animationDuration = dur + 'ms';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), dur);
+}
+
 // ── סימון "אכלתי" — עדכון במקום (בלי רינדור מחדש, שומר מיקום גלילה) ──
 // כל הארוחות הפעילות (לא-removed) סומנו כנאכלו
 function dayComplete() {
@@ -642,6 +724,7 @@ function dayHtml(day, opts) {
   let html = `<div class="menu-header">
     <h1 class="menu-title">${opts && opts.title ? esc(opts.title) : `התפריט שלך — ${esc(day.gLabel || '')}`}</h1>
     <div class="menu-sub${day.tLabel === 'ללא אימון' ? ' no-train-sub' : ''}">${esc(day.tLabel || '')}</div>
+    ${ro ? '' : `<button class="fav-heart" id="fav-heart" onclick="toggleFavoriteToday()" aria-label="שמירת התפריט למועדפים" title="שמור למועדפים">♡</button>`}
   </div>`;
   if (!ro) html += `<div class="day-progress" id="day-progress"></div>`;
 
@@ -819,18 +902,19 @@ function dayHtml(day, opts) {
   }
 
   if (!ro) {
+    // פעולות שקטות: "היום הוא המוצר" — ייצור תפריט חוזר הוא פעולה משנית, לא ה-CTA של המסך.
     // הדפסה/PDF: חסומה כשיש פינוק (hasTreat מחושב למעלה) — תפריט מודפס עם פינוק יוצא בחוסר מאקרו
     // (הפינוק שמר תקציב), ולהציג פינוק במסמך "רשמי" לא מקצועי. מסירים את הפינוק ואז מדפיסים נקי.
     html += `
-  <div class="nav-btns menu-actions" style="margin-top:12px">
-    <button class="btn-primary" onclick="if (confirmRebuild()) renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
+  <div class="menu-quiet-actions">
+    <button class="pill-btn" onclick="if (confirmRebuild()) renderMenu()">↻ תפריט נוסף</button>
     ${hasTreat
-      ? `<button class="btn-secondary" disabled title="הסר את הפינוק כדי לשמור תפריט נקי">📄 שמירת התפריט</button>`
-      : `<button class="btn-secondary" onclick="window.print()">📄 שמירת התפריט</button>`}
-    <button class="btn-secondary" onclick="resetApp()">התחל מחדש (איפוס)</button>
+      ? `<button class="pill-btn" disabled title="הסר את הפינוק כדי לשמור תפריט נקי">📄 שמירה כ-PDF</button>`
+      : `<button class="pill-btn" onclick="window.print()">📄 שמירה כ-PDF</button>`}
   </div>${hasTreat
     ? `<div class="print-hint" style="text-align:center;margin-top:6px;font-size:12px;color:var(--text-tert)">📄 כדי לשמור תפריט נקי, הסר קודם את הפינוק 🙂</div>`
     : ''}
+  <button class="reset-link" onclick="resetApp()">התחל מחדש (איפוס)</button>
   <div class="coach-cta" style="text-align:center;margin-top:18px;font-size:13px;color:#8b8fa3">
     <a href="coaches.html" style="color:#4f46e5;text-decoration:none;font-weight:600">מאמן/ה?</a>
     יש לך גרסה משלך — ממותגת בשמך, למתאמנים שלך ←
@@ -845,6 +929,7 @@ function renderDay() {
   if (!DAY) return;
   document.getElementById('menu-output').innerHTML = dayHtml(DAY, {});
   updateDayProgress();
+  updateFavHeart();
   goTo(4);
 }
 

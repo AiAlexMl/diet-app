@@ -34,14 +34,16 @@ paths:
 
 `toggleFood(mode, id)` updates the card in-place and calls `updateTabBadges(mode)` to refresh all badge counts without re-rendering the grid.
 
-## Menu Rendering (`renderMenu` → `renderDay`)
+## Menu Rendering (`renderMenu` → `renderDay` → `dayHtml`)
 
-`renderMenu()` = build path: `buildMenu()` → wraps result in `DAY` (+ warnings/labels snapshot) → `saveDay()` → `renderDay()`. `renderDay()` renders from `DAY` only — used both after build and on restore-from-localStorage. Removed meals (`m.removed`, set by day-correction) are skipped.
+`renderMenu()` = build path: `buildMenu()` → wraps result in `DAY` (+ warnings/labels snapshot) → `saveDay()` → `renderDay()`. `renderDay()` is a thin shell: `#menu-output.innerHTML = dayHtml(DAY, {})` + `updateDayProgress()` + `updateFavHeart()` + `goTo(4)` — used both after build and on restore-from-localStorage. Removed meals (`m.removed`, set by day-correction) are skipped.
+
+**`dayHtml(day, {readOnly, title})`** is the shared HTML builder. `readOnly: true` (used by the account/history modal in supabase-client.js) drops all interactive chrome: `#day-progress`, treat-bar, noteAction button, `meal-card-N` ids (so `toggleEaten`'s in-place updates never hit the modal copy), edit/remove buttons, `.meal-actions`, bottom actions, `.coach-cta`. `title` overrides the header.
 
 **Menu-screen interactions:** daily progress bar (`#day-progress`, in-place updates); treat bar button (add/remove planned treat → full rebuild behind `confirmRebuild()`); per-meal `✓ אכלתי` (`toggleEaten` — in-place class+button+progress update) and `🔄 אכלתי משהו אחר` (`openAltPicker` — 3 tabs: TREATS / DB search+grams / manual name+calories → `applyAlt` → `rebuildRest`). `DAY.note` renders as a green `.day-note` banner (day-correction messages).
 
 Renders in order:
-1. Menu header (goal label + training label)
+1. Menu header (goal label + training label) + **favorites heart** (`#fav-heart` → `toggleFavoriteToday()`; filled `.on` when today already saved)
 2. `S.bmiWarning` → orange `.bmi-warning` banner (⚠️)
 2b. `S.trainWarning` → **red `.field-error` banner (⚠️)** — bulk goal + no training (`trainWarnText()` in `buildMenu`); also shown **live on screen 1** in `#train-warn` via `updateTrainWarn()` (called from `setTime`/`toggleNoTrain`/`setGoal`/`goTo(1)`)
 3. `S.carbWarning` → yellow `.bmi-warning` banner (ℹ️)
@@ -49,7 +51,7 @@ Renders in order:
 4. Morning training tip (if applicable)
 5. Meal cards
 6. Daily summary card (calories/protein/carbs/fat + macro % bars + **fiber row**, number only)
-7. Two nav buttons: **"תפריט נוסף עם אותן העדפות"** → `renderMenu()` (rebuild with same `S`) and **"התחל מחדש (איפוס)"** → `resetApp()`
+7. Quiet actions (`.menu-quiet-actions`, two `.pill-btn`): **"↻ תפריט נוסף"** → `confirmRebuild()`+`renderMenu()` and **"📄 שמירה כ-PDF"** → `window.print()` (disabled when a treat exists, with `.print-hint`); then **`.reset-link`** → `resetApp()`. Deliberately demoted — the day is the product, regeneration is secondary.
 
 **Food row name priority:**
 1. `it.displayName` if set — eggs: "חביתה מביצה אחת (L)"
@@ -61,10 +63,11 @@ Renders in order:
 
 **Empty meal** — if `m.items.length === 0`, renders `.empty-meal-note` message instead.
 
-## Regenerate vs. Reset (menu screen buttons)
+## Regenerate vs. Reset vs. Favorite (menu screen actions)
 
-- **"תפריט נוסף עם אותן העדפות"** → `renderMenu()` again: rebuilds a fresh menu keeping all of `S` (likes/avoids/diet/goal/time). Variety comes from the shuffles in `pick()`/`buildSalad`.
-- **"התחל מחדש (איפוס)"** → `resetApp()`: clears `S.liked`, `S.avoided`, `S.diet`, `S.allergy`; `S.goal`→`'maintain'`, `S.time`→`null`, `S.noTrain`→`false`; resets all chip/toggle/time-card UI, count displays, noTrain button text; clears `localStorage['dietai-state']`; then `goTo(0)`.
+- **"↻ תפריט נוסף"** (`.pill-btn`) → `renderMenu()` again: rebuilds a fresh menu keeping all of `S` (likes/avoids/diet/goal/time). Variety comes from the shuffles in `pick()`/`buildSalad`. Guarded by `confirmRebuild()` when eaten marks exist.
+- **"התחל מחדש (איפוס)"** (`.reset-link`) → `resetApp()`: clears `S.liked`, `S.avoided`, `S.diet`, `S.allergy`; `S.goal`→`'maintain'`, `S.time`→`null`, `S.noTrain`→`false`; resets all chip/toggle/time-card UI, count displays, noTrain button text; clears `localStorage['dietai-state']`; then `goTo(0)`. **Does not touch favorites** (saved snapshots survive reset, by design).
+- **Favorites (♡ heart)** — `saveFavorite()` snapshots `serializeDay(DAY)` into `localStorage['shapeat-favorites']` (cap 30). Re-click on the same day **updates** the snapshot (same `fav_id`, new `saved_at`) — never duplicates, never unsaves; removal only from the account modal (`removeFavorite`). `showToast()` (`.app-toast`) gives feedback; anonymous users get a one-time "saved on device" hint (`shapeat-fav-hint`). Cloud mirror (table `favorites`) is handled by wrappers in supabase-client.js.
 
 ## Persistence & Safety helpers (ui.js)
 

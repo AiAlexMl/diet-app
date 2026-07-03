@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════
-   rls-test.mjs — בדיקת RLS מעשית (שלב 1: profiles / day_logs / events)
-   רץ לפני כל מיגרציה חדשה. שלב 2 יוסיף: מאמן מול day_summaries + revoke.
+   rls-test.mjs — בדיקת RLS מעשית (שלב 1: profiles / day_logs / favorites / events)
+   רץ לפני כל מיגרציה חדשה. שלב הבא יוסיף: מאמן מול day_summaries + revoke.
 
    הרצה (המפתחות לא נשמרים בשום קובץ — משתני סביבה בלבד):
      SUPABASE_URL=https://xxx.supabase.co \
@@ -76,6 +76,30 @@ try {
   const { data: bp } = await b.client.from('profiles').select('prefs').eq('id', b.id).single();
   check("prefs של ב' לא השתנה מניסיון עדכון של א'", !bp.prefs.hacked, w2?.message);
 
+  // ── 2ב. favorites: עצמי עובד, של אחר חסום ──
+  const favId = crypto.randomUUID();
+  const { error: f1 } = await a.client.from('favorites').upsert({
+    trainee_id: a.id, fav_id: favId, date: today,
+    saved_at: new Date().toISOString(), payload: { date: today, meals: [] },
+  });
+  check("מתאמן א' כותב מועדף לעצמו", !f1, f1?.message);
+  const { error: f2 } = await a.client.from('favorites').upsert({
+    trainee_id: a.id, fav_id: favId, date: today,
+    saved_at: new Date().toISOString(), payload: { date: today, meals: [], v: 2 },
+  });
+  check("מתאמן א' מעדכן מועדף קיים (upsert)", !f2, f2?.message);
+  const { data: bf } = await b.client.from('favorites').select('*').eq('trainee_id', a.id);
+  check("מתאמן ב' לא קורא מועדפים של א' (0 שורות)", (bf || []).length === 0);
+  const { error: f3 } = await b.client.from('favorites').upsert({
+    trainee_id: a.id, fav_id: crypto.randomUUID(), date: today,
+    saved_at: new Date().toISOString(), payload: {},
+  });
+  check("מתאמן ב' לא כותב מועדף בשם א'", !!f3);
+  const { error: f4 } = await a.client.from('favorites')
+    .delete().eq('trainee_id', a.id).eq('fav_id', favId);
+  const { data: af } = await a.client.from('favorites').select('fav_id').eq('trainee_id', a.id);
+  check("מתאמן א' מוחק מועדף שלו", !f4 && (af || []).length === 0, f4?.message);
+
   // ── 3. events: כתיבה פתוחה, קריאה חסומה ──
   const anon = createClient(URL, ANON, { auth: { persistSession: false } });
   const { error: ee } = await anon.from('events').insert({
@@ -88,6 +112,10 @@ try {
     event_type: 'not-in-whitelist', anon_id: crypto.randomUUID(),
   });
   check('event מחוץ ל-whitelist נדחה', !!badType);
+  const { error: ms } = await anon.from('events').insert({
+    event_type: 'menu_saved', anon_id: crypto.randomUUID(),
+  });
+  check("event מסוג menu_saved עובר (מיגרציה 002)", !ms, ms?.message);
 
   // ── 4. תאריך עתידי נדחה (trigger, סובלנות יום) ──
   const far = new Date(Date.now() + 5 * 864e5).toLocaleDateString('en-CA');

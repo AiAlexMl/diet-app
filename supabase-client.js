@@ -19,6 +19,7 @@
   const STATE_KEY = 'dietai-state';
   const DAY_KEY   = 'shapeat-day';
   const META_KEY  = 'shapeat-sync-meta';      // { prefs: iso, day: iso } — שעון לקוח ל-LWW
+  const FAV_KEY   = 'shapeat-favorites';      // מקור התצוגה תמיד מקומי; הענן מתמזג פנימה
 
   const nowIso = () => new Date().toISOString();
   const newer  = (a, b) => Date.parse(a) > Date.parse(b);   // השוואת זמנים בטוחה (פורמטים שונים)
@@ -28,8 +29,12 @@
 
   let session = null;
   const meta  = parse(lsGet(META_KEY)) || {};
-  const dirty = { prefs: false, day: false };
+  const dirty = { prefs: false, day: false, favs: false };
   let pushTimer = null;
+  // outbox למועדפים: אילו fav_id ממתינים לעלייה/מחיקה. caveat מתועד: מחיקה offline
+  // שלא הגיעה לשרת (הטאב נסגר לפני retry) תקום לתחייה מהענן ב-pull הבא — מקובל ל-v1.
+  const pendingFavUpserts = new Set();
+  const pendingFavDeletes = new Set();
 
   const saveMeta = () => lsSet(META_KEY, JSON.stringify(meta));
 
@@ -63,7 +68,7 @@
     if (!session) return;
     const uid = session.user.id;
     try {
-      if (dirty.prefs || dirty.day) {          // שורת profiles חייבת להתקיים לפני day_logs (FK)
+      if (dirty.prefs || dirty.day || dirty.favs) {   // שורת profiles חייבת להתקיים לפני day_logs/favorites (FK)
         const rec = { id: uid };
         const state = parse(lsGet(STATE_KEY));
         if (dirty.prefs && state) { rec.prefs = state; rec.prefs_updated_at = meta.prefs || nowIso(); }
@@ -82,6 +87,27 @@
         }
         dirty.day = false;
       }
+      if (dirty.favs) {
+        if (pendingFavUpserts.size) {
+          const local = parse(lsGet(FAV_KEY)) || [];
+          const rows = local.filter(f => pendingFavUpserts.has(f.fav_id)).map(f => ({
+            trainee_id: uid, fav_id: f.fav_id, date: f.date,
+            saved_at: f.saved_at, payload: f.payload,
+          }));
+          if (rows.length) {
+            const { error } = await sb.from('favorites').upsert(rows);
+            if (error) return;
+          }
+          pendingFavUpserts.clear();           // גם fav שנדחק מה-cap המקומי לא יעלה שוב
+        }
+        if (pendingFavDeletes.size) {
+          const { error } = await sb.from('favorites')
+            .delete().eq('trainee_id', uid).in('fav_id', [...pendingFavDeletes]);
+          if (error) return;
+          pendingFavDeletes.clear();
+        }
+        dirty.favs = false;
+      }
     } catch (e) { /* offline — הדגלים נשארים */ }
   }
 
@@ -89,7 +115,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') { clearTimeout(pushTimer); push(); }
   });
-  window.addEventListener('focus', () => { if (dirty.prefs || dirty.day) push(); });
+  window.addEventListener('focus', () => { if (dirty.prefs || dirty.day || dirty.favs) push(); });
 
   // ══════════ Pull: פעם אחת בעלייה — LWW פר-מפתח, המקומי גובר אם חדש יותר ══════════
   async function pull() {
@@ -112,6 +138,22 @@
         lsSet(DAY_KEY, JSON.stringify(row.payload));
         meta.day = row.client_updated_at; saveMeta();
         try { DAY = loadDay(); if (DAY) renderDay(); } catch (e) {}   // אותו מסלול כמו בעליית עמוד
+      }
+      // מועדפים: איחוד לפי fav_id — saved_at מאוחר גובר; לא מחיים מחיקה שממתינה לעלייה
+      const { data: cloudFavs } = await sb.from('favorites')
+        .select('fav_id,date,saved_at,payload')
+        .eq('trainee_id', uid).order('saved_at', { ascending: false }).limit(30);
+      if (Array.isArray(cloudFavs)) {
+        const byId = {};
+        (parse(lsGet(FAV_KEY)) || []).forEach(f => { byId[f.fav_id] = f; });
+        cloudFavs.forEach(f => {
+          if (pendingFavDeletes.has(f.fav_id)) return;
+          if (!byId[f.fav_id] || newer(f.saved_at, byId[f.fav_id].saved_at)) byId[f.fav_id] = f;
+        });
+        const merged = Object.values(byId)
+          .sort((a, b) => (a.saved_at < b.saved_at ? 1 : -1)).slice(0, 30);
+        lsSet(FAV_KEY, JSON.stringify(merged));
+        try { updateFavHeart(); } catch (e) {}
       }
     } catch (e) { /* offline — בלי סנכרון הפעם */ }
   }
@@ -139,6 +181,30 @@
         maybeShowBanner();                     // רגע קבלת-הערך — הצעה רכה להתחבר
       }
     } catch (e) {}
+  };
+
+  const _saveFavorite = window.saveFavorite;
+  window.saveFavorite = function () {
+    const res = _saveFavorite.apply(this, arguments);
+    if (res && res.fav) {
+      if (res.created) track('menu_saved');    // רק יצירה, לא עדכון snapshot
+      if (session) {
+        pendingFavUpserts.add(res.fav.fav_id);
+        markDirty('favs');
+      }
+    }
+    return res;
+  };
+
+  const _removeFavorite = window.removeFavorite;
+  window.removeFavorite = function (favId) {
+    const res = _removeFavorite.apply(this, arguments);
+    if (session) {
+      pendingFavUpserts.delete(favId);
+      pendingFavDeletes.add(favId);
+      markDirty('favs');
+    }
+    return res;
   };
 
   // ══════════ באנר רך — רק אחרי קבלת ערך, דחייה = שקט לשבוע ══════════
@@ -283,29 +349,276 @@
     saveMeta();
     dirty.prefs = true;
     dirty.day   = !!parse(lsGet(DAY_KEY));
+    // כל המועדפים המקומיים (כולל מה שהתמזג עכשיו) עולים — upsert אידמפוטנטי
+    const favs = parse(lsGet(FAV_KEY)) || [];
+    if (favs.length) {
+      favs.forEach(f => pendingFavUpserts.add(f.fav_id));
+      dirty.favs = true;
+    }
     push();
+  }
+
+  // ══════════ מודאל "החשבון שלי" — היסטוריה (ימים מהענן) + מועדפים + ניהול חשבון ══════════
+  // pull() שרץ ברקע בזמן שהמודאל פתוח לא מפריע — המודאל יושב על body, לא בתוך #menu-output.
+  let accountEl = null;
+
+  // סטטיסטיקות שורה מ-payload של serializeDay (eaten צמוד לאינדקסים של meals המלא)
+  function dayStats(payload) {
+    let planned = 0, eaten = 0, cal = 0;
+    (payload.meals || []).forEach((m, i) => {
+      if (m.removed) return;
+      planned++;
+      cal += m.totCal || 0;
+      if (payload.eaten && payload.eaten[i]) eaten++;
+    });
+    return { planned, eaten, cal: Math.round(cal) };
+  }
+
+  function dateLabel(dateStr) {
+    try {
+      return new Date(dateStr + 'T12:00:00')
+        .toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' });
+    } catch (e) { return dateStr; }
+  }
+
+  function openAccountModal() {
+    if (accountEl || !session) return;
+    accountEl = document.createElement('div');
+    accountEl.className = 'auth-overlay';
+    accountEl.addEventListener('click', e => { if (e.target === accountEl) closeAccountModal(); });
+
+    const box = document.createElement('div');
+    box.className = 'auth-box account-box';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', 'החשבון שלי');
+
+    const x = document.createElement('button');
+    x.className = 'auth-close';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', 'סגירה');
+    x.onclick = closeAccountModal;
+
+    const h = document.createElement('h3');
+    h.textContent = 'החשבון שלי';
+    const email = document.createElement('p');
+    email.className = 'account-email';
+    email.textContent = session.user.email || '';
+
+    // טאבים
+    const tabs = document.createElement('div');
+    tabs.className = 'account-tabs';
+    const tabDays = document.createElement('button');
+    tabDays.className = 'account-tab active';
+    tabDays.textContent = 'ימים';
+    const tabFavs = document.createElement('button');
+    tabFavs.className = 'account-tab';
+    tabFavs.textContent = 'שמורים ♥';
+    tabs.append(tabDays, tabFavs);
+
+    const list = document.createElement('div');
+    list.className = 'account-list';
+
+    // תצוגת יום קריאה-בלבד (מוחלפת עם הרשימה)
+    const roWrap = document.createElement('div');
+    roWrap.className = 'ro-day';
+    roWrap.style.display = 'none';
+
+    function showList() {
+      roWrap.style.display = 'none';
+      roWrap.innerHTML = '';
+      tabs.style.display = '';
+      list.style.display = '';
+      footer.style.display = '';
+    }
+    function showRoDay(payload, title) {
+      try {
+        const day = deserializeDay(payload);
+        roWrap.innerHTML = '';
+        const back = document.createElement('button');
+        back.className = 'pill-btn ro-back';
+        back.textContent = '→ חזרה לרשימה';
+        back.onclick = showList;
+        const content = document.createElement('div');
+        content.innerHTML = dayHtml(day, { readOnly: true, title });   // dayHtml עובר esc על הכל
+        roWrap.append(back, content);
+        tabs.style.display = 'none';
+        list.style.display = 'none';
+        footer.style.display = 'none';
+        roWrap.style.display = '';
+        roWrap.scrollTop = 0;
+      } catch (e) {
+        showToastSafe('לא ניתן להציג יום זה');
+      }
+    }
+
+    function emptyMsg(t) {
+      const d = document.createElement('div');
+      d.className = 'account-empty';
+      d.textContent = t;
+      return d;
+    }
+
+    function favRow(f) {
+      const row = document.createElement('div');
+      row.className = 'account-row';
+      const del = document.createElement('button');
+      del.className = 'row-del';
+      del.textContent = '✕';
+      del.title = 'הסר מהמועדפים';
+      del.onclick = e => {
+        e.stopPropagation();
+        window.removeFavorite(f.fav_id);       // העטוף — מסנכרן גם לענן
+        showToastSafe('הוסר מהמועדפים');
+        renderFavs();
+      };
+      const d = document.createElement('span');
+      d.className = 'row-date';
+      d.textContent = dateLabel(f.date);
+      const meta1 = document.createElement('span');
+      meta1.className = 'row-meta';
+      meta1.textContent = dayStats(f.payload).cal.toLocaleString() + ' קק"ל';
+      row.append(del, d, meta1);
+      row.onclick = () => showRoDay(f.payload, 'תפריט שמור · ' + dateLabel(f.date));
+      return row;
+    }
+
+    function renderFavs() {
+      list.innerHTML = '';
+      let favs = [];
+      try { favs = listFavorites(); } catch (e) {}
+      if (!favs.length) { list.appendChild(emptyMsg('עוד אין תפריטים שמורים — לב ♡ במסך התפריט שומר אותו לכאן')); return; }
+      favs.forEach(f => list.appendChild(favRow(f)));
+    }
+
+    async function renderDays() {
+      list.innerHTML = '';
+      list.appendChild(emptyMsg('טוען...'));
+      try {
+        const { data, error } = await sb.from('day_logs')
+          .select('date,payload')
+          .eq('trainee_id', session.user.id)
+          .order('date', { ascending: false }).limit(30);
+        if (error) throw error;
+        list.innerHTML = '';
+        if (!data || !data.length) { list.appendChild(emptyMsg('עוד אין ימים שמורים בענן — הם נאספים מעכשיו, יום אחרי יום')); return; }
+        data.forEach(r => {
+          const row = document.createElement('div');
+          row.className = 'account-row';
+          const d = document.createElement('span');
+          d.className = 'row-date';
+          d.textContent = (r.date === todayStr() ? 'היום · ' : '') + dateLabel(r.date);
+          const s = dayStats(r.payload || {});
+          const meta1 = document.createElement('span');
+          meta1.className = 'row-meta';
+          meta1.textContent = `נאכלו ${s.eaten}/${s.planned} · ${s.cal.toLocaleString()} קק"ל`;
+          row.append(d, meta1);
+          row.onclick = () => showRoDay(r.payload, 'התפריט של ' + dateLabel(r.date));
+          list.appendChild(row);
+        });
+      } catch (e) {
+        list.innerHTML = '';
+        list.appendChild(emptyMsg('לא ניתן לטעון כרגע — בדוק חיבור ונסה שוב'));
+      }
+    }
+
+    tabDays.onclick = () => { tabDays.classList.add('active'); tabFavs.classList.remove('active'); renderDays(); };
+    tabFavs.onclick = () => { tabFavs.classList.add('active'); tabDays.classList.remove('active'); renderFavs(); };
+
+    // פעולות חשבון
+    const footer = document.createElement('div');
+    footer.className = 'account-actions';
+    const logout = document.createElement('button');
+    logout.className = 'account-logout';
+    logout.textContent = 'התנתקות';
+    logout.onclick = async () => {
+      try { await sb.auth.signOut(); } catch (e) {}
+      closeAccountModal();
+      showToastSafe('התנתקת ✓ הנתונים במכשיר נשארו');
+    };
+    const del = document.createElement('button');
+    del.className = 'account-delete';
+    del.textContent = 'מחיקת חשבון';
+    del.onclick = async () => {
+      if (!confirm('למחוק את החשבון לצמיתות?\nכל הימים והתפריטים השמורים בענן יימחקו ולא ניתן יהיה לשחזר אותם.\nהנתונים השמורים במכשיר הזה יישארו.')) return;
+      try {
+        await sb.rpc('delete_my_account');
+        await sb.auth.signOut();
+        try { localStorage.removeItem(META_KEY); localStorage.removeItem('shapeat-signup-sent'); } catch (e) {}
+        location.reload();
+      } catch (e) { showToastSafe('המחיקה נכשלה — נסה שוב'); }
+    };
+    footer.append(logout, del);
+
+    box.append(x, h, email, tabs, list, roWrap, footer);
+    accountEl.appendChild(box);
+    document.body.appendChild(accountEl);
+
+    renderDays();
+    tabDays.focus();
+    accountEl.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeAccountModal();
+      if (e.key === 'Tab') {
+        const items = [...box.querySelectorAll('button')].filter(el => !el.disabled && el.offsetParent !== null);
+        const first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+  }
+  function closeAccountModal() { if (accountEl) { accountEl.remove(); accountEl = null; } }
+  function showToastSafe(m, ms) { try { showToast(m, ms); } catch (e) {} }
+
+  // ══════════ אייקון חשבון קבוע בכותרת — נקודת הכניסה שפתרה את "פספסתי את הבאנר" ══════════
+  let accountBtn = null;
+  function injectAccountBtn() {
+    const header = document.querySelector('header');
+    if (!header || accountBtn) return;
+    accountBtn = document.createElement('button');
+    accountBtn.id = 'account-btn';
+    accountBtn.className = 'account-btn';
+    accountBtn.innerHTML =
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+    accountBtn.onclick = () => (session ? openAccountModal() : openLogin());
+    updateAccountBtn();
+    header.appendChild(accountBtn);
+  }
+  function updateAccountBtn() {
+    if (!accountBtn) return;
+    accountBtn.classList.toggle('connected', !!session);
+    accountBtn.setAttribute('aria-label', session ? 'החשבון שלי — מחובר' : 'התחברות לחשבון');
+    accountBtn.title = session ? 'החשבון שלי' : 'התחברות';
   }
 
   // ══════════ init ══════════
   sb.auth.onAuthStateChange((evt, sess) => {
     session = sess;
+    updateAccountBtn();
     if (evt === 'SIGNED_IN') {
       closeLogin(); hideBanner();
       if (!lsGet('shapeat-signup-sent')) { lsSet('shapeat-signup-sent', '1'); track('signup'); }
       firstMerge();
     }
+    if (evt === 'SIGNED_OUT') closeAccountModal();
     if (evt === 'INITIAL_SESSION' && sess) pull();
   });
 
-  // חשיפה מינימלית למסך "החשבון שלי" (ייבנה עם מסך ההיסטוריה)
+  // חשיפה מינימלית ל-UI (האייקון בכותרת משתמש בזה; שמור תאימות לקוד קיים)
   window.shapeatAccount = {
     login:  openLogin,
+    openAccount: openAccountModal,
     logout: () => sb.auth.signOut(),
-    deleteAccount: async () => { await sb.rpc('delete_my_account'); await sb.auth.signOut(); },
+    deleteAccount: async () => {
+      await sb.rpc('delete_my_account');
+      await sb.auth.signOut();
+      try { localStorage.removeItem(META_KEY); localStorage.removeItem('shapeat-signup-sent'); } catch (e) {}
+    },
     isConnected: () => !!session,
   };
 
   // יום ראשון של שימוש נרשם; הבאנר יופיע רק מהיום השני / השלמת יום
   if (!lsGet('shapeat-first-seen')) lsSet('shapeat-first-seen', todayStr());
+  injectAccountBtn();
   setTimeout(maybeShowBanner, 1500);
 })();
