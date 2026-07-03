@@ -624,10 +624,12 @@ function renderBuildBlock(msg) {
   goTo(4);
 }
 
-// מציג את היום השמור (DAY) — נקרא גם אחרי בנייה וגם בשחזור מ-localStorage
-function renderDay() {
-  if (!DAY) return;
-  const meals = DAY.meals;
+// בונה את ה-HTML של יום — משותף למסך התפריט החי ולתצוגת קריאה-בלבד (היסטוריה/מועדפים).
+// opts.readOnly: בלי כרום אינטראקטיבי (התקדמות/פינוקים/עריכה/כפתורים) ובלי id-ים של כרטיסים,
+// כדי שהעדכונים-במקום (toggleEaten) לא יפגעו בעותק שבמודאל. opts.title: כותרת חלופית.
+function dayHtml(day, opts) {
+  const ro    = !!(opts && opts.readOnly);
+  const meals = day.meals;
   const dCal  = meals.reduce((s, m) => s + m.totCal, 0);
   const dP    = Math.round(meals.reduce((s, m) => s + m.totP, 0));
   const dC    = Math.round(meals.reduce((s, m) => s + m.totC, 0));
@@ -638,67 +640,69 @@ function renderDay() {
   const fPct  = 100 - pPct - cPct;
 
   let html = `<div class="menu-header">
-    <h1 class="menu-title">התפריט שלך — ${esc(DAY.gLabel || '')}</h1>
-    <div class="menu-sub${DAY.tLabel === 'ללא אימון' ? ' no-train-sub' : ''}">${esc(DAY.tLabel || '')}</div>
-  </div>
-  <div class="day-progress" id="day-progress"></div>`;
+    <h1 class="menu-title">${opts && opts.title ? esc(opts.title) : `התפריט שלך — ${esc(day.gLabel || '')}`}</h1>
+    <div class="menu-sub${day.tLabel === 'ללא אימון' ? ' no-train-sub' : ''}">${esc(day.tLabel || '')}</div>
+  </div>`;
+  if (!ro) html += `<div class="day-progress" id="day-progress"></div>`;
 
   // כפתור פינוק: הוספה או הסרה (התפריט נבנה מחדש סביב הפינוק)
   const hasTreat = meals.some(m => m.type === 'treat' && !m.removed);
-  html += `<div class="treat-bar">` +
-    `<button class="btn-treat" onclick="openTreatPicker()">🍫 ${hasTreat ? 'עוד פינוק' : 'בא לי פינוק היום'}</button>` +
-    (hasTreat ? `<button class="btn-treat on" onclick="removeTreat()">✕ הסר פינוקים</button>` : '') +
-    `</div>`;
+  if (!ro) {
+    html += `<div class="treat-bar">` +
+      `<button class="btn-treat" onclick="openTreatPicker()">🍫 ${hasTreat ? 'עוד פינוק' : 'בא לי פינוק היום'}</button>` +
+      (hasTreat ? `<button class="btn-treat on" onclick="removeTreat()">✕ הסר פינוקים</button>` : '') +
+      `</div>`;
+  }
 
   // אזהרת BMI
-  if (DAY.warn.bmi) {
+  if (day.warn.bmi) {
     html += `<div class="bmi-warning">
       <span class="bmi-warning-icon">⚠️</span>
-      <span>${esc(DAY.warn.bmi)}</span>
+      <span>${esc(day.warn.bmi)}</span>
     </div>`;
   }
 
   // אזהרה חריפה: מסה בלי אימון
-  if (DAY.warn.train) {
+  if (day.warn.train) {
     html += `<div class="field-error">
       <span class="bmi-warning-icon">⚠️</span>
-      <span>${esc(DAY.warn.train)}</span>
+      <span>${esc(day.warn.train)}</span>
     </div>`;
   }
 
   // אזהרת פחמימות נמוכות
-  if (DAY.warn.carb) {
+  if (day.warn.carb) {
     html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
-      <span>${esc(DAY.warn.carb)}</span>
+      <span>${esc(day.warn.carb)}</span>
     </div>`;
   }
 
   // אזהרת אי-התאמה: לא ניתן לעמוד ביעד הקלורי עם ההעדפות הנוכחיות
-  if (DAY.warn.menu) {
+  if (day.warn.menu) {
     html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
-      <span>${esc(DAY.warn.menu)}</span>
+      <span>${esc(day.warn.menu)}</span>
     </div>`;
   }
 
   // הערת שקיפות: היעד הועלה לרצפה הקלורית הבריאה
-  if (DAY.warn.calFloor) {
+  if (day.warn.calFloor) {
     html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
-      <span>${esc(DAY.warn.calFloor)}</span>
+      <span>${esc(day.warn.calFloor)}</span>
     </div>`;
   }
 
   // הודעת היום (תיקון יום: "כמעט מלא" / "חצית את היעד") + פעולה אופציונלית (אזן אחרי הסרה)
-  if (DAY.note) {
-    html += `<div class="day-note">${esc(DAY.note)}` +
-      (DAY.noteAction ? ` <button class="note-action" onclick="${DAY.noteAction.fn}(${DAY.noteAction.mi})">${esc(DAY.noteAction.label)}</button>` : '') +
+  if (day.note) {
+    html += `<div class="day-note">${esc(day.note)}` +
+      (!ro && day.noteAction ? ` <button class="note-action" onclick="${day.noteAction.fn}(${day.noteAction.mi})">${esc(day.noteAction.label)}</button>` : '') +
       `</div>`;
   }
 
   // הערה לאימון בוקר
-  if (DAY.morningTip) {
+  if (day.morningTip) {
     html += `<div class="tips-box" style="margin-bottom:10px">
       אימון בוקר על קיבה ריקה — אם מרגישים צורך, בננה אחת או תמר לפני האימון יספיקו.
     </div>`;
@@ -710,17 +714,17 @@ function renderDay() {
       ? `<span class="meal-tag ${m.tag === 'pre' ? 'tag-pre' : 'tag-post'}">${m.tag === 'pre' ? 'לפני אימון' : 'אחרי אימון'}</span>`
       : '';
 
-    html += `<div class="meal-card${DAY.eaten[mi] ? ' meal-eaten' : ''}${m.type === 'treat' ? ' treat-card' : ''}" id="meal-card-${mi}">
+    html += `<div class="meal-card${day.eaten[mi] ? ' meal-eaten' : ''}${m.type === 'treat' ? ' treat-card' : ''}"${ro ? '' : ` id="meal-card-${mi}"`}>
       <div class="meal-header">
         <div class="meal-title">${m.type === 'treat' ? '🍫 ' : ''}${esc(m.label)} ${tagH}</div>
         <div style="display:flex;align-items:center;gap:8px">
           ${m.type === 'treat' ? `<span class="meal-time">מתי שמתחשק 🙂</span>` : m.time ? `<span class="meal-time">${m.time}</span>` : ''}
           <span class="meal-cal">${m.totCal} קל׳</span>
-          ${m.type !== 'treat' ? `<button class="meal-edit-btn" onclick="toggleMealEdit(${mi})" title="ערוך ארוחה">✏️</button>` : ''}
+          ${!ro && m.type !== 'treat' ? `<button class="meal-edit-btn" onclick="toggleMealEdit(${mi})" title="ערוך ארוחה">✏️</button>` : ''}
         </div>
       </div>`;
     // למתאמנים: עדיף להרחיק את הפינוק מחלון האימון (תגי לפני/אחרי אימון שמורים לארוחות עצמן)
-    if (m.type === 'treat' && m.totCal > 0 && DAY.tLabel && DAY.tLabel !== 'ללא אימון') {
+    if (m.type === 'treat' && m.totCal > 0 && day.tLabel && day.tLabel !== 'ללא אימון') {
       html += `<div class="treat-tip">💡 טיפ: הארוחות שלפני ואחרי האימון בנויות בדיוק בשבילו (פחמימה + חלבון) — את הפינוק עדיף לשמור רחוק מחלון האימון, לא במקומן.</div>`;
     }
 
@@ -729,7 +733,8 @@ function renderDay() {
     }
 
     m.items.forEach((it, ii) => {
-      const rm = m.type === 'treat'
+      const rm = ro ? ''
+        : m.type === 'treat'
         ? `<button class="treat-remove" onclick="removeTreatItem(${ii})" title="הסר פינוק">✕</button>`
         : `<button class="item-remove" onclick="removeItem(${mi},${ii})" title="הסר פריט">✕</button>`;
       if (it.isSaladGroup) {
@@ -765,12 +770,15 @@ function renderDay() {
       <div class="macro-pill"><div class="val">${m.totP}g</div><div class="lbl">חלבון</div></div>
       <div class="macro-pill"><div class="val">${m.totC}g</div><div class="lbl">פחמימות</div></div>
       <div class="macro-pill"><div class="val">${m.totF}g</div><div class="lbl">שומן</div></div>
-    </div>
-    <div class="meal-actions">
+    </div>`;
+    if (!ro) {
+      html += `<div class="meal-actions">
       ${m.type !== 'treat' ? `<button class="alt-btn add-item-btn" onclick="openAddItemPicker(${mi})">➕ הוסף פריט</button>` : ''}
       ${m.type !== 'treat' ? `<button class="alt-btn" onclick="openAltPicker(${mi})">🔄 אכלתי משהו אחר</button>` : ''}
-      <button class="eaten-btn${DAY.eaten[mi] ? ' on' : ''}" onclick="toggleEaten(${mi})">${DAY.eaten[mi] ? '✓ נאכלה' : 'אכלתי ✓'}</button>
-    </div></div>`;
+      <button class="eaten-btn${day.eaten[mi] ? ' on' : ''}" onclick="toggleEaten(${mi})">${day.eaten[mi] ? '✓ נאכלה' : 'אכלתי ✓'}</button>
+    </div>`;
+    }
+    html += `</div>`;
   });
 
   html += `<div class="summary-card">
@@ -806,13 +814,14 @@ function renderDay() {
   </div>`;
 
   // טיפים קלילים (B12 לטבעוני, מים לכולם)
-  if (DAY.tips && DAY.tips.length) {
-    html += `<div class="tips-box" style="margin-top:12px">${DAY.tips.map(esc).join('<br>')}</div>`;
+  if (day.tips && day.tips.length) {
+    html += `<div class="tips-box" style="margin-top:12px">${day.tips.map(esc).join('<br>')}</div>`;
   }
 
-  // הדפסה/PDF: חסומה כשיש פינוק (hasTreat מחושב למעלה) — תפריט מודפס עם פינוק יוצא בחוסר מאקרו
-  // (הפינוק שמר תקציב), ולהציג פינוק במסמך "רשמי" לא מקצועי. מסירים את הפינוק ואז מדפיסים נקי.
-  html += `
+  if (!ro) {
+    // הדפסה/PDF: חסומה כשיש פינוק (hasTreat מחושב למעלה) — תפריט מודפס עם פינוק יוצא בחוסר מאקרו
+    // (הפינוק שמר תקציב), ולהציג פינוק במסמך "רשמי" לא מקצועי. מסירים את הפינוק ואז מדפיסים נקי.
+    html += `
   <div class="nav-btns menu-actions" style="margin-top:12px">
     <button class="btn-primary" onclick="if (confirmRebuild()) renderMenu()">תפריט נוסף עם אותן העדפות ↻</button>
     ${hasTreat
@@ -826,8 +835,15 @@ function renderDay() {
     <a href="coaches.html" style="color:#4f46e5;text-decoration:none;font-weight:600">מאמן/ה?</a>
     יש לך גרסה משלך — ממותגת בשמך, למתאמנים שלך ←
   </div>`;
+  }
 
-  document.getElementById('menu-output').innerHTML = html;
+  return html;
+}
+
+// מציג את היום השמור (DAY) — נקרא גם אחרי בנייה וגם בשחזור מ-localStorage
+function renderDay() {
+  if (!DAY) return;
+  document.getElementById('menu-output').innerHTML = dayHtml(DAY, {});
   updateDayProgress();
   goTo(4);
 }
