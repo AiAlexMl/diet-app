@@ -5,3 +5,9 @@ brand/posts/coach-demo-video/frame-*.png
 brand/posts/coach-demo-video/chk-*.png
 .playwright-mcp/
 internal/
+
+# בדיקות RLS — תלויות זמניות + קובץ המפתח הסודי (אף פעם לא ב-git)
+node_modules/
+supabase/tests/package.json
+supabase/tests/package-lock.json
+supabase/tests/.env.local
