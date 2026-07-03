@@ -1,10 +1,16 @@
-# פינג שבועי ל-Supabase — ה-free tier מושהה אחרי שבוע ללא פעילות.
-# Secrets נדרשים (Settings → Secrets → Actions): SUPABASE_URL, SUPABASE_ANON_KEY.
+# פינג ל-Supabase — ה-free tier מושהה אחרי שבוע ללא פעילות.
+# הערכים כאן ציבוריים בכוונה: אותו URL + anon key שכבר גלויים ב-supabase-client.js
+# (ההגנה היא RLS, לא סודיות המפתח). לכן אין secrets — ה-workflow עצמאי ורץ מיד.
+# המפתח הסודי (service_role) לעולם לא כאן.
 name: supabase-keepalive
 on:
   schedule:
     - cron: '17 6 * * 1,4'   # פעמיים בשבוע (ב' וה' 06:17 UTC) — מרווח בטוח מתחת לשבוע
   workflow_dispatch:
+
+env:
+  SUPABASE_URL: https://kjlxgamalfzdjtjxfzun.supabase.co
+  SUPABASE_ANON_KEY: sb_publishable_cUbB5SU30DWzSdFmP2T24w_lc4PjF9f
 
 jobs:
   ping:
@@ -13,9 +19,9 @@ jobs:
       - name: Ping Supabase REST
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/profiles?select=id&limit=1" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+            "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
           echo "HTTP $code"
           # 200 = חי; 401/404 לא אמורים לקרות עם anon key תקין על טבלה קיימת
           [ "$code" = "200" ]
