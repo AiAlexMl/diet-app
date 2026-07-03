@@ -84,7 +84,7 @@ function serializeDay(day) {
     : { id: it.f.id, g: it.g, dispG: it.dispG, displayName: it.displayName,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
   return {
-    date: day.date, target: day.target, eaten: day.eaten, note: day.note || null,
+    date: day.date, buildId: day.buildId || null, target: day.target, eaten: day.eaten, note: day.note || null,
     warn: day.warn, tips: day.tips || null, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
     meals: day.meals.map(m => ({
       label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type, removed: m.removed || false, added: m.added || false,
@@ -106,7 +106,7 @@ function deserializeDay(d) {
     : { f: FOOD_BY_ID[it.id], g: it.g, dispG: it.dispG, displayName: it.displayName,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
   return {
-    date: d.date, target: d.target, eaten: d.eaten || [], note: d.note || null,
+    date: d.date, buildId: d.buildId || null, target: d.target, eaten: d.eaten || [], note: d.note || null,
     warn: d.warn || {}, tips: d.tips || null, gLabel: d.gLabel, tLabel: d.tLabel, morningTip: d.morningTip,
     meals: d.meals.map(m => ({ ...m, items: m.items.map(item).filter(it => it.isSaladGroup || it.f) })),
   };
@@ -125,6 +125,7 @@ function loadDay() {
     const day = deserializeDay(d);
     if (day.date !== todayStr()) {           // יום חדש — חוזרים לתפריט הבסיס הנקי
       day.date = todayStr();
+      day.buildId = crypto.randomUUID();     // תפריט בסיס חדש = זהות חדשה (הלב מתחיל ריק)
       // מסירים פינוקים, ארוחות שנוספו אגב איזון אמצע-יום ('added'/'נשנוש נוסף'), וארוחות שהוסרו —
       // כך מחר לא נגרר עם פינוקים של אתמול או נשנושים שצצו תוך כדי. הסימונים מתאפסים.
       day.meals = day.meals.filter(m =>
@@ -208,19 +209,31 @@ function removeFavorite(favId) {
 function updateFavHeart() {
   const b = document.getElementById('fav-heart');
   if (!b) return;
-  const saved = listFavorites().some(f => f.date === todayStr());
+  // הלב נדלק רק אם התפריט המוצג *עצמו* שמור (לפי buildId), לא סתם כי קיים מועדף כלשהו מהיום
+  const saved = !!DAY && listFavorites().some(f => f.payload && f.payload.buildId && f.payload.buildId === DAY.buildId);
   b.classList.toggle('on', saved);
   b.textContent = saved ? '♥' : '♡';
   b.title = saved ? 'שמור במועדפים ✓ (לחיצה תעדכן)' : 'שמור למועדפים';
 }
 
-// toast קטן לכל האפליקציה (משתמש ב-keyframes toast-pop הקיימים)
-function showToast(msg, ms) {
+// toast קטן לכל האפליקציה (משתמש ב-keyframes toast-pop הקיימים).
+// action אופציונלי = { label, onClick } → מוסיף כפתור פעולה (למשל "צפייה" שמוביל לשמורים)
+// ומאריך את משך התצוגה כדי שיהיה זמן ללחוץ.
+function showToast(msg, ms, action) {
   document.querySelectorAll('.app-toast').forEach(t => t.remove());
   const t = document.createElement('div');
   t.className = 'app-toast';
-  t.textContent = msg;
-  const dur = ms || 2400;
+  const span = document.createElement('span');
+  span.textContent = msg;
+  t.appendChild(span);
+  if (action && action.label) {
+    const b = document.createElement('button');
+    b.className = 'app-toast-btn';
+    b.textContent = action.label;
+    b.onclick = () => { t.remove(); try { action.onClick(); } catch (e) {} };
+    t.appendChild(b);
+  }
+  const dur = ms || (action ? 5000 : 2400);
   t.style.animationDuration = dur + 'ms';
   document.body.appendChild(t);
   setTimeout(() => t.remove(), dur);
@@ -675,7 +688,8 @@ function renderMenu() {
   const meals = buildMenu();
   const treatMeal = meals.find(m => m.type === 'treat');
   DAY = {
-    date: todayStr(), target: S.target,
+    date: todayStr(), buildId: crypto.randomUUID(),   // זהות התפריט הזה — הלב נדלק רק כשהמזהה הזה שמור
+    target: S.target,
     meals, eaten: meals.map(() => false),
     note: treatMeal ? treatBuildNote(treatMeal.items) : null,
     warn: { bmi: S.bmiWarning, train: S.trainWarning, carb: S.carbWarning, menu: S.menuWarning,
@@ -721,9 +735,11 @@ function dayHtml(day, opts) {
   const cPct  = Math.round(dC * 4 / Math.max(dCal, 1) * 100);
   const fPct  = 100 - pPct - cPct;
 
+  // תווית אימון מוצגת רק כשהיא נושאת מידע; "ללא אימון" נשאר כנתון (תנאי הפינוקים) אך לא מוצג — כדי לא להעמיס ליד הלב
+  const showSub = day.tLabel && day.tLabel !== 'ללא אימון';
   let html = `<div class="menu-header">
     <h1 class="menu-title">${opts && opts.title ? esc(opts.title) : `התפריט שלך — ${esc(day.gLabel || '')}`}</h1>
-    <div class="menu-sub${day.tLabel === 'ללא אימון' ? ' no-train-sub' : ''}">${esc(day.tLabel || '')}</div>
+    ${showSub ? `<div class="menu-sub">${esc(day.tLabel)}</div>` : ''}
     ${ro ? '' : `<button class="fav-heart" id="fav-heart" onclick="toggleFavoriteToday()" aria-label="שמירת התפריט למועדפים" title="שמור למועדפים">♡</button>`}
   </div>`;
   if (!ro) html += `<div class="day-progress" id="day-progress"></div>`;

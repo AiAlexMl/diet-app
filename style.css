@@ -182,7 +182,15 @@ body {
   box-shadow: var(--shadow-md);
   max-width: 90vw; text-align: center;
   animation: toast-pop 2.4s ease forwards;
+  display: inline-flex; align-items: center; gap: 12px;
 }
+.app-toast-btn {
+  flex: none; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.16); color: #fff;
+  font-size: 13px; font-weight: 700;
+  padding: 5px 13px; border-radius: 999px;
+}
+.app-toast-btn:hover { background: rgba(255,255,255,0.28); }
 
 /* ── אייקון חשבון בכותרת (מוזרק ע"י supabase-client.js) ── */
 header { position: relative; }
@@ -1028,7 +1036,7 @@ input[type="number"]:focus {
   .fav-heart, .menu-quiet-actions, .reset-link, .account-btn, .app-toast { display: none !important; }
   /* צמצום לדף אחד: בלי מאקרו פר-ארוחה, בלי תמונות, בלי טיפים (הסיכום בסוף נשאר) */
   .macro-row, .food-thumb, .tips-box, .treat-tip, .day-note, .print-hint,
-  .bmi-warning, .field-error, .no-train-sub { display: none !important; }
+  .bmi-warning, .field-error { display: none !important; }
   /* כרטיסים צפופים יותר ולא נחתכים באמצע עמוד */
   .meal-card { break-inside: avoid; box-shadow: none !important; margin-bottom: 8px; padding: 10px 12px; }
   .summary-card { break-inside: avoid; box-shadow: none !important; }

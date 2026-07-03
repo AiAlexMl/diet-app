@@ -28,6 +28,10 @@
   const lsSet  = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
   let session = null;
+  // אנונימי לחץ "שמור" → נשמור מיד אחרי התחברות. חייב לשרוד redirect (Google/magic-link)
+  // ולכן ב-localStorage, עם חלון זמן שמונע שמירת יום אחר אם ההתחברות קורית הרבה אחר כך.
+  const FAV_INTENT_KEY = 'shapeat-fav-intent';
+  const FAV_INTENT_MS  = 30 * 60 * 1000;
   const meta  = parse(lsGet(META_KEY)) || {};
   const dirty = { prefs: false, day: false, favs: false };
   let pushTimer = null;
@@ -185,13 +189,21 @@
 
   const _saveFavorite = window.saveFavorite;
   window.saveFavorite = function () {
+    // מועדפים = פיצ'ר חשבון. אנונימי אינו שומר "לשומקום" (אין לו מסך לראות אותו);
+    // במקום זה נדנוד התחברות מפורש, וכוונת השמירה תמומש מיד עם ההתחברות.
+    if (!session) {
+      lsSet(FAV_INTENT_KEY, String(Date.now()));
+      openLogin('כדי לשמור תפריטים ולראות אותם שוב בהיסטוריה צריך חשבון. ההתחברות תשמור מיד את התפריט הזה.');
+      return null;
+    }
     const res = _saveFavorite.apply(this, arguments);
     if (res && res.fav) {
       if (res.created) track('menu_saved');    // רק יצירה, לא עדכון snapshot
-      if (session) {
-        pendingFavUpserts.add(res.fav.fav_id);
-        markDirty('favs');
-      }
+      pendingFavUpserts.add(res.fav.fav_id);
+      markDirty('favs');
+      // חוט מפורש מהלב אל החלון שרואים בו את התפריטים: פעולה שפותחת ישר את לשונית "שמורים"
+      showToastSafe(res.created ? 'נשמר במועדפים ✓' : 'עודכן במועדפים ✓', 5000,
+        { label: 'צפייה', onClick: () => openAccountModal('favs') });
     }
     return res;
   };
@@ -238,7 +250,7 @@
 
   // ══════════ מודאל התחברות: Google + magic link ══════════
   let authEl = null;
-  function openLogin() {
+  function openLogin(subtitle) {
     if (authEl) return;
     authEl = document.createElement('div');
     authEl.className = 'auth-overlay';
@@ -254,7 +266,7 @@
     h.textContent = 'שמירת היסטוריה וסנכרון';
     const p = document.createElement('p');
     p.className = 'auth-sub';
-    p.textContent = 'ההעדפות והימים שלך יישמרו לחשבון ויהיו זמינים מכל מכשיר.';
+    p.textContent = subtitle || 'ההעדפות והימים שלך יישמרו לחשבון ויהיו זמינים מכל מכשיר.';
 
     // הסכמה אקטיבית (כמו הדיסקליימר): הכפתורים נעולים עד סימון
     const consent = document.createElement('label');
@@ -381,7 +393,7 @@
     } catch (e) { return dateStr; }
   }
 
-  function openAccountModal() {
+  function openAccountModal(initialTab) {
     if (accountEl || !session) return;
     accountEl = document.createElement('div');
     accountEl.className = 'auth-overlay';
@@ -554,8 +566,8 @@
     accountEl.appendChild(box);
     document.body.appendChild(accountEl);
 
-    renderDays();
-    tabDays.focus();
+    if (initialTab === 'favs') { tabFavs.click(); tabFavs.focus(); }
+    else { renderDays(); tabDays.focus(); }
     accountEl.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeAccountModal();
       if (e.key === 'Tab') {
@@ -567,7 +579,7 @@
     });
   }
   function closeAccountModal() { if (accountEl) { accountEl.remove(); accountEl = null; } }
-  function showToastSafe(m, ms) { try { showToast(m, ms); } catch (e) {} }
+  function showToastSafe(m, ms, action) { try { showToast(m, ms, action); } catch (e) {} }
 
   // ══════════ אייקון חשבון קבוע בכותרת — נקודת הכניסה שפתרה את "פספסתי את הבאנר" ══════════
   let accountBtn = null;
@@ -599,6 +611,10 @@
       closeLogin(); hideBanner();
       if (!lsGet('shapeat-signup-sent')) { lsSet('shapeat-signup-sent', '1'); track('signup'); }
       firstMerge();
+      // מימוש כוונת-שמירה ששרדה את ה-redirect (בתוך חלון הזמן בלבד)
+      const fi = parseInt(lsGet(FAV_INTENT_KEY), 10);
+      lsSet(FAV_INTENT_KEY, '');
+      if (fi && Date.now() - fi < FAV_INTENT_MS) { try { window.saveFavorite(); } catch (e) {} }
     }
     if (evt === 'SIGNED_OUT') closeAccountModal();
     if (evt === 'INITIAL_SESSION' && sess) pull();
