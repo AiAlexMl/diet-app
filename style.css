@@ -212,11 +212,31 @@ header { position: relative; }
 
 /* ── מודאל "החשבון שלי" (על בסיס .auth-box) ── */
 .account-box {
-  max-width: 430px; width: 100%;
-  max-height: 84vh; display: flex; flex-direction: column;
+  max-width: 480px; width: 100%;
+  max-height: 88vh; display: flex; flex-direction: column;
   text-align: right;
 }
 .account-box h3 { text-align: center; }
+/* מסך-מלא במובייל — מקום להיסטוריה ולגרפים; scoped ל-account-overlay כדי לא לגעת במודאל ההתחברות */
+@media (max-width: 480px) {
+  .account-overlay { padding: 0; }
+  .account-overlay .account-box {
+    max-width: none; height: 100%; max-height: none; border-radius: 0;
+  }
+}
+/* גלגל שיניים — כניסה שקטה לניהול חשבון (מול ה-✕) */
+.account-gear {
+  position: absolute; top: 10px; inset-inline-end: 12px;
+  border: none; background: none; color: var(--text-tert);
+  cursor: pointer; padding: 4px; line-height: 0;
+}
+.account-gear:hover { color: var(--accent); }
+/* תת-מסך ניהול חשבון */
+.account-settings { overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+.account-settings-title { text-align: center; margin: 6px 0 2px; font-size: 16px; font-weight: 700; }
+.account-settings .account-email { margin: 0 0 22px; }
+.account-settings .account-logout { align-self: center; margin-bottom: 20px; }
+.account-settings .account-delete { align-self: center; }
 .account-email { font-size: 13px; color: var(--text-tert); direction: ltr; text-align: center; margin: 0 0 14px; }
 .account-tabs { display: flex; gap: 8px; margin-bottom: 12px; justify-content: center; }
 .account-tab {

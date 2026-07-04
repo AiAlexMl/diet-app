@@ -405,7 +405,7 @@
   function openAccountModal(initialTab) {
     if (accountEl || !session) return;
     accountEl = document.createElement('div');
-    accountEl.className = 'auth-overlay';
+    accountEl.className = 'auth-overlay account-overlay';   // account-overlay → מסך-מלא במובייל (scoped, לא נוגע במודאל ההתחברות)
     accountEl.addEventListener('click', e => { if (e.target === accountEl) closeAccountModal(); });
 
     const box = document.createElement('div');
@@ -420,11 +420,15 @@
     x.setAttribute('aria-label', 'סגירה');
     x.onclick = closeAccountModal;
 
+    // גלגל שיניים — ניהול חשבון (מייל/התנתקות/מחיקה) יושב רמה אחת עמוק, מחוץ לתוכן היומיומי
+    const gear = document.createElement('button');
+    gear.className = 'account-gear';
+    gear.setAttribute('aria-label', 'ניהול חשבון');
+    gear.title = 'ניהול חשבון';
+    gear.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+
     const h = document.createElement('h3');
     h.textContent = 'החשבון שלי';
-    const email = document.createElement('p');
-    email.className = 'account-email';
-    email.textContent = session.user.email || '';
 
     // טאבים
     const tabs = document.createElement('div');
@@ -445,12 +449,18 @@
     roWrap.className = 'ro-day';
     roWrap.style.display = 'none';
 
+    // תת-מסך "ניהול חשבון" (נפתח מגלגל השיניים) — הפעולות הטכניות/ההרסניות, רמה אחת עמוק
+    const settingsWrap = document.createElement('div');
+    settingsWrap.className = 'account-settings';
+    settingsWrap.style.display = 'none';
+
     function showList() {
       roWrap.style.display = 'none';
       roWrap.innerHTML = '';
+      settingsWrap.style.display = 'none';
       tabs.style.display = '';
       list.style.display = '';
-      footer.style.display = '';
+      gear.style.display = '';
     }
     function showRoDay(payload, title) {
       try {
@@ -465,13 +475,23 @@
         roWrap.append(back, content);
         tabs.style.display = 'none';
         list.style.display = 'none';
-        footer.style.display = 'none';
+        settingsWrap.style.display = 'none';
+        gear.style.display = 'none';
         roWrap.style.display = '';
         roWrap.scrollTop = 0;
       } catch (e) {
         showToastSafe('לא ניתן להציג יום זה');
       }
     }
+    function showSettings() {
+      tabs.style.display = 'none';
+      list.style.display = 'none';
+      roWrap.style.display = 'none';
+      gear.style.display = 'none';
+      settingsWrap.style.display = '';
+      settingsWrap.scrollTop = 0;
+    }
+    gear.onclick = showSettings;
 
     function emptyMsg(t) {
       const d = document.createElement('div');
@@ -547,9 +567,17 @@
     tabDays.onclick = () => { tabDays.classList.add('active'); tabFavs.classList.remove('active'); renderDays(); };
     tabFavs.onclick = () => { tabFavs.classList.add('active'); tabDays.classList.remove('active'); renderFavs(); };
 
-    // פעולות חשבון
-    const footer = document.createElement('div');
-    footer.className = 'account-actions';
+    // ── תת-מסך "ניהול חשבון" (מייל + התנתקות + מחיקה) ──
+    const setBack = document.createElement('button');
+    setBack.className = 'pill-btn ro-back';
+    setBack.textContent = '→ חזרה';
+    setBack.onclick = showList;
+    const setTitle = document.createElement('h4');
+    setTitle.className = 'account-settings-title';
+    setTitle.textContent = 'ניהול חשבון';
+    const email = document.createElement('p');
+    email.className = 'account-email';
+    email.textContent = session.user.email || '';
     const logout = document.createElement('button');
     logout.className = 'account-logout';
     logout.textContent = 'התנתקות';
@@ -570,9 +598,9 @@
         location.reload();
       } catch (e) { showToastSafe('המחיקה נכשלה — נסה שוב'); }
     };
-    footer.append(logout, del);
+    settingsWrap.append(setBack, setTitle, email, logout, del);
 
-    box.append(x, h, email, tabs, list, roWrap, footer);
+    box.append(x, gear, h, tabs, list, roWrap, settingsWrap);
     accountEl.appendChild(box);
     document.body.appendChild(accountEl);
 
