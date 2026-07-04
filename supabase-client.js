@@ -578,7 +578,10 @@
       }
     });
   }
-  function closeAccountModal() { if (accountEl) { accountEl.remove(); accountEl = null; } }
+  function closeAccountModal() {
+    if (accountEl) { accountEl.remove(); accountEl = null; }
+    try { updateFavHeart(); } catch (e) {}   // הלב במסך התפריט משקף מחיקות שנעשו בתוך המודאל
+  }
   function showToastSafe(m, ms, action) { try { showToast(m, ms, action); } catch (e) {} }
 
   // ══════════ אייקון חשבון קבוע בכותרת — נקודת הכניסה שפתרה את "פספסתי את הבאנר" ══════════

@@ -510,17 +510,22 @@ input[type="number"]:focus {
 .menu-title { font-size: 20px; font-weight: 700; letter-spacing: -0.2px; }
 .menu-sub   { font-size: 13px; color: var(--text-tert); }
 
-/* לב — שמירת התפריט למועדפים (snapshot; לחיצה חוזרת מעדכנת) */
+/* לב — שמירת התפריט למועדפים (snapshot; טוגל: לחיצה חוזרת מבטלת). SVG במקום תו טקסט */
 .fav-heart {
   position: absolute; inset-inline-end: 0; top: -6px;
   width: 40px; height: 40px; border-radius: 50%;
   border: 1.5px solid var(--border-sec);
   background: var(--bg); color: var(--text-tert);
-  font-size: 19px; line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
   box-shadow: var(--shadow-sm); transition: all .2s;
 }
+.fav-heart svg { display: block; }
 .fav-heart:hover { border-color: #fda4af; color: #e11d48; transform: translateY(-1px); }
 .fav-heart.on { color: #e11d48; border-color: #fecdd3; background: #fff1f2; }
+.fav-heart.on svg { fill: #e11d48; animation: heart-pop .35s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes heart-pop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .fav-heart.on svg { animation: none; } }
 
 /* כרטיס ארוחה */
 .meal-card {

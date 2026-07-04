@@ -133,6 +133,10 @@ function loadDay() {
       day.eaten = day.meals.map(() => false);
       day.note = null;
     }
+    if (!day.buildId) {                      // יום שנשמר לפני פיצ'ר הזהות — מקצים ומתמידים מיד,
+      day.buildId = crypto.randomUUID();     // אחרת כל רענון היה מגריל מזהה חדש והלב לא היה נדלק לעולם
+      try { localStorage.setItem(DAY_KEY, JSON.stringify(serializeDay(day))); } catch (e) {}
+    }
     // שחזור הפינוקים המתוכננים מתוך כרטיס הפינוק (כדי שהוספה/הסרה יעבדו אחרי רענון)
     const tm = day.meals.find(m => m.type === 'treat' && !m.removed);
     S.treats = tm ? tm.items.map(it => it.f && it.f.id).filter(id => id > 0) : [];
@@ -163,7 +167,9 @@ function writeFavorites(list) {
   try { localStorage.setItem(FAV_KEY, JSON.stringify(list)); } catch (e) {}
 }
 
-// שומר/מעדכן את התפריט הנוכחי. לחיצה חוזרת באותו יום מעדכנת את הצילום (לא כפילות, לא ביטול).
+// שומר/מעדכן את התפריט הנוכחי — אידמפוטנטי (שמירה-או-עדכון לפי תאריך, אף פעם לא ביטול):
+// זרם כוונת-השמירה אחרי login קורא לו ישירות, ולכן אסור שיתנהג כטוגל.
+// שקט בכוונה — הטוסט מגיע מהעטיפה ב-supabase-client (המקור היחיד למשוב שמירה).
 // מחזיר {fav, created} — ה-hook של שכבת הסנכרון (supabase-client עוטף את הפונקציה).
 function saveFavorite() {
   if (!DAY) return null;
@@ -174,28 +180,29 @@ function saveFavorite() {
   if (fav) {
     fav.payload = serializeDay(DAY);
     fav.saved_at = now;
-    showToast('התפריט עודכן במועדפים ✓');
   } else {
     created = true;
     fav = { fav_id: crypto.randomUUID(), date: DAY.date, saved_at: now, payload: serializeDay(DAY) };
     list.unshift(fav);
     while (list.length > FAV_CAP) list.pop();   // הרשימה ממוינת חדש→ישן; מפילים את הישן
-    showToast('התפריט נשמר ✓');
   }
   writeFavorites(list);
   updateFavHeart();
-  // רמז חד-פעמי לאנונימי: השמירה מקומית עד שיש חשבון
-  try {
-    const connected = window.shapeatAccount && window.shapeatAccount.isConnected();
-    if (!connected && !localStorage.getItem('shapeat-fav-hint')) {
-      localStorage.setItem('shapeat-fav-hint', '1');
-      setTimeout(() => showToast('נשמר במכשיר · התחברות תגבה ותציג בהיסטוריה', 4200), 1600);
-    }
-  } catch (e) {}
   return { fav, created };
 }
 
-function toggleFavoriteToday() { saveFavorite(); }
+// לחיצה על הלב = טוגל אמיתי: שמור → ביטול (עם undo בטוסט), לא שמור → שמירה.
+// קורא דרך window כדי לעבור בעטיפות הסנכרון של supabase-client כשהן קיימות.
+function toggleFavoriteToday() {
+  if (!DAY) return;
+  const cur = listFavorites().find(f => f.payload && f.payload.buildId && f.payload.buildId === DAY.buildId);
+  if (cur) {
+    window.removeFavorite(cur.fav_id);
+    showToast('הוסר מהמועדפים', 4200, { label: 'ביטול', onClick: () => window.saveFavorite() });
+  } else {
+    window.saveFavorite();
+  }
+}
 
 // הסרה — רק ממסך ההיסטוריה. מחזיר את שהוסר (hook לסנכרון).
 function removeFavorite(favId) {
@@ -212,8 +219,8 @@ function updateFavHeart() {
   // הלב נדלק רק אם התפריט המוצג *עצמו* שמור (לפי buildId), לא סתם כי קיים מועדף כלשהו מהיום
   const saved = !!DAY && listFavorites().some(f => f.payload && f.payload.buildId && f.payload.buildId === DAY.buildId);
   b.classList.toggle('on', saved);
-  b.textContent = saved ? '♥' : '♡';
-  b.title = saved ? 'שמור במועדפים ✓ (לחיצה תעדכן)' : 'שמור למועדפים';
+  b.setAttribute('aria-pressed', saved ? 'true' : 'false');
+  b.title = saved ? 'שמור במועדפים ✓ (לחיצה תבטל)' : 'שמור למועדפים';
 }
 
 // toast קטן לכל האפליקציה (משתמש ב-keyframes toast-pop הקיימים).
@@ -740,7 +747,7 @@ function dayHtml(day, opts) {
   let html = `<div class="menu-header">
     <h1 class="menu-title">${opts && opts.title ? esc(opts.title) : `התפריט שלך — ${esc(day.gLabel || '')}`}</h1>
     ${showSub ? `<div class="menu-sub">${esc(day.tLabel)}</div>` : ''}
-    ${ro ? '' : `<button class="fav-heart" id="fav-heart" onclick="toggleFavoriteToday()" aria-label="שמירת התפריט למועדפים" title="שמור למועדפים">♡</button>`}
+    ${ro ? '' : `<button class="fav-heart" id="fav-heart" onclick="toggleFavoriteToday()" aria-pressed="false" aria-label="שמירת התפריט למועדפים" title="שמור למועדפים"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>`}
   </div>`;
   if (!ro) html += `<div class="day-progress" id="day-progress"></div>`;
 

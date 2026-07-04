@@ -43,7 +43,7 @@ paths:
 **Menu-screen interactions:** daily progress bar (`#day-progress`, in-place updates); treat bar button (add/remove planned treat → full rebuild behind `confirmRebuild()`); per-meal `✓ אכלתי` (`toggleEaten` — in-place class+button+progress update) and `🔄 אכלתי משהו אחר` (`openAltPicker` — 3 tabs: TREATS / DB search+grams / manual name+calories → `applyAlt` → `rebuildRest`). `DAY.note` renders as a green `.day-note` banner (day-correction messages).
 
 Renders in order:
-1. Menu header (goal label + training label) + **favorites heart** (`#fav-heart` → `toggleFavoriteToday()`; filled `.on` when today already saved)
+1. Menu header (goal label + training label) + **favorites heart** (`#fav-heart` → `toggleFavoriteToday()`; inline SVG, filled `.on` + `aria-pressed` when the displayed build (`buildId`) is saved)
 2. `S.bmiWarning` → orange `.bmi-warning` banner (⚠️)
 2b. `S.trainWarning` → **red `.field-error` banner (⚠️)** — bulk goal + no training (`trainWarnText()` in `buildMenu`); also shown **live on screen 1** in `#train-warn` via `updateTrainWarn()` (called from `setTime`/`toggleNoTrain`/`setGoal`/`goTo(1)`)
 3. `S.carbWarning` → yellow `.bmi-warning` banner (ℹ️)
@@ -67,7 +67,7 @@ Renders in order:
 
 - **"↻ תפריט נוסף"** (`.pill-btn`) → `renderMenu()` again: rebuilds a fresh menu keeping all of `S` (likes/avoids/diet/goal/time). Variety comes from the shuffles in `pick()`/`buildSalad`. Guarded by `confirmRebuild()` when eaten marks exist.
 - **"התחל מחדש (איפוס)"** (`.reset-link`) → `resetApp()`: clears `S.liked`, `S.avoided`, `S.diet`, `S.allergy`; `S.goal`→`'maintain'`, `S.time`→`null`, `S.noTrain`→`false`; resets all chip/toggle/time-card UI, count displays, noTrain button text; clears `localStorage['dietai-state']`; then `goTo(0)`. **Does not touch favorites** (saved snapshots survive reset, by design).
-- **Favorites (♡ heart)** — `saveFavorite()` snapshots `serializeDay(DAY)` into `localStorage['shapeat-favorites']` (cap 30). Re-click on the same day **updates** the snapshot (same `fav_id`, new `saved_at`) — never duplicates, never unsaves; removal only from the account modal (`removeFavorite`). `showToast()` (`.app-toast`) gives feedback; anonymous users get a one-time "saved on device" hint (`shapeat-fav-hint`). Cloud mirror (table `favorites`) is handled by wrappers in supabase-client.js.
+- **Favorites (♥ heart)** — `toggleFavoriteToday()` is a **true toggle** keyed by `buildId`: displayed build saved → `window.removeFavorite` + "הוסר מהמועדפים" toast with a "ביטול" undo action (undo re-saves from the live `DAY`); not saved → `window.saveFavorite()`. `saveFavorite()` itself stays **idempotent save-or-update by date** (one favorite per date — hearting a different build from the same date replaces the snapshot; the login-intent flow calls it directly, so it must never toggle) and is **silent** — the save toast ("נשמר/עודכן במועדפים ✓" + "צפייה" action) comes only from the supabase-client wrapper. Snapshots in `localStorage['shapeat-favorites']` (cap 30). The heart is an inline SVG button (`aria-pressed`; CSS fills it rose + `heart-pop` animation on `.on`, `prefers-reduced-motion` aware). `loadDay` backfills a missing `buildId` (pre-feature days) and persists it immediately — otherwise the heart could never light. Cloud mirror (table `favorites`) via wrappers in supabase-client.js; `closeAccountModal` re-runs `updateFavHeart()` so in-modal removals reflect on the menu screen.
 
 ## Persistence & Safety helpers (ui.js)
 
