@@ -13,7 +13,14 @@
       "Bash(*git.exe commit*)",
       "Bash(*git.exe log*)",
       "Bash(*git.exe diff*)",
-      "Bash(*git.exe branch*)"
+      "Bash(*git.exe branch*)",
+      "Bash(curl -sI *)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_console_messages"
     ]
   }
 }
