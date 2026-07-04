@@ -393,6 +393,15 @@
     } catch (e) { return dateStr; }
   }
 
+  // שעת השמירה — המבדיל בין כמה מועדפים באותו יום (מטרה+קלוריות זהות ב"תפריט נוסף")
+  function timeLabel(iso) {
+    try {
+      const d = new Date(iso);
+      if (isNaN(d)) return '';
+      return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return ''; }
+  }
+
   function openAccountModal(initialTab) {
     if (accountEl || !session) return;
     accountEl = document.createElement('div');
@@ -486,7 +495,8 @@
       };
       const d = document.createElement('span');
       d.className = 'row-date';
-      d.textContent = dateLabel(f.date);
+      const t = timeLabel(f.saved_at);
+      d.textContent = dateLabel(f.date) + (t ? ' · ' + t : '');
       const meta1 = document.createElement('span');
       meta1.className = 'row-meta';
       meta1.textContent = dayStats(f.payload).cal.toLocaleString() + ' קק"ל';

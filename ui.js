@@ -167,15 +167,16 @@ function writeFavorites(list) {
   try { localStorage.setItem(FAV_KEY, JSON.stringify(list)); } catch (e) {}
 }
 
-// שומר/מעדכן את התפריט הנוכחי — אידמפוטנטי (שמירה-או-עדכון לפי תאריך, אף פעם לא ביטול):
+// שומר/מעדכן את התפריט הנוכחי — אידמפוטנטי (שמירה-או-עדכון לפי buildId, אף פעם לא ביטול):
 // זרם כוונת-השמירה אחרי login קורא לו ישירות, ולכן אסור שיתנהג כטוגל.
+// המפתוח לפי buildId (זהות התפריט) ולא לפי תאריך — כך שני תפריטים שונים באותו יום = שני מועדפים.
 // שקט בכוונה — הטוסט מגיע מהעטיפה ב-supabase-client (המקור היחיד למשוב שמירה).
 // מחזיר {fav, created} — ה-hook של שכבת הסנכרון (supabase-client עוטף את הפונקציה).
 function saveFavorite() {
   if (!DAY) return null;
   const list = listFavorites();
   const now = new Date().toISOString();
-  let fav = list.find(f => f.date === DAY.date);
+  let fav = list.find(f => f.payload && f.payload.buildId && f.payload.buildId === DAY.buildId);
   let created = false;
   if (fav) {
     fav.payload = serializeDay(DAY);
