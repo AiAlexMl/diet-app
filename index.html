@@ -19,6 +19,28 @@
   <script src="coach-theme.js"></script>
 </head>
 <body>
+
+<!-- מסך פתיחה (splash) — פעם אחת לכל session, מכבד prefers-reduced-motion -->
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-inner">
+    <img class="splash-logo" src="brand/AVATAR-shapeat.png" alt="">
+    <div class="splash-word">Shap<span>Eat</span></div>
+  </div>
+</div>
+<script>
+  (function () {
+    var s = document.getElementById('splash');
+    if (!s) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var seen = false;
+    try { seen = sessionStorage.getItem('se-splash') === '1'; } catch (e) {}
+    if (reduce || seen) { s.remove(); return; }
+    try { sessionStorage.setItem('se-splash', '1'); } catch (e) {}
+    s.classList.add('run');
+    setTimeout(function () { if (s && s.parentNode) s.remove(); }, 1500);
+  })();
+</script>
+
 <div class="app-wrapper" id="app">
 
   <header>

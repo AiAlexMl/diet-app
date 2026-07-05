@@ -49,6 +49,34 @@ body {
   box-shadow: 0 0 40px rgba(79,70,229,0.07);
 }
 
+/* ── מסך פתיחה (splash) ── */
+.splash { display: none; }
+.splash.run {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #f0f2f8, #e8ecf7);
+  animation: splashOut .45s ease 1.05s forwards;
+}
+.splash-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.splash-logo {
+  width: 84px; height: 84px; border-radius: 22px;
+  box-shadow: 0 12px 32px rgba(79, 70, 229, 0.35);
+  animation: splashPop .6s cubic-bezier(.2, .9, .3, 1.4) both;
+}
+/* צבעי ShapEat קבועים (לא יורשים theme של מאמן) — רגע מותג "powered by" נקי */
+.splash-word {
+  font-size: 30px; font-weight: 800; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: splashWord .5s ease .28s both;
+}
+.splash-word span { -webkit-text-fill-color: #10b981; }
+@keyframes splashPop { from { opacity: 0; transform: scale(.5) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes splashWord { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes splashOut  { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .splash, .splash.run { display: none !important; } }
+
 /* ── לוגו ── */
 .app-logo {
   display: flex; align-items: center; justify-content: center; gap: 12px;
@@ -137,9 +165,18 @@ body {
   width: 100%; border-radius: 12px; padding: 12px; font-size: 15px;
   font-weight: 700; cursor: pointer; margin-top: 8px;
 }
-.auth-google { border: 1.5px solid var(--border); background: #fff; }
-.auth-google:hover:not(:disabled) { border-color: var(--accent); }
-.auth-google:disabled { opacity: 0.5; cursor: default; }
+.auth-google {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  border: 1px solid #dadce0; background: #fff; color: #3c4043;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.15);
+  transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.auth-google .g-icon { flex-shrink: 0; }
+.auth-google:hover:not(:disabled) {
+  background: #f8f9fb; border-color: #d2d5da;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.28);
+}
+.auth-google:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 .auth-magic {
   border: none; color: #fff;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
