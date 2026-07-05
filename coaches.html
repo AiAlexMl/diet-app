@@ -7,10 +7,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ShapEat למאמנים — האפליקציה שלך, המתאמנים שלך</title>
 <link rel="canonical" href="https://shapeat.co.il/coaches.html">
-<meta name="description" content="ShapEat למאמנים — תן לכל מתאמן כלי תזונה יומי ממותג בשמך, בלי לבנות תפריטים. הצטרפו לרשימת ההמתנה.">
+<meta name="description" content="ShapEat למאמנים: תנו לכל מתאמן כלי תזונה יומי ממותג בשמכם, בלי לבנות תפריטים. הצטרפו לפיילוט המייסדים.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="ShapEat למאמנים — האפליקציה שלך, המתאמנים שלך">
-<meta property="og:description" content="תן לכל מתאמן כלי תזונה יומי ממותג בשמך — בלי לבנות תפריטים. הצטרפו ראשונים.">
+<meta property="og:description" content="תנו לכל מתאמן כלי תזונה יומי ממותג בשמכם, בלי לבנות תפריטים. הצטרפו ראשונים.">
 <meta property="og:image" content="https://shapeat.co.il/brand/AVATAR-shapeat.jpg">
 <meta property="og:image:width" content="1024">
 <meta property="og:image:height" content="1024">
@@ -39,6 +39,25 @@
 
   /* hero */
   .hero{text-align:center;padding:14px 6px 30px}
+  .hero-badge{display:inline-block;font-size:13.5px;font-weight:700;color:var(--accent);
+    background:#eef0fd;border:1px solid #dcdff9;border-radius:999px;padding:6px 16px;margin-bottom:16px;
+    animation:fadeUp .7s ease both, badgePulse 2.6s ease-in-out 1.2s 3}
+  @keyframes badgePulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,0)}50%{box-shadow:0 0 0 6px rgba(79,70,229,.10)}}
+
+  /* pain */
+  .pain{max-width:560px;margin:0 auto}
+  .pain-list{display:flex;flex-direction:column;gap:10px}
+  .pain-row{display:flex;align-items:flex-start;gap:12px;background:var(--card);border-radius:14px;
+    box-shadow:var(--shadow);padding:14px 16px;font-size:15px;color:var(--text-sec)}
+  .pain-ic{font-size:20px;flex-shrink:0}
+  .pain-bridge{text-align:center;font-size:16px;font-weight:800;margin-top:18px}
+
+  /* faq */
+  .faq{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  .faq details{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:0 18px}
+  .faq summary{cursor:pointer;font-weight:800;font-size:15.5px;padding:15px 0;list-style-position:inside}
+  .faq details[open] summary{border-bottom:1px solid var(--border)}
+  .faq details p{font-size:14px;color:var(--text-sec);padding:12px 4px 16px}
   .hero h1{font-size:40px;font-weight:900;letter-spacing:-1px;line-height:1.12;margin-bottom:16px}
   .hero h1 .grad{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
   .hero p{font-size:18px;color:var(--text-sec);max-width:620px;margin:0 auto 26px}
@@ -46,10 +65,6 @@
     font-weight:800;font-size:17px;padding:15px 34px;border-radius:999px;text-decoration:none;
     box-shadow:0 8px 22px rgba(79,70,229,.32);transition:transform .15s}
   .cta:hover{transform:translateY(-2px)}
-  .cta-ghost{display:inline-block;background:#fff;color:var(--accent);font-weight:800;font-size:17px;
-    padding:15px 34px;border-radius:999px;text-decoration:none;border:2px solid var(--accent);
-    box-shadow:0 4px 14px rgba(79,70,229,.14);transition:transform .15s}
-  .cta-ghost:hover{transform:translateY(-2px)}
   .cta-note{font-size:13px;color:var(--text-tert);margin-top:12px}
 
   /* value cards */
@@ -105,7 +120,7 @@
   .vcard{transition:opacity .6s ease,transform .3s ease,box-shadow .3s ease}
   .vcard:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(40,46,90,.16)}
   @media(prefers-reduced-motion:reduce){
-    .hero h1,.hero p,.hero .cta,.hero .cta-note,.hero h1 .grad{animation:none}
+    .hero h1,.hero p,.hero .cta,.hero .cta-note,.hero h1 .grad,.hero-badge{animation:none}
     .reveal{opacity:1;transform:none;transition:none}
   }
 
@@ -124,18 +139,32 @@
   </nav>
 
   <header class="hero">
+    <div class="hero-badge">🚀 פיילוט מייסדים · <b>10 מקומות</b> בסבב הראשון</div>
     <h1>האפליקציה שלך.<br><span class="grad">המתאמנים שלך.</span></h1>
-    <p>תן לכל מתאמן כלי תזונה יומי <b>ממותג בשמך</b> — תפריט אישי שנפתח בכל ארוחה. האפליקציה עושה את התזונה; אתה מתמקד באימון, במותג ובליווי.</p>
+    <p>תנו לכל מתאמן כלי תזונה יומי <b>ממותג בשמכם</b>: תפריט אישי שנפתח בכל ארוחה. האפליקציה עושה את התזונה; אתם מתמקדים באימון, במותג ובליווי.</p>
     <a class="cta" href="#join">הצטרפו ראשונים →</a>
-    <div class="cta-note">המוצר בבנייה · הצטרפות חינם לרשימת ההמתנה</div>
+    <div class="cta-note">מצטרפים מוקדמים נועלים תנאי מייסדים · למתאמנים שלכם זה חינם</div>
+    <div class="cta-note" style="margin-top:6px">המנוע כבר חי: <a href="index.html" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">נסו את האפליקציה בעצמכם ↗</a></div>
   </header>
 
-  <h2 class="sec-title reveal">למה מאמנים בוחרים ב-ShapEat</h2>
+  <section class="pain reveal">
+    <h2 class="sec-title" style="margin-top:8px">מכירים את זה?</h2>
+    <div class="pain-list">
+      <div class="pain-row"><span class="pain-ic">🤔</span><span>המתאמן שואל "מה לאכול?", והתשובה כללית, כי תפריטים זה לא התחום שלכם.</span></div>
+      <div class="pain-row"><span class="pain-ic">💸</span><span>הלקוח הולך לתזונאי יקר ונוקשה, ואתם מאבדים את הליווי (ולפעמים את הלקוח).</span></div>
+      <div class="pain-row"><span class="pain-ic">📉</span><span>בין אימון לאימון אין לו כלי יומי ביד, וההתמדה נופלת.</span></div>
+    </div>
+    <div class="pain-bridge">בדיוק בשביל זה בנינו את ShapEat למאמנים 👇</div>
+  </section>
+
+  <h2 class="sec-title reveal">למה מאמנים ומאמנות בוחרים ב-ShapEat</h2>
   <div class="grid">
-    <div class="vcard reveal"><div class="ic">🎨</div><h3>ממותג בשמך</h3><p>הלוגו והצבעים שלך. המתאמן רואה אפליקציה אישית — ה"דמות מאחורי התוכנה" היא אתה.</p></div>
-    <div class="vcard reveal"><div class="ic">⚡</div><h3>בלי לבנות תפריטים</h3><p>תזונה אישית מחושבת אוטומטית לכל מתאמן ומתעדכנת לבד — אתה משוחרר מבניית תפריטים ומתמקד באימון ובליווי.</p></div>
-    <div class="vcard reveal"><div class="ic">📊</div><h3>דשבורד מתאמנים</h3><p>רואה התמדה, מגמת משקל ו-streak של כל מתאמן — ויודע בדיוק מי צריך דחיפה, בלי להיות דבוק לטלפון.</p></div>
-    <div class="vcard reveal"><div class="ic">🏆</div><h3>לוח מאמנים</h3><p>יותר מתאמנים פעילים = דירוג גבוה יותר = חשיפה ולקוחות חדשים. הוכחה חברתית שעובדת בשבילך.</p></div>
+    <div class="vcard reveal"><div class="ic">🎨</div><h3>ממותג בשמכם</h3><p>הלוגו והצבעים שלכם. המתאמן רואה אפליקציה אישית: הדמות מאחורי התוכנה היא אתם.</p></div>
+    <div class="vcard reveal"><div class="ic">⚡</div><h3>בלי לבנות תפריטים</h3><p>תזונה אישית מחושבת אוטומטית לכל מתאמן ומתעדכנת לבד. אתם משוחררים מבניית תפריטים ומתמקדים באימון ובליווי.</p></div>
+    <div class="vcard reveal"><div class="ic">📊</div><h3>דשבורד מתאמנים</h3><p>רואים התמדה, מגמת משקל ו-streak של כל מתאמן, ויודעים בדיוק מי צריך דחיפה, בלי להיות דבוקים לטלפון.</p></div>
+    <div class="vcard reveal"><div class="ic">🏆</div><h3>לוח מאמנים</h3><p>יותר מתאמנים פעילים = דירוג גבוה יותר = חשיפה ולקוחות חדשים. הוכחה חברתית שעובדת בשבילכם.</p></div>
+    <div class="vcard reveal"><div class="ic">🛡️</div><h3>אתם מחוץ לתזונה</h3><p>התפריט מחושב אוטומטית על ידי האפליקציה, כתפריט לדוגמה לאדם בריא. אתם נותנים גישה לכלי, לא בונים תפריט ולא נותנים ייעוץ תזונתי.</p></div>
+    <div class="vcard reveal"><div class="ic">💚</div><h3>חינם למתאמנים שלכם</h3><p>אפס חיכוך לצרף לקוחות: החוויה למתאמן חינמית לגמרי, בלי חומת תשלום. הם רק צריכים את הקישור שלכם.</p></div>
   </div>
 
   <h2 class="sec-title reveal">ככה זה נראה</h2>
@@ -145,13 +174,25 @@
            aria-label="סרטון הדגמה של דשבורד המאמן: רשימת המתאמנים, אחוזי התמדה, ולוח המאמנים"></video>
     <div class="preview-cap">תצוגה מקדימה · נתוני דוגמה — <a href="coach-demo.html" target="_blank">פתח דמו אינטראקטיבי במסך מלא ↗</a></div>
   </div>
-  <div class="reveal" style="text-align:center;margin-top:24px">
-    <a class="cta-ghost" href="index.html" target="_blank" rel="noopener">👀 הצצה מצד המתאמן</a>
+  <h2 class="sec-title reveal">שאלות שמאמנים שואלים</h2>
+  <div class="faq reveal">
+    <details>
+      <summary>על מה מבוססים התפריטים?</summary>
+      <p>על נוסחאות תזונה מקובלות: הוצאה קלורית לפי Harris-Benedict ומקדם פעילות, חלוקת מאקרו לפי משקל גוף, עם רצפות בטיחות מובנות (קלוריות מינימום, חלבון, פחמימה). הכול שקוף: המשתמש רואה על המסך את ה-BMR והיעד הקלורי. זהו תפריט לדוגמה לאדם בריא, לא ייעוץ רפואי או תזונתי אישי.</p>
+    </details>
+    <details>
+      <summary>זה לא נכנס לתחום של דיאטן?</summary>
+      <p>לא, וזה עקרוני בעיצוב. אתם נותנים למתאמן גישה לכלי; התוכנה מחשבת תפריט לדוגמה אוטומטית. אתם לא בונים תפריט ולא נותנים ייעוץ תזונתי, והכלי משלים את הליווי שלכם, לא מחליף אנשי מקצוע.</p>
+    </details>
+    <details>
+      <summary>כמה זה עולה?</summary>
+      <p>למתאמנים שלכם זה חינם, תמיד. גרסת המאמנים (מיתוג אישי + דשבורד התמדה) תהיה במנוי, ומצטרפי הפיילוט נועלים תנאי מייסדים מועדפים.</p>
+    </details>
   </div>
 
   <section id="join" class="join reveal">
-    <h2>רוצה להיות מהראשונים?</h2>
-    <div class="sub">השאר פרטים — ונעדכן אותך ברגע שנפתח למאמנים.</div>
+    <h2>רוצים להיות מהראשונים?</h2>
+    <div class="sub">בסבב הראשון של הפיילוט יש 10 מקומות בלבד. השאירו פרטים ונחזור אליכם אישית.</div>
     <form id="waitlist-form" class="wl-form" action="https://api.web3forms.com/submit" method="POST">
       <input type="hidden" name="access_key" value="551d8138-f046-4062-a9da-fcbb98cbf9a2">
       <input type="hidden" name="subject" value="הרשמה חדשה — ShapEat למאמנים">
@@ -181,10 +222,14 @@
         <input type="checkbox" name="consent" required style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--accent);cursor:pointer">
         <span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">מדיניות הפרטיות</a> ול<a href="terms.html" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">תנאי השימוש</a>.</span>
       </label>
-      <button class="cta" type="submit">הצטרפו לרשימת ההמתנה</button>
-      <div class="wl-priv">הפרטים משמשים ליצירת קשר בנוגע לרשימת ההמתנה, ומעובדים לפי מדיניות הפרטיות.</div>
+      <button class="cta" type="submit">הצטרפו לפיילוט המייסדים</button>
+      <div class="wl-priv">הפרטים משמשים ליצירת קשר בנוגע לפיילוט, ומעובדים לפי מדיניות הפרטיות.</div>
     </form>
-    <div id="wl-thanks" class="wl-thanks" style="display:none">🎉 תודה! נרשמת לרשימת ההמתנה — נעדכן אותך ברגע שנפתח למאמנים.</div>
+    <div id="wl-thanks" class="wl-thanks" style="display:none">🎉 תודה! הפרטים התקבלו. נחזור אליכם ברגע שנפתח מקום בפיילוט.</div>
+    <div style="margin-top:16px;font-size:13.5px;color:var(--text-sec)">
+      מעדיפים לדבר קודם? שלחו לנו הודעה באינסטגרם:
+      <a href="https://www.instagram.com/shapeatapp/" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">@shapeatapp</a>
+    </div>
   </section>
 
   <div class="foot reveal">
@@ -219,11 +264,16 @@
         if (data.success) { wf.style.display = 'none'; thanks.style.display = 'block'; }
         else throw new Error(data.message || 'failed');
       } catch (err) {
-        btn.disabled = false; btn.textContent = 'הצטרפו לרשימת ההמתנה';
+        btn.disabled = false; btn.textContent = 'הצטרפו לפיילוט המייסדים';
         alert('הייתה תקלה בשליחה. בדוק את החיבור ונסה שוב.');
       }
     });
   }
 </script>
+
+<!-- Cloudflare Web Analytics (פרטי, ללא עוגיות) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon='{"token": "40245cbfbdf240438912cd462e304eb0"}'></script>
+<!-- End Cloudflare Web Analytics -->
 </body>
 </html>

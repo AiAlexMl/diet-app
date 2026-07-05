@@ -935,6 +935,7 @@ function dayHtml(day, opts) {
     ${hasTreat
       ? `<button class="pill-btn" disabled title="הסר את הפינוק כדי לשמור תפריט נקי">📄 שמירה כ-PDF</button>`
       : `<button class="pill-btn" onclick="window.print()">📄 שמירה כ-PDF</button>`}
+    <button class="pill-btn" onclick="shareDay()">📤 שיתוף</button>
   </div>${hasTreat
     ? `<div class="print-hint" style="text-align:center;margin-top:6px;font-size:12px;color:var(--text-tert)">📄 כדי לשמור תפריט נקי, הסר קודם את הפינוק 🙂</div>`
     : ''}
@@ -955,6 +956,27 @@ function renderDay() {
   updateDayProgress();
   updateFavHeart();
   goTo(4);
+}
+
+// שיתוף היום כטקסט (Web Share במובייל, וואטסאפ בדסקטופ) — לולאת ההפצה האורגנית
+function shareDay() {
+  if (!DAY) return;
+  const lines = ['התפריט שלי להיום 🥗', ''];
+  let cal = 0, prot = 0;
+  DAY.meals.forEach(m => {
+    if (m.removed || !m.items.length) return;
+    cal += m.totCal; prot += m.totP || 0;
+    const names = m.items.map(it => it.isSaladGroup ? it.label : (it.displayName || it.f.name));
+    lines.push(`${m.type === 'treat' ? '🍫' : '🍽️'} ${m.label} (${m.totCal} קל׳): ${names.join(', ')}`);
+  });
+  lines.push('', `סה"כ: ${cal.toLocaleString()} קל׳ · ${Math.round(prot)}g חלבון`, '',
+    'נבנה עם ShapEat, תפריט תזונה אישי בחינם:', 'https://shapeat.co.il');
+  const text = lines.join('\n');
+  if (navigator.share) {
+    navigator.share({ text }).catch(() => {});
+  } else {
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  }
 }
 
 // ══════════════════════════════════════════
