@@ -990,6 +990,30 @@ function reconcile(meals, used, ctx) {
     }
   }
 
+  // נירמול פריכיות: "12 פריכיות דקות" זה מגדל, לא מנה. מעל 6 יחידות מחליפים לפריכייה בעלת
+  // יחידה גדולה יותר מאותה קבוצת וריאנטים (אותם גרמים בקירוב, פחות יחידות). פריכייה אהובה
+  // לא מוחלפת בסוג שלא סומן (העדפות מנצחות); used מעודכן כך שקבוצת הווריאנטים נשארת עקבית.
+  meals.forEach(m => {
+    if (m.removed) return;
+    let changed = false;
+    m.items.forEach(it => {
+      if (!it.f || !it.f.tags.includes('cracker')) return;
+      if (Math.round(it.g / it.f.unitG) <= 6) return;
+      const alt = [45, 46, 100].map(id => ALL.find(f => f.id === id))
+        .filter(f => f && f.unitG > it.f.unitG && allowed(f) &&
+          (!S.liked.has(it.f.id) || S.liked.has(f.id)))
+        .sort((a, b) => b.unitG - a.unitG)[0];
+      if (!alt) return;
+      const prev = used.get(it.f.id) || 0, left = prev - it.g;
+      if (left > 0) used.set(it.f.id, left); else used.delete(it.f.id);
+      it.f = alt;
+      reCracker(it, it.g);   // ממיר את אותם גרמים ליחידות של הסוג הגדול (crackerPortion)
+      use(used, it);
+      changed = true;
+    });
+    if (changed) recalcMeal(m);
+  });
+
   // פיצול "ערימת פחמימה" בארוחה חמה (דו-כיווני): הפחמימה הגמישה הכבדה ביותר — דגן בגרמים או
   // עמילן ביחידות — שעוברת ~350 קל' מתפצלת לחצי + תוספת פחמימה *מסוג אחר* (דגן→בטטה, בטטה→דגן).
   // מעבירים קלוריות 1:1 (מאקרו וקלוריות נשמרים). פותר "הר אורז" וגם "3 בטטות". פיצול אחד לארוחה.
