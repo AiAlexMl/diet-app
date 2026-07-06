@@ -157,8 +157,10 @@ function cottagePortion(targetG) {
 // תקרת פריכיות לארוחה — בגרמים ולא ביחידות: פריכייה דקה (4g) אינה פריכייה גדולה (9g),
 // וספירה עיוורת הרעיבה ארוחות (4 דקות = 16g בלבד). חיטוב/שמירה ~36g, בולק ~54g; 2–12 יחידות.
 const crackerMaxN = unitW => Math.max(2, Math.min(12, Math.round((S.goal === 'bulk' ? 54 : 36) / (unitW || 9))));
+// מינימום פריכיות גם הוא בגרמים (~16g): "2 פריכיות דקות (8g)" זו פחמימה סמלית, לא מנה
+const crackerMinN = unitW => Math.max(2, Math.round(16 / (unitW || 9)));
 function crackerPortion(targetG, unitW) {
-  const n = Math.max(2, Math.min(crackerMaxN(unitW), Math.round(targetG / unitW)));
+  const n = Math.max(crackerMinN(unitW), Math.min(crackerMaxN(unitW), Math.round(targetG / unitW)));
   return { g: n * unitW, dispG: `${n} פריכיות (${n * unitW}g)` };
 }
 
@@ -866,7 +868,8 @@ function reconcile(meals, used, ctx) {
     const maxOf = it => isBread(it) ? it.f.unitG * 2 : isCracker(it) ? it.f.unitG * crackerMaxN(it.f.unitG)
       : isUnitCarb(it) ? Math.min(it._maxG || 99999, Math.max(1, Math.min(3, Math.floor(450 / it.f.unitG))) * it.f.unitG)
       : Math.min(it._maxG || 99999, it.f.maxMeal || 99999, it.f.maxDay || 99999, grainCap(it.f));
-    const minOf = it => isCracker(it) ? it.f.unitG * 2 : (it.f.unitG || 30);
+    // פריכיות ≥~16g. דגן גמיש נשאר עם מינימום טבעי — רצפת 80g חסמה כיווץ ביום שגולש (טבעוני חיטוב).
+    const minOf = it => isCracker(it) ? it.f.unitG * crackerMinN(it.f.unitG) : (it.f.unitG || 30);
     const grams = items().filter(it => it.f && !it.f.isEgg && !it.f.condiment && !it.isSaladGroup &&
       it.f.id !== 20 && it.f.id !== 21 && (!it.f.unitLabel || isCount(it)));
     const hasRoom = arr => arr.some(it => grow ? it.g < maxOf(it) : it.g > minOf(it));
@@ -1175,6 +1178,10 @@ function buildMenu() {
     S.menuWarning = finDev < 0
       ? `עם ההעדפות וההגבלות שנבחרו הצלחנו להגיע עד כ-${Math.round(Math.abs(finDev) * 100)}% מתחת ליעד הקלורי. התפריט מאוזן — פשוט קשה למלא את היעד עם המבחר הנוכחי; סימון עוד מאכלים (במיוחד פחמימות) יעזור לדייק.`
       : `עם ההעדפות שנבחרו התפריט חורג בכ-${Math.round(finDev * 100)}% מעל היעד הקלורי — חלק מהמאכלים המסומנים עשירים בקלוריות ביחס לחלבון. הסרת חלק מהם תעזור לדייק.`;
+  // שקיפות שומן: מאכלים אהובים שמנים לא מוחלפים (העדפות מנצחות) — אבל לא מסתירים את המחיר
+  const finFat = meals.reduce((s, m) => s + (m.removed ? 0 : m.totF), 0);
+  if (!S.menuWarning && finFat > S.fatG * 1.5)
+    S.menuWarning = `שומן יומי של כ-${Math.round(finFat)}g מול יעד של ${S.fatG}g — חלק מהמאכלים שסומנו כאהובים עשירים בשומן, והם נשארים בתפריט לפי ההעדפה. החלפת חלק מהם בחלופות רזות תאזן את התפריט.`;
 
   S.target = fullTarget;                    // שחזור היעד המלא לתצוגה ולפס ההתקדמות
   if (treatMeal) meals.push(treatMeal);     // הפינוק מוצג ככרטיס משלו, מחוץ ל-reconcile
