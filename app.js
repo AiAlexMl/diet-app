@@ -914,6 +914,36 @@ function reconcile(meals, used, ctx) {
       S.menuWarning = 'עם ההעדפות והיעד הנוכחיים קשה לעמוד בדיוק ביעד הקלורי — חלק מהמאכלים שסומנו עשירים בשומן או דלים בחלבון. ניסינו לאזן; כדי לדייק כדאי להסיר חלק מהמאכלים השמנים המועדפים או להתאים מעט את יעד הקלוריות.';
   }
 
+  // צמצום שומן חורג ממאכלים אהובים שמנים (שלב 2 לא נוגע באהובים — כאן מקטינים *כמות* בלבד, בלי
+  // החלפה שנוגדת העדפה): אם השומן חורג בגדול (>1.3× היעד) גם אחרי כל מנופי שלב 2, מכווצים את
+  // החלבונים השמנים ביותר עד שהשומן מתקרב ליעד — בכפוף לרצפת חלבון יומית (~1.6 ג/ק"ג) ולרצפת המנה
+  // המרכזית. הקלוריות שמתפנות ממולאות בפחמימה ע"י ה-top-up שרץ מיד אחרי (שומן↓, מקום לחלבון/פחמימה↑,
+  // המאכל האהוב נשאר בצלחת). בפרופיל טהור-שומן שבו החלבון כבר על הרצפה — אין מרווח, והאזהרה תופסת.
+  {
+    let dF = meals.reduce((s, m) => s + (m.removed ? 0 : m.totF), 0);
+    const protFloor = S.proteinG * (S.diet.has('vegan') ? 1 : 0.8);
+    if (dF > S.fatG * 1.3) {
+      const fatty = items().filter(it => it.f && !it.f.isEgg && !it.f.unitLabel && !it.f.dip &&
+        (it.f.tags.includes('meat') || it.f.tags.includes('fish')) && it.f.f > 5)
+        .sort((a, b) => b.f.f - a.f.f);   // הכי שמן קודם
+      for (const it of fatty) {
+        if (dF <= S.fatG * 1.15) break;
+        const dP = meals.reduce((s, m) => s + m.totP, 0);
+        const roomP = dP - protFloor;                          // כמה חלבון מותר עוד להוריד
+        if (roomP <= 0) break;
+        const floorG = Math.max(it._minG || 0, it._mainProt ? mainProtFloor() : (it.f.unitG || 40));
+        if (it.g <= floorG) continue;
+        let cutG = Math.round((dF - S.fatG) / (it.f.f / 100));   // גרם להסרה כדי לקצץ את עודף השומן
+        cutG = Math.min(cutG, it.g - floorG, Math.floor(roomP / (it.f.p / 100)));
+        if (cutG < 20) continue;                                // קיצוץ זעיר לא שווה
+        const beforeF = it.fat;
+        reG(it, it.g - cutG);
+        const meal = meals.find(m => m.items.includes(it)); if (meal) recalcMeal(meal);
+        dF -= (beforeF - it.fat);
+      }
+    }
+  }
+
   // השלמת תת-השגה (כל הלוחות): פיזור שלב-3 פרופורציונלי-לקלוריות לא תמיד ממלא את המנופים עד
   // הסוף בימים דחוקים (דיאטה מגבילה, תוספת-קטנייה, ארוחה חמה יחידה — נמדד עד ‎-33%). שלוש מדרגות,
   // כל אחת רק אם עדיין חסר: (א) דגנים גמישים קיימים עד התקרה; (ב) מנופי ספירה — לחם/פריכיות/עמילן
