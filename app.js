@@ -332,6 +332,8 @@ function buildSingleVeg(used, hotOk) {
 const _tag = t => f => f.tags.includes(t);
 const isYogurt = f => f.id === 22 || f.id === 23 || f.id === 24;
 const isCheese = f => f.id === 20 || f.id === 21 || f.id === 25 || f.id === 26; // קוטג'/לבנה/צהובה
+// "חלבי" לצורך הפרדת כשרות: כל מוצר חלב + נגזרות חלב (שיבולת-בחלב 106, וויי/קזאין/בר-חלבון)
+const isDairyKosher = f => f.tags.includes('dairy') || f.containsMilk;
 const _sliced  = f => f.tags.includes('bread') && !f.pita; // לחם/פריכית, לא פיתה (פיתה רק עם חלבון ממולא)
 // האם יש חלבון מן החי זמין למשתמש (ביצה/בשר/דג/חלב)? אם כן — קטנייה אינה ה"חלבון" בסלט
 const hasAnimalProtein = () => ALL.some(f =>
@@ -498,7 +500,8 @@ function buildFromTemplate(tpl, cal, used, ctx) {
       const wantDip = dips.some(f => S.liked.has(f.id)) || Math.random() < 0.25;
       if (wantDip && dips.length) item = pick(dips, used, cal * (s.calPct || .15), 0, s.max || 50);
     } else {
-      let pool = ALL.filter(f => s.match(f, used) && kosherOk(f, mealTags));
+      // בכשר, ארוחה בחלון 6ש' אחרי בשר (ctx.noDairy) — מסננים חלב (כולל שיבולת-בחלב/וויי/קזאין)
+      let pool = ALL.filter(f => s.match(f, used) && kosherOk(f, mealTags) && !(ctx && ctx.noDairy && isDairyKosher(f)));
       // פיתה בעדיפות נמוכה ורק במשבצת שמסומנת pitaOk (חביתה); אחרת לחם/פריכיות
       if (pool.some(f => f.pita) && (!s.pitaOk || Math.random() >= 0.3)) pool = pool.filter(f => !f.pita);
       item = pick(pool, used, cal * (s.calPct || .3), s.protPct ? protShare * s.protPct : 0, s.max || 250);
@@ -521,18 +524,19 @@ function buildFromTemplate(tpl, cal, used, ctx) {
   return items;
 }
 
-function slotFeasible(s, used) {
-  if (s.optional) return true;
+function slotFeasible(s, used, ctx) {
+  if (s.optional) return true;   // משבצת אופציונלית לעולם לא מפילה תבנית (חלב-אופציונלי בכשר יוצא ריק, לא חוסם)
   if (s.special === 'salad')
     return ALL.filter(f => f.tags.includes('salad') && !f.tags.includes('salad_only') && allowed(f) && !used.has(f.id)).length >= 2;
   if (s.special) return true; // hot_carb / hotveg — כמעט תמיד זמינים
-  return ALL.some(f => s.match(f, used) && allowed(f) && !used.has(f.id) && !variantBlocked(f, used));
+  return ALL.some(f => s.match(f, used) && allowed(f) && !used.has(f.id) && !variantBlocked(f, used) &&
+    !(ctx && ctx.noDairy && isDairyKosher(f)));   // בכשר, משבצת-חובה שרק חלב ממלא אותה → תבנית לא-היתכנה
 }
 function tplHasLiked(tpl, used) {
   return tpl.slots.some(s => !s.special && ALL.some(f => s.match(f, used) && S.liked.has(f.id) && allowed(f)));
 }
-function chooseTemplate(list, used) {
-  const feasible = list.filter(tpl => (!tpl.when || tpl.when(used)) && tpl.slots.every(s => slotFeasible(s, used)));
+function chooseTemplate(list, used, ctx) {
+  const feasible = list.filter(tpl => (!tpl.when || tpl.when(used)) && tpl.slots.every(s => slotFeasible(s, used, ctx)));
   if (!feasible.length) return null;
   const liked = feasible.filter(tpl => tplHasLiked(tpl, used));
   const pool = liked.length ? liked : feasible;
@@ -543,7 +547,7 @@ function chooseTemplate(list, used) {
 }
 
 function buildMeal(type, cal, used, ctx) {
-  const tpl = chooseTemplate(MEAL_TEMPLATES[type], used);
+  const tpl = chooseTemplate(MEAL_TEMPLATES[type], used, ctx);
   return tpl ? buildFromTemplate(tpl, cal, used, ctx) : [];
 }
 
@@ -579,7 +583,8 @@ function convertDemeatedMeal(meal, used, ctx) {
   };
   const strats = [
     { w: 3, build: () => anchor(f => f.tags.includes('egg'), .35, 200) },                          // ביצים + פחמימה + סלט
-    { w: 2, build: () => anchor(f => f.id === 20 || f.id === 21 || isYogurt(f), .4, 250) },         // קוטג'/יוגורט + פחמימה
+    // עוגן קוטג'/יוגורט — מושמט בכשר: הארוחה שאיבדה בשר צמודה לארוחת הבשר שנשמרה, וחלב לצידה יפר הפרדה
+    ...(S.diet.has('kosher') ? [] : [{ w: 2, build: () => anchor(f => f.id === 20 || f.id === 21 || isYogurt(f), .4, 250) }]),   // קוטג'/יוגורט + פחמימה
     { w: 1, build: () => { const it = anchor(f => f.tags.includes('legume') && !f.dip && f.p >= 7, .4, 250);   // קטנייה עתירת-חלבון (עדשים/חומוס/שעועית) — לא אפונה
                            if (it) { it._minG = Math.min(it.g, 120);                                // רצפה כדי ששלב-1 לא יכווץ אותה לסמלית
                              meal.items.forEach(x => {                                               // תוחמים את הפחמימה כשיש קטנייה (העודף לארוחת הבשר), כדי שלא יהיה "הר"
@@ -834,7 +839,9 @@ function reconcile(meals, used, ctx) {
         const targets = meals.filter(m => !m.removed && m.type !== 'treat' && m.type !== 'hot')
           .sort((a, b) => a.totP - b.totP);
         for (const f of cand) {
-          const tm = targets.find(m => kosherOk(f, new Set(m.items.flatMap(x => x.f ? x.f.tags : []))));
+          // בכשר לא מזריקים חלב לארוחה בחלון 6ש' אחרי בשר (m.noDairy); מועמד פרווה (ביצה/טונה/קטנייה) מותר בכל מקום
+          const tm = targets.find(m => kosherOk(f, new Set(m.items.flatMap(x => x.f ? x.f.tags : []))) &&
+            !(m.noDairy && isDairyKosher(f)));
           if (!tm) continue;
           const it = pick([f], used, missP * 5, missP, 260);
           if (!it) continue;
@@ -1176,7 +1183,20 @@ function buildMenu() {
   // בונים קודם את הארוחות הפחות-גמישות (לא-חמות, יחידות טבעיות), ואז את החמות (בשר+פחמימה
   // בגרמים) לפי התקציב שנותר — כך הגמישות מכוונת ישר ליעד היומי. הסדר לתצוגה נשמר.
   const meals = mealDefs.map(def => ({ ...def, budget: Math.round(t * def.pct), items: [] }));
-  const buildInto = (m, budget) => { m.budget = budget; m.items = buildMealBest(m.type, budget, used, ctx); recalcMeal(m); };
+
+  // כשרות — הפרדת 6 שעות בשר→חלב: ארוחה חלבית לא תיפול בחלון של עד 6ש' *אחרי* ארוחה בשרית.
+  // חל רק על כשר+אוכל-כול (לצמחוני/טבעוני אין בשר → חלב חופשי). הארוחה הבשרית = ה-hot (בשר/דג;
+  // מתייחסים אליה כבשרית באופן שמרני). מחושב על מערך meals הסופי — כולל נשנושי מסה שנוספו ב-mealPlan.
+  // הכיוון ההפוך (חלבי→בשרי) דורש הלכתית רק הדחה, ומרווחי הלוח מספיקים — לכן אינו מוגבל.
+  const kMeatSep = S.diet.has('kosher') && !S.diet.has('vegetarian') && !S.diet.has('vegan');
+  if (kMeatSep) {
+    const mins = tm => { const [h, m] = String(tm).split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+    const meatMins = meals.filter(m => m.type === 'hot').map(m => mins(m.time));
+    meals.forEach(m => { if (m.type !== 'hot') m.noDairy = meatMins.some(ht => { const d = mins(m.time) - ht; return d > 0 && d <= 360; }); });
+    S.kosherSep = meals.some(m => m.noDairy);   // דגל לתצוגת הערת המידע
+  } else S.kosherSep = false;
+
+  const buildInto = (m, budget) => { m.budget = budget; m.items = buildMealBest(m.type, budget, used, { ...ctx, noDairy: m.noDairy }); recalcMeal(m); };
 
   meals.filter(m => m.type !== 'hot').forEach(m => buildInto(m, m.budget));
   const hot = meals.filter(m => m.type === 'hot');

@@ -57,7 +57,7 @@ Renders in order:
 1. `it.displayName` if set — eggs: "חביתה מביצה אחת (L)"
 2. `it.f.name + it.f.prep` if prep word not already in name (e.g., "ברוקולי מאודה")
 
-**Product image** — each non-salad food row shows a 26px thumbnail (`images/<id>.jpg`, derived from id; `it.f.img` overrides). Hover enlarges it to 150px (`.food-thumb:hover img`). Missing files hide via `<img onerror>`. Salad parts don't show images yet.
+**Product image** — each non-salad food row shows a 26px thumbnail (`images/<id>.jpg`, derived from id; `it.f.img` overrides). Hover enlarges it to 150px (`.food-thumb:hover img`) on desktop. On **click/tap** a **lightbox** opens (`openImgLightbox` in ui.js, via a single delegated `document` click listener so it works on both the menu screen and the read-only history modal) — fullscreen `.img-lightbox` overlay (z-index 2500) with the big image + a `✕`; a click **anywhere** / `✕` / `Escape` closes it (fixes the mobile bug where `:hover` enlarged the image with no way to dismiss). `src`/`alt` are set as DOM properties (no HTML injection); `.img-lightbox` is hidden in `@media print` and respects `prefers-reduced-motion`. Missing files hide via `<img onerror>`. Salad parts don't show images yet.
 
 **Salad group** (`isSaladGroup: true`) — renders label + `it.parts.join(' + ')` as subtitle.
 

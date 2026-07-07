@@ -701,7 +701,8 @@ function renderMenu() {
     meals, eaten: meals.map(() => false),
     note: treatMeal ? treatBuildNote(treatMeal.items) : null,
     warn: { bmi: S.bmiWarning, train: S.trainWarning, carb: S.carbWarning, menu: S.menuWarning,
-            calFloor: S.calFloorWarning },
+            calFloor: S.calFloorWarning,
+            kosherSep: S.kosherSep ? 'בכשרות שמרנו על הפרדה של 6 שעות בין הארוחה הבשרית לחלבית, לכן החלב מרוכז בבוקר ובארוחות שאינן צמודות לבשר.' : null },
     tips: dietTips(),
     gLabel: { cut: 'חיטוב', maintain: 'שמירה', bulk: 'מסה' }[S.goal],
     tLabel: S.noTrain || !S.time ? 'ללא אימון'
@@ -790,6 +791,14 @@ function dayHtml(day, opts) {
     html += `<div class="bmi-warning info-warning">
       <span class="bmi-warning-icon">ℹ️</span>
       <span>${esc(day.warn.menu)}</span>
+    </div>`;
+  }
+
+  // הערת כשרות: הפרדת 6 שעות בשר/חלב (מוצג רק בכשר+אוכל-כול, כשיש ארוחה שנחסמה לחלב)
+  if (day.warn.kosherSep) {
+    html += `<div class="bmi-warning info-warning">
+      <span class="bmi-warning-icon">ℹ️</span>
+      <span>${esc(day.warn.kosherSep)}</span>
     </div>`;
   }
 
@@ -1318,6 +1327,47 @@ function fitMenuToOnePage() {
 }
 window.addEventListener('beforeprint', fitMenuToOnePage);
 window.addEventListener('afterprint', () => { const w = document.querySelector('.app-wrapper'); if (w) w.style.zoom = ''; });
+
+// ══════════════════════════════════════════
+//  לייטבוקס לתמונות מוצר
+// ══════════════════════════════════════════
+// במגע (מובייל) אין hover אמיתי — ההגדלה הקודמת (CSS :hover בלבד) נתקעה בלי דרך לסגור.
+// כאן נגיעה/קליק על תמונה פותחת שכבת-על, ונגיעה בכל מקום / ✕ / Escape סוגרת. ה-hover בדסקטופ נשאר.
+let _imgLb = null, _imgLbPrevFocus = null;
+function _imgLbKey(e) { if (e.key === 'Escape') closeImgLightbox(); }
+function closeImgLightbox() {
+  if (!_imgLb || _imgLb.style.display === 'none') return;
+  _imgLb.style.display = 'none';
+  document.removeEventListener('keydown', _imgLbKey);
+  if (_imgLbPrevFocus && _imgLbPrevFocus.focus) { try { _imgLbPrevFocus.focus(); } catch (e) {} }
+  _imgLbPrevFocus = null;
+}
+function openImgLightbox(src, alt) {
+  if (!_imgLb) {
+    _imgLb = document.createElement('div');
+    _imgLb.className = 'img-lightbox';
+    _imgLb.setAttribute('role', 'dialog');
+    _imgLb.setAttribute('aria-modal', 'true');
+    _imgLb.innerHTML = '<button type="button" class="img-lightbox-close" aria-label="סגירה">✕</button><img alt="">';
+    _imgLb.addEventListener('click', closeImgLightbox);   // נגיעה בכל מקום (רקע/תמונה/✕) סוגרת
+    document.body.appendChild(_imgLb);
+  }
+  const img = _imgLb.querySelector('img');
+  img.src = src; img.alt = alt || '';                     // מאפייני DOM — לא הזרקת HTML
+  _imgLb.setAttribute('aria-label', alt || 'תמונת מאכל');
+  _imgLbPrevFocus = document.activeElement;
+  _imgLb.style.display = 'flex';
+  document.addEventListener('keydown', _imgLbKey);
+  _imgLb.querySelector('.img-lightbox-close').focus();
+}
+// מאזין מואצל אחד על document — תופס גם את מסך התפריט וגם את מודאל ההיסטוריה (readOnly)
+document.addEventListener('click', e => {
+  const img = e.target;
+  if (img && img.tagName === 'IMG' && img.closest && img.closest('.food-thumb')) {
+    e.preventDefault();
+    openImgLightbox(img.src, img.alt);
+  }
+});
 
 // ══════════════════════════════════════════
 //  איפוס מלא לתפריט חדש
