@@ -50,7 +50,7 @@ Renders in order:
 3b. `S.menuWarning` → yellow `.bmi-warning` banner (ℹ️) — target unreachable with current likes/goal
 4. Morning training tip (if applicable)
 5. Meal cards
-6. Daily summary card (calories/protein/carbs/fat + macro % bars + **fiber row**, number only)
+6. Daily summary card (calories/protein/carbs/fat + macro % bars + **fiber row** — "X g / יעד ~Y g" against `DAY.fibG`; snapshot set in `renderMenu`, survives serialize/deserialize; old saved days without `fibG` show the number only)
 7. Quiet actions (`.menu-quiet-actions`, two `.pill-btn`): **"↻ תפריט נוסף"** → `confirmRebuild()`+`renderMenu()` and **"📄 שמירה כ-PDF"** → `window.print()` (disabled when a treat exists, with `.print-hint`); then **`.reset-link`** → `resetApp()`. Deliberately demoted — the day is the product, regeneration is secondary.
 
 **Food row name priority:**

@@ -15,7 +15,7 @@ const S = {
   liked: new Set(),      // IDs של מאכלים מועדפים
   avoided: new Set(),    // IDs של מאכלים מוחרגים
   // ערכי מאקרו מחושבים
-  bmr: 0, rmr: 0, target: 0, proteinG: 0, fatG: 0, carbG: 0,
+  bmr: 0, rmr: 0, target: 0, proteinG: 0, fatG: 0, carbG: 0, fibG: 0,
   bmiWarning: null,
   trainWarning: null,    // מסה בלי אימון — עודף קלורי בלי אימוני כוח
   carbWarning: null,
@@ -111,6 +111,7 @@ function calcMacro() {
     S.carbWarning = null;
   }
   S.carbG = Math.round((S.target - S.proteinG * 4 - S.fatG * 9) / 4);
+  S.fibG  = Math.round(S.target * 14 / 1000);   // רצפת סיבים (IOM): 14 ג' לכל 1000 קק"ל
 }
 
 // ══════════════════════════════════════════
@@ -551,19 +552,26 @@ function buildMeal(type, cal, used, ctx) {
   return tpl ? buildFromTemplate(tpl, cal, used, ctx) : [];
 }
 
-// "החלפת ארוחה שמתאימה": בונים ~3 פעמים (תבניות אקראיות) ובוחרים את הקרובה ביותר לתקציב הקלורי,
+// "החלפת ארוחה שמתאימה": בונים 5 פעמים (תבניות אקראיות) ובוחרים את הטובה בניקוד,
 // כדי לדייק בלי לנפח מנה בודדת. עובדים על עותק של used ומאמצים את ניצולי הזוכה.
 function buildMealBest(type, budget, used, ctx) {
   const expFat = S.fatG * budget / Math.max(S.target, 1);   // חלק השומן הצפוי לארוחה
+  const expFib = S.fibG * budget / Math.max(S.target, 1);   // חלק הסיבים הצפוי לארוחה
   let best = null, bestUsed = null, bestScore = Infinity;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     const u = new Map(used);
     const items = buildMeal(type, budget, u, ctx);
     if (!items.length) continue;
     const cal = items.reduce((s, x) => s + x.cal, 0);
     const fat = items.reduce((s, x) => s + (x.fat || 0), 0);
+    const fib = items.reduce((s, x) => s + (x.fib || 0), 0);
     // ניקוד: קרבה לתקציב קלורי + עדיפות לבנייה רזה (כדי לרסן שומן מהמקור)
-    const score = Math.abs(cal - budget) / Math.max(budget, 1) + 0.6 * Math.max(0, fat - expFat) / Math.max(expFat, 8);
+    // + סיבים מהמקור: קנס על מחסור מול החלק היחסי (רצפה) וקנס על עודף רק מעל ~2.2× (רצועה
+    //   רחוקה — מרסן ערימות קטניות טבעוניות בלי לגעת בתפריט רגיל). כמו השומן: אין שלב reconcile.
+    const score = Math.abs(cal - budget) / Math.max(budget, 1)
+                + 0.6 * Math.max(0, fat - expFat) / Math.max(expFat, 8)
+                + 0.7 * Math.max(0, expFib - fib) / Math.max(expFib, 4)
+                + 0.5 * Math.max(0, fib - 2.5 * expFib) / Math.max(expFib, 4);
     if (score < bestScore) { bestScore = score; best = items; bestUsed = u; }
   }
   if (bestUsed) { used.clear(); bestUsed.forEach((v, k) => used.set(k, v)); }
@@ -757,7 +765,8 @@ function reconcile(meals, used, ctx) {
   const isCarb = it => it.f && !it.f.unitLabel &&
     (it.f.tags.includes('hot_carb') || it.f.tags.includes('grain') || it.f.tags.includes('starch'));
   const isProt = it => it.f && !it.isSaladGroup && !it.f.dip &&
-    (it.f.isEgg || ((it.f.tags.includes('meat') || it.f.tags.includes('fish') || it.f.tags.includes('legume')) && !it.f.unitLabel));
+    (it.f.isEgg || ((it.f.tags.includes('meat') || it.f.tags.includes('fish') ||
+      (it.f.tags.includes('legume') && it.f.p >= 7)) && !it.f.unitLabel));   // קטנייה דלת-חלבון (אפונה) אינה מנוף — רק מתנפחת וגוררת סיבים
   const clampG = (it, g) => {
     if (it.f.unitG) g = Math.round(g / it.f.unitG) * it.f.unitG;
     // מנה מרכזית (בשר/דג) מוגבלת לצלחת ריאלית (mainProtCap); שאר הפריטים — תקרת שפיות 350
@@ -1128,8 +1137,10 @@ function buildBlockText() {
 // טיפים קלילים (לא ייעוץ קליני) — לפי דיאטה; מוצגים בתחתית התפריט
 function dietTips() {
   const tips = [];
-  if (S.diet.has('vegan'))
+  if (S.diet.has('vegan')) {
     tips.push('🌱 בתזונה טבעונית כדאי לוודא מקור קבוע ל-B12.');
+    tips.push('🥣 תפריט טבעוני עשיר מאוד בסיבים. עלייה הדרגתית ושתייה מרובה יקלו על ההסתגלות.');
+  }
   tips.push('💧 הקפידו על שתייה מרובה של מים במהלך היום.');
   return tips;
 }

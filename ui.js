@@ -84,7 +84,7 @@ function serializeDay(day) {
     : { id: it.f.id, g: it.g, dispG: it.dispG, displayName: it.displayName,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
   return {
-    date: day.date, buildId: day.buildId || null, target: day.target, eaten: day.eaten, note: day.note || null,
+    date: day.date, buildId: day.buildId || null, target: day.target, fibG: day.fibG || null, eaten: day.eaten, note: day.note || null,
     warn: day.warn, tips: day.tips || null, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
     meals: day.meals.map(m => ({
       label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type, removed: m.removed || false, added: m.added || false,
@@ -106,7 +106,7 @@ function deserializeDay(d) {
     : { f: FOOD_BY_ID[it.id], g: it.g, dispG: it.dispG, displayName: it.displayName,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
   return {
-    date: d.date, buildId: d.buildId || null, target: d.target, eaten: d.eaten || [], note: d.note || null,
+    date: d.date, buildId: d.buildId || null, target: d.target, fibG: d.fibG || null, eaten: d.eaten || [], note: d.note || null,
     warn: d.warn || {}, tips: d.tips || null, gLabel: d.gLabel, tLabel: d.tLabel, morningTip: d.morningTip,
     meals: d.meals.map(m => ({ ...m, items: m.items.map(item).filter(it => it.isSaladGroup || it.f) })),
   };
@@ -697,7 +697,7 @@ function renderMenu() {
   const treatMeal = meals.find(m => m.type === 'treat');
   DAY = {
     date: todayStr(), buildId: crypto.randomUUID(),   // זהות התפריט הזה — הלב נדלק רק כשהמזהה הזה שמור
-    target: S.target,
+    target: S.target, fibG: S.fibG,
     meals, eaten: meals.map(() => false),
     note: treatMeal ? treatBuildNote(treatMeal.items) : null,
     warn: { bmi: S.bmiWarning, train: S.trainWarning, carb: S.carbWarning, menu: S.menuWarning,
@@ -922,7 +922,7 @@ function dayHtml(day, opts) {
     </div>
     <div class="fiber-row">
       <span>סיבים תזונתיים</span>
-      <span><strong>${dFib}g</strong></span>
+      <span><strong>${dFib}g</strong>${day.fibG ? `<span style="font-size:12px;color:var(--text-tert)"> / יעד ~${day.fibG}g</span>` : ''}</span>
     </div>
     <div class="tips-box" style="margin-top:12px">
       פעילות אנאירובית מומלצת לשמירת מסת שריר. אירובי יכול לזרז את התהליך אך אינו חובה.
