@@ -124,6 +124,8 @@ body {
 .logo-stack .coach-powered { font-size: 10px; margin: 2px 0 0; }
 /* בעמוד ממותג אין גיוס מאמנים — ה-CTA של ShapEat מוסתר */
 .coach-branded .coach-cta { display: none; }
+/* לינק "מאמן/ה?" — שער ההמרה למאמנים: אזור מגע מלא בלי לשנות את המראה השקט */
+.coach-cta a { display: inline-block; padding: 14px 8px; margin: -14px -8px; }
 .coach-powered-logo {
   width: 16px; height: 16px; border-radius: 5px;
   vertical-align: -3px; margin-inline-end: 5px;
@@ -191,7 +193,7 @@ body {
 }
 .auth-email {
   width: 100%; border: 1.5px solid var(--border); border-radius: 12px;
-  padding: 12px; font-size: 15px; font-family: inherit; direction: ltr; text-align: center;
+  padding: 12px; font-size: 16px; font-family: inherit; direction: ltr; text-align: center;   /* ≥16px נגד זום-קלט של iOS */
 }
 .auth-email:focus { outline: none; border-color: var(--accent); }
 .auth-status { min-height: 18px; font-size: 13px; color: var(--text-tert); margin: 10px 0 0; }
@@ -233,7 +235,7 @@ body {
 header { position: relative; }
 .account-btn {
   position: absolute; top: 6px; inset-inline-end: 0;
-  width: 38px; height: 38px; border-radius: 50%;
+  width: 44px; height: 44px; border-radius: 50%;   /* יעד מגע 44px */
   border: 1.5px solid var(--border-sec);
   background: var(--bg); color: var(--text-tert);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -351,10 +353,10 @@ header { position: relative; }
 .field  { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 13px; color: var(--text-sec); font-weight: 500; }
 input[type="number"] {
-  width: 100%; padding: 11px 12px;
+  width: 100%; padding: 11px 12px; min-height: 44px;
   border: 1.5px solid var(--border-sec);
   border-radius: var(--radius-md);
-  font-size: 15px; color: var(--text);
+  font-size: 16px; color: var(--text);   /* ≥16px — קלט קטן יותר גורם ל-iOS Safari לזום כפוי על הדף */
   background: var(--bg);
   box-shadow: var(--shadow-sm);
   transition: border-color .2s, box-shadow .2s;
@@ -368,7 +370,7 @@ input[type="number"]:focus {
 /* ── כפתורי toggle ── */
 .toggle-group  { display: flex; gap: 8px; }
 .toggle-btn {
-  flex: 1; padding: 11px;
+  flex: 1; padding: 11px; min-height: 44px;   /* יעד מגע 44px (Apple HIG) */
   border: 1.5px solid var(--border-sec);
   border-radius: var(--radius-md);
   background: var(--bg); color: var(--text-sec);
@@ -392,6 +394,7 @@ input[type="number"]:focus {
   cursor: pointer; font-size: 13px; font-weight: 500;
   transition: all .2s; user-select: none;
   box-shadow: var(--shadow-sm);
+  min-height: 40px; display: inline-flex; align-items: center;   /* יעד מגע (משני במסלול — 40 מספיק) */
 }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .chip.active {
@@ -435,6 +438,7 @@ input[type="number"]:focus {
   background: var(--bg); color: var(--text-sec);
   cursor: pointer; font-size: 12px; font-weight: 500;
   transition: all .2s;
+  min-height: 40px; display: inline-flex; align-items: center;   /* יעד מגע */
 }
 .cat-tab.active-like {
   background: var(--accent); color: #fff;
@@ -477,7 +481,7 @@ input[type="number"]:focus {
 /* פעולות שקטות במסך התפריט — "היום הוא המוצר", ייצור תפריט חוזר הוא משני */
 .menu-quiet-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
 .pill-btn {
-  padding: 9px 18px; border-radius: 999px;
+  padding: 9px 18px; border-radius: 999px; min-height: 44px;
   border: 1.5px solid var(--border-sec);
   background: var(--bg); color: var(--text-sec);
   font-size: 13px; font-weight: 600; cursor: pointer;
@@ -493,7 +497,7 @@ input[type="number"]:focus {
 }
 .reset-link:hover { opacity: 1; color: var(--text-danger); }
 .btn-primary {
-  flex: 1; padding: 13px;
+  flex: 1; padding: 13px; min-height: 44px;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
   color: #fff;
@@ -508,7 +512,7 @@ input[type="number"]:focus {
 }
 .btn-primary:active { transform: translateY(0); }
 .btn-secondary {
-  padding: 13px 20px;
+  padding: 13px 20px; min-height: 44px;
   border-radius: var(--radius-md);
   border: 1.5px solid var(--border-sec);
   background: var(--bg); color: var(--text-sec);
@@ -524,7 +528,7 @@ input[type="number"]:focus {
 }
 .btn-secondary:disabled:hover { background: var(--bg); border-color: var(--border-sec); color: var(--text-sec); }
 .btn-skip {
-  padding: 10px 16px;
+  padding: 10px 16px; min-height: 44px;
   border-radius: var(--radius-md);
   border: 1.5px dashed var(--border-sec);
   background: none; color: var(--text-tert);
@@ -570,7 +574,7 @@ input[type="number"]:focus {
 /* לב — שמירת התפריט למועדפים (snapshot; טוגל: לחיצה חוזרת מבטלת). SVG במקום תו טקסט */
 .fav-heart {
   position: absolute; inset-inline-end: 0; top: -6px;
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 44px; height: 44px; border-radius: 50%;   /* יעד מגע 44px */
   border: 1.5px solid var(--border-sec);
   background: var(--bg); color: var(--text-tert);
   display: inline-flex; align-items: center; justify-content: center;
@@ -680,8 +684,10 @@ input[type="number"]:focus {
 /* כפתור עריכת ארוחה (✏️) — חושף את ה-✕ על הפריטים */
 .meal-edit-btn {
   border: none; background: none; cursor: pointer;
-  font-size: 13px; padding: 2px 6px; border-radius: 8px;
+  font-size: 13px; border-radius: 8px;
   color: var(--text-tert); line-height: 1;
+  /* אזור מגע 44px בלי לנפח ויזואלית: padding מרחיב את שטח הלחיצה, margin שלילי מבטל את הזזת הפריסה */
+  padding: 16px 13px; margin: -14px -7px;
 }
 .meal-edit-btn:hover { background: var(--bg-info); color: var(--accent); }
 /* ארוחה שנאכלה: אין עריכה (אי אפשר להוריד מה שאכלת) */
@@ -696,8 +702,11 @@ input[type="number"]:focus {
   margin-left: 8px; font-size: 11px; font-weight: 700;
   background: #fee2e2; color: #dc2626;
   vertical-align: middle;
+  position: relative;   /* עוגן לאזור המגע המורחב שב-::before */
 }
 .item-remove:hover, .treat-remove:hover { background: #dc2626; color: #fff; }
+/* אזור מגע 44px ל-✕ בלי להגדיל את העיגול הנראה (padding היה צובע את הרקע) */
+.item-remove::before, .treat-remove::before { content: ''; position: absolute; inset: -12px; }
 .meal-card.editing .item-remove { display: inline-flex; align-items: center; justify-content: center; }
 /* כפתור "הוסף פריט" — מוצג רק במצב עריכה (כמו ה-✕ להסרה) */
 .add-item-btn { display: none; }
@@ -883,7 +892,7 @@ input[type="number"]:focus {
   background: #fff;
   color: #047857;
   font-weight: 700; font-size: 13px;
-  padding: 6px 16px;
+  padding: 6px 16px; min-height: 44px;   /* לולאת הליבה היומית — חייבת יעד מגע מלא */
   border-radius: 999px;
   cursor: pointer;
   transition: all 0.15s;
@@ -901,7 +910,7 @@ input[type="number"]:focus {
 /* ── כפתור פינוק + כרטיס פינוק ── */
 .treat-bar { margin-bottom: 14px; display: flex; gap: 8px; }
 .btn-treat {
-  flex: 1;
+  flex: 1; min-height: 44px;
   border: 1.5px dashed var(--accent);
   background: rgba(79, 70, 229, 0.04);
   color: var(--accent);
@@ -974,7 +983,7 @@ input[type="number"]:focus {
   border: 1.5px solid rgba(79, 70, 229, 0.18);
   border-radius: var(--radius-md);
   padding: 9px 12px;
-  font-size: 14px; font-family: inherit;
+  font-size: 16px; font-family: inherit;   /* ≥16px נגד זום-קלט של iOS */
   margin-bottom: 8px;
 }
 .picker-pane { display: flex; flex-direction: column; min-height: 0; }
@@ -985,7 +994,7 @@ input[type="number"]:focus {
   background: #fff;
   color: var(--accent);
   font-weight: 700; font-size: 13px;
-  padding: 6px 14px;
+  padding: 6px 14px; min-height: 44px;
   border-radius: 999px;
   cursor: pointer;
   transition: all 0.15s;

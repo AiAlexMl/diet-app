@@ -91,6 +91,13 @@ Shown on page load via HTML (`.disclaimer-overlay` always visible at start). `cl
 - **Summary card**: gradient purple/blue with font-weight 800 on numbers
 - **RTL**: `direction: rtl` on body; all layout is RTL-first
 
+## Touch / Mobile Conventions (07/2026 — coach links open on phones)
+
+- **Text inputs ≥ 16px font-size, always** — anything smaller makes iOS Safari force-zoom the page on focus (and it stays zoomed). Applies to every new input: `input[type="number"]`, `.auth-email`, `.picker-input`, `.fld` (coaches.html) are all 16px.
+- **Tap targets: min 44px** (Apple HIG) for primary-path controls — `min-height: 44px` on rectangular buttons (`.toggle-btn`, `.btn-primary/secondary/skip/treat`, `.eaten-btn`, `.alt-btn`, `.pill-btn`), 44px diameter on icon circles (`.account-btn`, `.fav-heart`). Secondary chips/tabs (`.chip`, `.cat-tab`) get **min 40px** + `inline-flex; align-items:center`.
+- **Deliberately-subtle controls keep their look, grow their hit area**: `.meal-edit-btn` uses padding + negative margin (no layout shift); `.item-remove`/`.treat-remove` (visible 20px circles — padding would paint the background bigger) use a transparent `::before { inset: -12px }` on `position: relative`. `.reset-link` is exempt by design (demoted).
+- **No horizontal overflow at 320–430px** — fluid base, single 480px breakpoint (account modal only). Verify new screens with the Playwright textual audit (bounding-box sweep of `button/a/input/[role=button]` at 320/390/430 + desktop 1280).
+
 ## Save / Print to PDF (implemented)
 
 The menu screen has a "📄 שמירת התפריט" button → `window.print()`. A `@media print` block in `style.css` hides the interactive chrome (nav / treat-bar / progress / eaten+edit buttons / `.coach-cta` / step-bar) so the browser's "save as PDF" yields a clean menu-only sheet — no build step, no library.
