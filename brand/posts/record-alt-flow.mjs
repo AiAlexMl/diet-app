@@ -35,6 +35,15 @@ async function initFx() {
       border:4px solid #4f46e5;background:rgba(79,70,229,.25);pointer-events:none;
       animation:tapring .6s ease-out forwards}
     @keyframes tapring{from{transform:scale(.6);opacity:1}to{transform:scale(2.6);opacity:0}}
+    /* spotlight: מעמעם את כל המסך ומבליט את האלמנט הממוקד */
+    #reel-dim{position:fixed;inset:0;z-index:99990;background:rgba(15,17,32,.55);
+      opacity:0;transition:opacity .5s ease;pointer-events:none}
+    #reel-dim.show{opacity:1}
+    .reel-spot{position:relative;z-index:99995 !important;
+      animation:spotpulse 1.1s ease-in-out infinite;
+      box-shadow:0 0 0 6px rgba(79,70,229,.45), 0 0 34px 10px rgba(79,70,229,.55) !important;
+      background:#fff !important}
+    @keyframes spotpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
   ` });
   await page.evaluate(() => {
     const d = document.createElement('div');
@@ -53,6 +62,21 @@ async function caption(text) {
 async function captionOff() {
   await page.evaluate(() => document.getElementById('reel-cap').classList.remove('show'));
   await page.waitForTimeout(280);
+}
+// spotlight על אלמנט: מחשיך את השאר, מדגיש עם פעימה והילה
+async function spotlightOn(selector) {
+  await page.evaluate((sel) => {
+    let dim = document.getElementById('reel-dim');
+    if (!dim) { dim = document.createElement('div'); dim.id = 'reel-dim'; document.body.appendChild(dim); }
+    requestAnimationFrame(() => dim.classList.add('show'));
+    document.querySelector(sel)?.classList.add('reel-spot');
+  }, selector);
+}
+async function spotlightOff(selector) {
+  await page.evaluate((sel) => {
+    document.getElementById('reel-dim')?.classList.remove('show');
+    document.querySelector(sel)?.classList.remove('reel-spot');
+  }, selector);
 }
 // טאפ נראה: טבעת מונפשת במרכז האלמנט, ואז קליק אמיתי
 async function tap(selector) {
@@ -107,18 +131,39 @@ await page.waitForTimeout(1300);
 
 // ── 1: הוק על היום המסודר ──
 await caption('יצא לך לאכול משהו שלא בתפריט? 🍕');
-await page.waitForTimeout(2100);
+await page.waitForTimeout(1900);
 
-// ── 2: גוללים לארוחה פתוחה ומדווחים ──
+// ── 1ב: קודם ההקשר — מסמנים ✓ על מה שכן אכלנו (היום חי, לא סתם רשימה) ──
+await page.evaluate(() => {
+  const eat = [...document.querySelectorAll('.eaten-btn')];
+  if (eat[0]) eat[0].id = 'reel-eat-0';
+  if (eat[1]) eat[1].id = 'reel-eat-1';
+});
+const eatY = await page.evaluate(() =>
+  document.getElementById('reel-eat-0').getBoundingClientRect().top + window.scrollY - 420);
+await smoothScrollTo(Math.max(0, eatY), 1500);
+await caption('מסמנים ✓ מה שאכלתם');
+await page.waitForTimeout(900);
+await tap('#reel-eat-0');
+await page.waitForTimeout(850);
+await tap('#reel-eat-1');
+await page.waitForTimeout(1100);                   // שני כרטיסים נצבעים — היום מתקדם
+
+// ── 2: ועכשיו הפוקוס — ארוחה פתוחה, "אכלתי משהו אחר" ──
 const btnY = await page.evaluate(() => {
-  const btns = [...document.querySelectorAll('.alt-btn')].filter(b => !b.classList.contains('add-item-btn'));
-  const target = btns[1] || btns[0];               // הארוחה השנייה — באמצע היום
+  // אחרי הסימונים בוחרים את כפתור הדיווח של הארוחה הפתוחה הראשונה
+  const meals = [...document.querySelectorAll('.meal-card')];
+  const openMeal = meals.find(m => !m.classList.contains('meal-eaten') && m.querySelector('.alt-btn:not(.add-item-btn)'));
+  const target = openMeal.querySelector('.alt-btn:not(.add-item-btn)');
   target.id = 'reel-alt-target';
   return target.getBoundingClientRect().top + window.scrollY - 430;
 });
-await smoothScrollTo(Math.max(0, btnY), 1700);
-await caption('מדווחים בטאפ אחד');
-await page.waitForTimeout(1200);
+await smoothScrollTo(Math.max(0, btnY), 1500);
+await caption('אכלת משהו אחר? מדווחים כאן 👇');
+await page.waitForTimeout(500);
+await spotlightOn('#reel-alt-target');             // המסך מתעמעם, הכפתור פועם עם הילה
+await page.waitForTimeout(1900);
+await spotlightOff('#reel-alt-target');
 await tap('#reel-alt-target');
 await page.waitForTimeout(500);
 await captionOff();
@@ -140,11 +185,16 @@ await page.waitForTimeout(400);
 await caption('וההמשך מתאזן מעצמו ✓');
 await page.waitForTimeout(2300);
 
-// ── 5: מגלגלים על היום המעודכן ──
+// ── 5: מגלגלים על היום המעודכן עד כרטיס הסיכום — המאקרו עדיין מסתכם ──
 await caption('בלי עונש. בלי להתחיל מחדש.');
-const dayH = await page.evaluate(() => document.body.scrollHeight - window.innerHeight);
-await smoothScrollTo(Math.min(dayH, 1100), 3200);
-await page.waitForTimeout(500);
+const sumY = await page.evaluate(() => {
+  const sc = document.querySelector('.summary-card');
+  return sc ? sc.getBoundingClientRect().top + window.scrollY - 180 : document.body.scrollHeight;
+});
+await smoothScrollTo(sumY, 3600);
+await page.waitForTimeout(600);
+await caption('והמאקרו? עדיין מדויק 🎯');
+await page.waitForTimeout(2200);                   // שוהים על הסיכום: קלוריות, חלבון, פחמימות, שומן
 
 // ── 6: נעילת מותג ──
 await page.evaluate(() => {
