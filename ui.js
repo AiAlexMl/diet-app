@@ -924,7 +924,7 @@ function dayHtml(day, opts) {
     <div class="fiber-row">
       <span>סיבים תזונתיים</span>
       <span class="fiber-val">${day.fibG
-        ? `<strong>${dFib}</strong> / ${day.fibG}g${dFib >= day.fibG ? ' <span class="fiber-ok">✓</span>' : ''}`
+        ? `<span dir="ltr" class="fiber-num"><strong>${dFib}</strong> / ${day.fibG}g</span>${dFib >= day.fibG ? ' <span class="fiber-ok">✓</span>' : ''}`
         : `<strong>${dFib}g</strong>`}</span>
     </div>
     <div class="tips-box" style="margin-top:12px">
