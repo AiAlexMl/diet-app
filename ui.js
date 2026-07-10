@@ -126,10 +126,11 @@ function loadDay() {
     if (day.date !== todayStr()) {           // יום חדש — חוזרים לתפריט הבסיס הנקי
       day.date = todayStr();
       day.buildId = crypto.randomUUID();     // תפריט בסיס חדש = זהות חדשה (הלב מתחיל ריק)
-      // מסירים פינוקים, ארוחות שנוספו אגב איזון אמצע-יום ('added'/'נשנוש נוסף'), וארוחות שהוסרו —
+      // מסירים פינוקים, ארוחות שנוספו אגב איזון אמצע-יום (added), וארוחות שהוסרו —
       // כך מחר לא נגרר עם פינוקים של אתמול או נשנושים שצצו תוך כדי. הסימונים מתאפסים.
-      day.meals = day.meals.filter(m =>
-        m.type !== 'treat' && !m.added && m.label !== 'נשנוש נוסף' && !m.removed);
+      // לפי הדגל בלבד: גם buildMenu מוסיף ארוחות בשם "נשנוש נוסף" ליעד גבוה (בלי added) —
+      // סינון לפי ה-label מחק אותן מהבסיס של מחר והשאיר יום חסר ~46% (נמדד 10/07/2026).
+      day.meals = day.meals.filter(m => m.type !== 'treat' && !m.added && !m.removed);
       day.eaten = day.meals.map(() => false);
       day.note = null;
     }
