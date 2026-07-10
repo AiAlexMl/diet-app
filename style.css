@@ -788,6 +788,8 @@ input[type="number"]:focus {
   font-size: 13px; color: var(--text-sec);
 }
 .fiber-row strong { color: var(--text); font-weight: 700; }
+.fiber-val { color: var(--text-tert); }            /* "/ 36g" עמום, המספר עצמו כהה (strong) */
+.fiber-ok { color: #10b981; font-weight: 700; }    /* ✓ רך כשעומדים ביעד (משוב חיובי, לא ציון) */
 .fiber-low { color: #b45309; font-size: 12px; }
 
 /* הערת תחתית */

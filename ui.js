@@ -923,7 +923,9 @@ function dayHtml(day, opts) {
     </div>
     <div class="fiber-row">
       <span>סיבים תזונתיים</span>
-      <span><strong>${dFib}g</strong>${day.fibG ? `<span style="font-size:12px;color:var(--text-tert)"> / יעד ~${day.fibG}g</span>` : ''}</span>
+      <span class="fiber-val">${day.fibG
+        ? `<strong>${dFib}</strong> / ${day.fibG}g${dFib >= day.fibG ? ' <span class="fiber-ok">✓</span>' : ''}`
+        : `<strong>${dFib}g</strong>`}</span>
     </div>
     <div class="tips-box" style="margin-top:12px">
       פעילות אנאירובית מומלצת לשמירת מסת שריר. אירובי יכול לזרז את התהליך אך אינו חובה.
