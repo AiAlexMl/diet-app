@@ -366,22 +366,67 @@
     email.setAttribute('aria-label', 'כתובת אימייל');
     const mBtn = document.createElement('button');
     mBtn.className = 'auth-magic';
-    mBtn.textContent = 'שלחו לי קישור התחברות';
+    mBtn.textContent = 'שלחו לי קוד';
     mBtn.disabled = true;
+
+    // שלב 2: הזנת הקוד — נשאר באותו מכשיר/דפדפן (בלי קישור שנפתח במקום אחר)
+    let sentEmail = '';
+    const codeWrap = document.createElement('div');
+    codeWrap.style.display = 'none';
+    const codeInput = document.createElement('input');
+    codeInput.type = 'text';
+    codeInput.inputMode = 'numeric';
+    codeInput.autocomplete = 'one-time-code';
+    codeInput.maxLength = 6;
+    codeInput.className = 'auth-email auth-code';
+    codeInput.placeholder = 'קוד בן 6 ספרות';
+    codeInput.setAttribute('aria-label', 'קוד אימות מהמייל');
+    const vBtn = document.createElement('button');
+    vBtn.className = 'auth-magic';
+    vBtn.textContent = 'התחברות';
+    const backBtn = document.createElement('button');
+    backBtn.className = 'auth-cancel';
+    backBtn.type = 'button';
+    backBtn.textContent = 'שליחה לכתובת אחרת';
+    codeWrap.append(codeInput, vBtn, backBtn);
+
+    function showCodeStep(addr) {
+      sentEmail = addr;
+      setStatus('שלחנו קוד בן 6 ספרות ל-' + addr + '. הזינו אותו כאן (תקף לשעה).');
+      email.style.display = 'none'; mBtn.style.display = 'none';
+      codeWrap.style.display = '';
+      codeInput.value = ''; codeInput.focus();
+    }
+    function showEmailStep() {
+      codeWrap.style.display = 'none';
+      email.style.display = ''; mBtn.style.display = '';
+      mBtn.disabled = !cb.checked; setStatus(''); email.focus();
+    }
+
     mBtn.onclick = async () => {
       const v = (email.value || '').trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { setStatus('כתובת אימייל לא תקינה'); return; }
-      mBtn.disabled = true;
+      mBtn.disabled = true; setStatus('שולח...');
       try {
-        const { error } = await sb.auth.signInWithOtp({
-          email: v, options: { emailRedirectTo: location.origin + location.pathname },
-        });
-        setStatus(!error ? 'שלחנו קישור למייל. פתח אותו במכשיר שבו תרצה להתחבר'
-          : error.status === 429 ? 'נשלחו יותר מדי מיילים. נסה שוב בעוד כשעה'
-          : 'השליחה נכשלה, נסה שוב');
-      } catch (e) { setStatus('השליחה נכשלה, נסה שוב'); }
+        const { error } = await sb.auth.signInWithOtp({ email: v });
+        if (!error) { showCodeStep(v); return; }
+        setStatus(error.status === 429 ? 'נשלחו יותר מדי מיילים. נסו שוב בעוד כשעה' : 'השליחה נכשלה, נסו שוב');
+      } catch (e) { setStatus('השליחה נכשלה, נסו שוב'); }
       mBtn.disabled = !cb.checked;
     };
+    vBtn.onclick = async () => {
+      const code = (codeInput.value || '').replace(/\D/g, '');
+      if (code.length !== 6) { setStatus('הקוד הוא 6 ספרות'); return; }
+      vBtn.disabled = true; setStatus('מאמת...');
+      try {
+        const { error } = await sb.auth.verifyOtp({ email: sentEmail, token: code, type: 'email' });
+        if (error) { setStatus('קוד שגוי או שפג תוקפו, נסו שוב'); vBtn.disabled = false; }
+        // הצלחה → onAuthStateChange('SIGNED_IN') סוגר את המודאל וממזג
+      } catch (e) { setStatus('האימות נכשל, נסו שוב'); vBtn.disabled = false; }
+    };
+    backBtn.onclick = showEmailStep;
+    codeInput.addEventListener('keydown', e => { if (e.key === 'Enter') vBtn.click(); });
+    email.addEventListener('keydown', e => { if (e.key === 'Enter' && !mBtn.disabled) mBtn.click(); });
 
     const status = document.createElement('p');
     status.className = 'auth-status';
@@ -394,7 +439,7 @@
     x.setAttribute('aria-label', 'סגירה');
     x.onclick = closeLogin;
 
-    box.append(x, h, p, consent, gBtn, div, email, mBtn, status);
+    box.append(x, h, p, consent, gBtn, div, email, mBtn, codeWrap, status);
     authEl.appendChild(box);
     document.body.appendChild(authEl);
 
@@ -403,7 +448,7 @@
     authEl.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeLogin();
       if (e.key === 'Tab') {
-        const items = [...box.querySelectorAll('button,input')].filter(el => !el.disabled);
+        const items = [...box.querySelectorAll('button,input')].filter(el => !el.disabled && el.offsetParent !== null);
         const first = items[0], last = items[items.length - 1];
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
