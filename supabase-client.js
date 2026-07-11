@@ -734,6 +734,12 @@
     const a = readWeights(); if (!a.length) return false;
     return (Date.now() - Date.parse(a[a.length - 1].date)) / 864e5 >= 7;
   }
+  const todayWeighed = () => readWeights().some(w => w.date === todayStr());
+  // תווית הכפתור הראשי: יש שקילה היום → עריכה; אחרת שקילה חדשה (בולט אם עברה שבוע)
+  function addBtnLabel() {
+    if (todayWeighed()) return '✏️ עריכת שקילת היום';
+    return weeksDue() ? 'עדכנו משקל' : '+ שקילה';
+  }
 
   // הערת תת-משקל: פעם אחת לאפיזודה; מדוכאת ל"מסה שלא יורדת"; נורית ל"מסה שיורדת" ולשמירה. (ROADMAP)
   function underweightReferral(dateStr, kg) {
@@ -807,7 +813,8 @@
     const box = document.createElement('div');
     box.className = 'auth-box weigh-box';
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
-    const title = document.createElement('h3'); title.textContent = 'עדכון משקל';
+    const title = document.createElement('h3');
+    title.textContent = readWeights().some(w => w.date === (dateStr || todayStr())) ? 'עריכת שקילה' : 'שקילה חדשה';
     const sub = document.createElement('p'); sub.className = 'auth-sub';
     sub.textContent = dateLabel(dateStr || todayStr());
     const input = document.createElement('input');
@@ -874,18 +881,21 @@
     top.onclick = () => openAccountModal('progress');
     const val = document.createElement('span'); val.className = 'weight-last';
     val.innerHTML = '<span dir="ltr">' + Number(last.kg) + '</span> ק"ג';
-    const spark = document.createElement('span'); spark.className = 'weight-spark';
-    spark.innerHTML = buildWeightSvg(w.slice(-8), { width: 90, height: 30, spark: true });
+    top.appendChild(val);
+    if (w.length >= 2) {   // sparkline רק כשיש קו; נקודה בודדת = חסר טעם
+      const spark = document.createElement('span'); spark.className = 'weight-spark';
+      spark.innerHTML = buildWeightSvg(w.slice(-8), { width: 90, height: 30, spark: true });
+      top.appendChild(spark);
+    }
     const trend = document.createElement('span'); trend.className = 'weight-trend';
     if (prev) {
       const d = Math.round((last.kg - prev.kg) * 10) / 10;
       trend.innerHTML = d === 0 ? 'ללא שינוי' : (d < 0 ? '↓' : '↑') + ' <span dir="ltr">' + Math.abs(d) + '</span> ק"ג';
     } else trend.textContent = 'נקודה ראשונה';
-    top.append(val, spark, trend);
+    top.appendChild(trend);
     const add = document.createElement('button');
-    const due = weeksDue();
-    add.className = 'weight-btn' + (due ? ' primary' : '');
-    add.textContent = due ? 'עדכנו משקל' : '+ שקילה';
+    add.className = 'weight-btn' + ((weeksDue() && !todayWeighed()) ? ' primary' : '');
+    add.textContent = addBtnLabel();
     add.onclick = () => openWeighInModal(last.kg, todayStr());
     const row = document.createElement('div'); row.className = 'weight-widget-row';
     row.append(top, add);
@@ -918,7 +928,7 @@
       + (w.length === 1 ? '<br><span class="weight-hint">שקילה נוספת ביום אחר תיצור קו מגמה 📈</span>' : '');
     const addBtn = document.createElement('button');
     addBtn.className = 'weight-btn primary weight-add-full';
-    addBtn.textContent = weeksDue() ? 'עדכנו משקל' : '+ שקילה';
+    addBtn.textContent = addBtnLabel();
     addBtn.onclick = () => openWeighInModal(w[w.length - 1].kg, todayStr());
     listEl.append(graph, range, addBtn);
     w.slice().reverse().forEach(p => {

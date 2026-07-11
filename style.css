@@ -1172,17 +1172,17 @@ input[type="number"]:focus {
   direction: rtl; unicode-bidi: isolate;
 }
 .weight-empty .weight-btn { display: flex; width: 100%; margin-top: 8px; }
-/* מיני-וידג'ט (מחובר עם נתונים) */
-.weight-widget-row { display: flex; align-items: center; gap: 12px; }
+/* מיני-וידג'ט (מחובר עם נתונים) — מוערם: אינפו למעלה, כפתור מלא-רוחב מתחת (לא נדחס במובייל) */
+.weight-widget-row { display: flex; flex-direction: column; gap: 12px; }
 .weight-widget {
-  flex: 1; display: flex; align-items: center; gap: 12px; cursor: pointer;
-  min-width: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  cursor: pointer; min-width: 0;
 }
-.weight-last { font-size: 22px; font-weight: 800; color: var(--text); unicode-bidi: isolate; white-space: nowrap; }
-.weight-spark { flex: 1; min-width: 50px; display: block; }
+.weight-last { font-size: 22px; font-weight: 800; color: var(--text); unicode-bidi: isolate; white-space: nowrap; flex-shrink: 0; }
+.weight-spark { flex: 1; min-width: 40px; display: block; }
 .weight-spark svg { display: block; }
-.weight-trend { font-size: 13px; font-weight: 700; color: var(--text-tert); unicode-bidi: isolate; white-space: nowrap; }
-.weight-widget-row .weight-btn { flex-shrink: 0; padding: 10px 16px; }
+.weight-trend { font-size: 13px; font-weight: 700; color: var(--text-tert); unicode-bidi: isolate; white-space: nowrap; flex-shrink: 0; }
+.weight-widget-row .weight-btn { width: 100%; }
 /* גרף מלא בטאב ההתקדמות */
 .weight-graph {
   background: var(--bg-secondary, #f7f8fc); border-radius: var(--radius-md);
