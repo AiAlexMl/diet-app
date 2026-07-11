@@ -1141,3 +1141,67 @@ input[type="number"]:focus {
   .meal-card { break-inside: avoid; box-shadow: none !important; margin-bottom: 8px; padding: 10px 12px; }
   .summary-card { break-inside: avoid; box-shadow: none !important; }
 }
+
+/* ── מעקב משקל v1 — סלוט מסך התפריט + וידג'ט + גרף (supabase-client.js) ── */
+.weight-card {
+  margin-top: 14px; padding: 16px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.weight-teaser { font-size: 14px; color: var(--text-sec); margin-bottom: 12px; text-align: center; }
+.weight-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 10px 20px; border-radius: 999px;
+  border: 1.5px solid var(--border-sec); background: var(--bg); color: var(--text-sec);
+  font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: all .2s; box-shadow: var(--shadow-sm);
+}
+.weight-btn:hover { border-color: var(--accent); color: var(--accent); }
+.weight-btn.primary {
+  border: none; color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  box-shadow: 0 4px 14px rgba(79,70,229,.32);
+}
+.weight-btn.primary:hover { color: #fff; transform: translateY(-1px); }
+.weight-card .weight-teaser + .weight-btn { display: flex; width: 100%; }
+/* empty-state / אישור-הזרעה */
+.weight-empty { text-align: center; }
+.weight-empty-txt { font-size: 14px; color: var(--text-sec); margin-bottom: 8px; }
+.weight-seed-val {
+  font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 14px;
+  direction: rtl; unicode-bidi: isolate;
+}
+.weight-empty .weight-btn { display: flex; width: 100%; margin-top: 8px; }
+/* מיני-וידג'ט (מחובר עם נתונים) */
+.weight-widget-row { display: flex; align-items: center; gap: 12px; }
+.weight-widget {
+  flex: 1; display: flex; align-items: center; gap: 12px; cursor: pointer;
+  min-width: 0;
+}
+.weight-last { font-size: 22px; font-weight: 800; color: var(--text); unicode-bidi: isolate; white-space: nowrap; }
+.weight-spark { flex: 1; min-width: 50px; display: block; }
+.weight-spark svg { display: block; }
+.weight-trend { font-size: 13px; font-weight: 700; color: var(--text-tert); unicode-bidi: isolate; white-space: nowrap; }
+.weight-widget-row .weight-btn { flex-shrink: 0; padding: 10px 16px; }
+/* גרף מלא בטאב ההתקדמות */
+.weight-graph {
+  background: var(--bg-secondary, #f7f8fc); border-radius: var(--radius-md);
+  padding: 14px 10px; margin-bottom: 10px;
+}
+.weight-graph svg { display: block; height: 150px; }
+.weight-range { text-align: center; font-size: 13px; color: var(--text-tert); margin-bottom: 12px; direction: rtl; unicode-bidi: isolate; }
+.weight-add-full { display: flex; width: 100%; margin-bottom: 14px; }
+.weight-row .row-meta { unicode-bidi: isolate; }
+/* מודל שקילה */
+.weigh-box { max-width: 340px; text-align: center; }
+.weigh-input {
+  width: 100%; box-sizing: border-box; text-align: center;
+  border: 1.5px solid var(--border); border-radius: 12px;
+  padding: 12px; font-size: 16px; font-family: inherit; direction: ltr;
+  margin: 6px 0 12px;
+}
+.weigh-input:focus { outline: none; border-color: var(--accent); }
+.auth-cancel {
+  width: 100%; border: none; background: none; color: var(--text-tert);
+  font-size: 14px; font-weight: 600; cursor: pointer; padding: 10px; margin-top: 4px;
+}

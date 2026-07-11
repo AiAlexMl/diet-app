@@ -32,13 +32,17 @@
   // ולכן ב-localStorage, עם חלון זמן שמונע שמירת יום אחר אם ההתחברות קורית הרבה אחר כך.
   const FAV_INTENT_KEY = 'shapeat-fav-intent';
   const FAV_INTENT_MS  = 30 * 60 * 1000;
+  const WEIGHT_KEY = 'shapeat-weights';        // מקור התצוגה תמיד מקומי; הענן מתמזג פנימה (כמו מועדפים)
+  const UW_KEY     = 'shapeat-uw-alerted';     // דגל "כבר הופנה באפיזודת תת-משקל הנוכחית"
   const meta  = parse(lsGet(META_KEY)) || {};
-  const dirty = { prefs: false, day: false, favs: false };
+  const dirty = { prefs: false, day: false, favs: false, weight: false };
   let pushTimer = null;
   // outbox למועדפים: אילו fav_id ממתינים לעלייה/מחיקה. caveat מתועד: מחיקה offline
   // שלא הגיעה לשרת (הטאב נסגר לפני retry) תקום לתחייה מהענן ב-pull הבא — מקובל ל-v1.
   const pendingFavUpserts = new Set();
   const pendingFavDeletes = new Set();
+  const pendingWeightUpserts = new Set();      // תאריכי שקילות שממתינים לעלייה
+  const pendingWeightDeletes = new Set();
 
   const saveMeta = () => lsSet(META_KEY, JSON.stringify(meta));
 
@@ -112,6 +116,26 @@
         }
         dirty.favs = false;
       }
+      if (dirty.weight) {
+        if (pendingWeightUpserts.size) {
+          const local = readWeights();
+          const rows = local.filter(w => pendingWeightUpserts.has(w.date)).map(w => ({
+            trainee_id: uid, date: w.date, weight_kg: w.kg, client_updated_at: w.saved_at,
+          }));
+          if (rows.length) {
+            const { error } = await sb.from('weight_logs').upsert(rows);
+            if (error) return;
+          }
+          pendingWeightUpserts.clear();
+        }
+        if (pendingWeightDeletes.size) {
+          const { error } = await sb.from('weight_logs')
+            .delete().eq('trainee_id', uid).in('date', [...pendingWeightDeletes]);
+          if (error) return;
+          pendingWeightDeletes.clear();
+        }
+        dirty.weight = false;
+      }
     } catch (e) { /* offline — הדגלים נשארים */ }
   }
 
@@ -159,6 +183,22 @@
         lsSet(FAV_KEY, JSON.stringify(merged));
         try { updateFavHeart(); } catch (e) {}
       }
+      // שקילות: מיזוג לפי תאריך — client_updated_at מאוחר גובר; לא מחיים מחיקה שממתינה לעלייה
+      const { data: cloudW } = await sb.from('weight_logs')
+        .select('date,weight_kg,client_updated_at')
+        .eq('trainee_id', uid).order('date', { ascending: true });
+      if (Array.isArray(cloudW)) {
+        const byDate = {};
+        readWeights().forEach(w => { byDate[w.date] = w; });
+        cloudW.forEach(r => {
+          if (pendingWeightDeletes.has(r.date)) return;
+          const local = byDate[r.date];
+          if (!local || newer(r.client_updated_at, local.saved_at))
+            byDate[r.date] = { date: r.date, kg: Number(r.weight_kg), saved_at: r.client_updated_at };
+        });
+        writeWeights(Object.values(byDate));
+        try { injectWeightSlot(); } catch (e) {}
+      }
     } catch (e) { /* offline — בלי סנכרון הפעם */ }
   }
 
@@ -174,6 +214,16 @@
     _renderMenu.apply(this, arguments);
     track('menu_built');
   };
+
+  // renderDay רץ גם בבנייה (דרך renderMenu) וגם בשחזור-מ-localStorage בעליית עמוד —
+  // עטיפה אחת מזריקה את סלוט המשקל אחרי הסיכום בכל מסלול רינדור.
+  const _renderDay = window.renderDay;
+  if (typeof _renderDay === 'function') {
+    window.renderDay = function () {
+      _renderDay.apply(this, arguments);
+      try { injectWeightSlot(); } catch (e) {}
+    };
+  }
 
   const _toggleEaten = window.toggleEaten;
   window.toggleEaten = function () {
@@ -442,13 +492,16 @@
     // טאבים
     const tabs = document.createElement('div');
     tabs.className = 'account-tabs';
+    const tabProg = document.createElement('button');
+    tabProg.className = 'account-tab active';   // ברירת מחדל — הדבר הכי מוטיבציוני לראות
+    tabProg.textContent = 'התקדמות 📈';
     const tabDays = document.createElement('button');
-    tabDays.className = 'account-tab active';
+    tabDays.className = 'account-tab';
     tabDays.textContent = 'ימים';
     const tabFavs = document.createElement('button');
     tabFavs.className = 'account-tab';
     tabFavs.textContent = 'שמורים ♥';
-    tabs.append(tabDays, tabFavs);
+    tabs.append(tabProg, tabDays, tabFavs);
 
     const list = document.createElement('div');
     list.className = 'account-list';
@@ -573,8 +626,10 @@
       }
     }
 
-    tabDays.onclick = () => { tabDays.classList.add('active'); tabFavs.classList.remove('active'); renderDays(); };
-    tabFavs.onclick = () => { tabFavs.classList.add('active'); tabDays.classList.remove('active'); renderFavs(); };
+    const setActive = t => [tabProg, tabDays, tabFavs].forEach(b => b.classList.toggle('active', b === t));
+    tabProg.onclick = () => { setActive(tabProg); renderProgress(list); };
+    tabDays.onclick = () => { setActive(tabDays); renderDays(); };
+    tabFavs.onclick = () => { setActive(tabFavs); renderFavs(); };
 
     // ── תת-מסך "ניהול חשבון" (מייל + התנתקות + מחיקה) ──
     const setBack = document.createElement('button');
@@ -613,8 +668,9 @@
     accountEl.appendChild(box);
     document.body.appendChild(accountEl);
 
-    if (initialTab === 'favs') { tabFavs.click(); tabFavs.focus(); }
-    else { renderDays(); tabDays.focus(); }
+    if (initialTab === 'favs') { setActive(tabFavs); renderFavs(); tabFavs.focus(); }
+    else if (initialTab === 'days') { setActive(tabDays); renderDays(); tabDays.focus(); }
+    else { renderProgress(list); tabProg.focus(); }   // ברירת מחדל: התקדמות
     accountEl.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeAccountModal();
       if (e.key === 'Tab') {
@@ -653,10 +709,226 @@
     accountBtn.title = session ? 'החשבון שלי' : 'התחברות';
   }
 
+  // ══════════ מעקב משקל v1 — גרף התקדמות (מפרט: ROADMAP "מעקב משקל v1", grilling 11/07/2026) ══════════
+  // אחסון: local-first cache (WEIGHT_KEY) שהוא מקור התצוגה; הענן (weight_logs) מתמזג פנימה (pull) והחוצה (push).
+  // גישה: פיצ'ר חשבון — אנונימי רואה רק פיתיון. הכל additive (כמו שכבת החשבון), נוגע מינימלית ב-ui/app.
+  function readWeights() {
+    const a = parse(lsGet(WEIGHT_KEY));
+    return Array.isArray(a) ? a.slice().sort((x, y) => (x.date < y.date ? -1 : 1)) : [];
+  }
+  function writeWeights(arr) {
+    const clean = arr.filter(w => w && w.date && isFinite(w.kg))
+      .sort((x, y) => (x.date < y.date ? -1 : 1));
+    lsSet(WEIGHT_KEY, JSON.stringify(clean));
+  }
+  const listWeights = () => readWeights();
+  function clampKg(n) {
+    const v = Math.round(Number(n) * 10) / 10;
+    return (isFinite(v) && v >= 30 && v <= 300) ? v : null;   // clamp לקוח (DB רחב יותר 20–400)
+  }
+  function heightM() { try { return S && S.height ? S.height / 100 : null; } catch (e) { return null; } }
+  function bmiOf(kg) { const h = heightM(); return h ? kg / (h * h) : null; }
+  function buildWeight() { try { return (typeof DAY !== 'undefined' && DAY && DAY.date) || todayStr(); } catch (e) { return null; } }
+  function seedKg() { try { return S && S.weight ? clampKg(S.weight) : null; } catch (e) { return null; } }
+  function weeksDue() {
+    const a = readWeights(); if (!a.length) return false;
+    return (Date.now() - Date.parse(a[a.length - 1].date)) / 864e5 >= 7;
+  }
+
+  // הערת תת-משקל: פעם אחת לאפיזודה; מדוכאת ל"מסה שלא יורדת"; נורית ל"מסה שיורדת" ולשמירה. (ROADMAP)
+  function underweightReferral(dateStr, kg) {
+    const bmi = bmiOf(kg); if (bmi == null) return;
+    if (bmi >= 18.5) { lsSet(UW_KEY, ''); return; }            // מעל הסף → איפוס דגל אפיזודה
+    const before = readWeights().filter(w => w.date < dateStr);
+    const prev = before.length ? before[before.length - 1] : null;
+    const prevBmi = prev ? bmiOf(prev.kg) : null;
+    if (!prev || (prevBmi != null && prevBmi >= 18.5)) lsSet(UW_KEY, '');   // תחילת אפיזודה חדשה
+    const goalBulk = (function () { try { return S && S.goal === 'bulk'; } catch (e) { return false; } })();
+    const decreasing = prev && kg < prev.kg;
+    const suppress = goalBulk && !decreasing;                  // מסה + לא-יורד (התחלה/יציב/עולה) → שקט
+    if (!suppress && lsGet(UW_KEY) !== '1') {
+      lsSet(UW_KEY, '1');
+      showToastSafe('המשקל הזה מתחת לטווח המקובל כבריא. אם זה לא מכוון או שמשהו מטריד אותך, שווה להתייעץ עם רופא/ה או דיאטן/ית.', 12000);
+    }
+  }
+
+  function logWeight(dateStr, rawKg) {
+    const kg = clampKg(rawKg);
+    if (kg == null) { showToastSafe('משקל לא תקין — הזינו ערך בין 30 ל-300 ק"ג'); return false; }
+    const arr = readWeights().filter(w => w.date !== dateStr);
+    arr.push({ date: dateStr, kg, saved_at: nowIso() });
+    writeWeights(arr);
+    if (session) { pendingWeightDeletes.delete(dateStr); pendingWeightUpserts.add(dateStr); markDirty('weight'); }
+    underweightReferral(dateStr, kg);
+    injectWeightSlot();
+    return true;
+  }
+  function deleteWeight(dateStr) {
+    writeWeights(readWeights().filter(w => w.date !== dateStr));
+    if (session) { pendingWeightUpserts.delete(dateStr); pendingWeightDeletes.add(dateStr); markDirty('weight'); }
+    injectWeightSlot();
+  }
+
+  // גרף קו-משקל בק"ג — SVG וניל, מספרי בלבד (בלי הזרקת טקסט משתמש). spark=תקציר בלי צירים.
+  function buildWeightSvg(points, opts) {
+    opts = opts || {};
+    const W = opts.width || 300, H = opts.height || 140, spark = !!opts.spark;
+    if (!points.length) return '';
+    const kgs = points.map(p => p.kg);
+    let lo = Math.min.apply(null, kgs), hi = Math.max.apply(null, kgs);
+    if (hi - lo < 1) { lo -= 1; hi += 1; }
+    const padX = spark ? 3 : 8, padTop = spark ? 4 : 10, padBot = spark ? 4 : 10;
+    const n = points.length;
+    const x = i => padX + (n === 1 ? (W - 2 * padX) / 2 : i * (W - 2 * padX) / (n - 1));
+    const y = kg => (H - padBot) - (kg - lo) / (hi - lo) * (H - padTop - padBot);
+    const coords = points.map((p, i) => [x(i), y(p.kg)]);
+    const path = coords.map(c => (c[0]).toFixed(1) + ',' + (c[1]).toFixed(1)).join(' ');
+    const dots = coords.map((c, i) =>
+      `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="${(!spark && i === n - 1) ? 4 : (spark ? 2 : 3)}" fill="#4f46e5"/>`).join('');
+    const line = n > 1 ? `<polyline points="${path}" fill="none" stroke="#4f46e5" stroke-width="${spark ? 2 : 2.5}" stroke-linejoin="round" stroke-linecap="round"/>` : '';
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" role="img" aria-label="גרף משקל">${line}${dots}</svg>`;
+  }
+
+  // מודל שקילה — קלט מספרי (16px נגד זום iOS, clamp), עם ק"ג ותאריך
+  function openWeighInModal(prefillKg, dateStr) {
+    const ov = document.createElement('div');
+    ov.className = 'auth-overlay weigh-overlay';
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    const box = document.createElement('div');
+    box.className = 'auth-box weigh-box';
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+    const title = document.createElement('h3'); title.textContent = 'עדכון משקל';
+    const sub = document.createElement('p'); sub.className = 'auth-sub';
+    sub.textContent = dateLabel(dateStr || todayStr());
+    const input = document.createElement('input');
+    input.type = 'number'; input.step = '0.1'; input.min = '30'; input.max = '300';
+    input.inputMode = 'decimal'; input.className = 'weigh-input'; input.placeholder = 'משקל בק"ג';
+    if (prefillKg) input.value = String(prefillKg);
+    const save = document.createElement('button');
+    save.className = 'auth-magic'; save.textContent = 'שמירה';
+    save.onclick = () => { if (logWeight(dateStr || todayStr(), input.value)) { ov.remove(); showToastSafe('נשמר ✓'); } };
+    const cancel = document.createElement('button');
+    cancel.className = 'auth-cancel'; cancel.textContent = 'ביטול';
+    cancel.onclick = () => ov.remove();
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
+    box.append(title, sub, input, save, cancel);
+    ov.appendChild(box); document.body.appendChild(ov);
+    setTimeout(() => input.focus(), 50);
+  }
+
+  // בונה את תוכן ה-empty-state עם אישור-הזרעה (מחובר בלי שקילות), משותף לסלוט ולטאב
+  function seedConfirmEl() {
+    const wrap = document.createElement('div'); wrap.className = 'weight-empty';
+    const sk = seedKg();
+    if (sk) {
+      const p = document.createElement('p'); p.className = 'weight-empty-txt';
+      p.textContent = '📈 נתחיל מהמשקל שאיתו בנית את התפריט?';
+      const val = document.createElement('div'); val.className = 'weight-seed-val';
+      val.innerHTML = '<span dir="ltr">' + Number(sk) + '</span> ק"ג · ' + esc(dateLabel(buildWeight()));
+      const yes = document.createElement('button');
+      yes.className = 'weight-btn primary'; yes.textContent = 'כן, התחל את הגרף';
+      yes.onclick = () => { if (logWeight(buildWeight(), sk)) showToastSafe('הגרף התחיל ✓'); };
+      const other = document.createElement('button');
+      other.className = 'weight-btn'; other.textContent = 'אזין משקל אחר';
+      other.onclick = () => openWeighInModal(null, todayStr());
+      wrap.append(p, val, yes, other);
+    } else {
+      const p = document.createElement('p'); p.className = 'weight-empty-txt';
+      p.textContent = '📈 הוסיפו שקילה ראשונה כדי להתחיל את הגרף.';
+      const add = document.createElement('button');
+      add.className = 'weight-btn primary'; add.textContent = '+ שקילה';
+      add.onclick = () => openWeighInModal(null, todayStr());
+      wrap.append(p, add);
+    }
+    return wrap;
+  }
+
+  // תוכן הסלוט במסך התפריט לפי מצב (אנונימי / מחובר-בלי-נתונים / מחובר-עם-נתונים)
+  function weightSlotContent() {
+    const card = document.createElement('div'); card.className = 'weight-card';
+    if (!session) {
+      const p = document.createElement('p'); p.className = 'weight-teaser';
+      p.textContent = '📈 רוצה לעקוב אחרי המשקל שלך ולראות את המגמה?';
+      const btn = document.createElement('button');
+      btn.className = 'weight-btn primary'; btn.textContent = 'התחילו לעקוב · חינם';
+      btn.onclick = () => openLogin('עוד רגע ואתם עוקבים 📈 התחברות עם Google או מייל — התפריט שלכם נשמר מיד.');
+      card.append(p, btn);
+      return card;
+    }
+    const w = readWeights();
+    if (!w.length) { card.appendChild(seedConfirmEl()); return card; }
+    // מחובר עם נתונים — מיני-וידג'ט
+    const last = w[w.length - 1];
+    const prev = w.length > 1 ? w[w.length - 2] : null;
+    const top = document.createElement('div'); top.className = 'weight-widget';
+    top.onclick = () => openAccountModal('progress');
+    const val = document.createElement('span'); val.className = 'weight-last';
+    val.innerHTML = '<span dir="ltr">' + Number(last.kg) + '</span> ק"ג';
+    const spark = document.createElement('span'); spark.className = 'weight-spark';
+    spark.innerHTML = buildWeightSvg(w.slice(-8), { width: 90, height: 30, spark: true });
+    const trend = document.createElement('span'); trend.className = 'weight-trend';
+    if (prev) {
+      const d = Math.round((last.kg - prev.kg) * 10) / 10;
+      trend.innerHTML = d === 0 ? 'ללא שינוי' : (d < 0 ? '↓' : '↑') + ' <span dir="ltr">' + Math.abs(d) + '</span> ק"ג';
+    } else trend.textContent = 'נקודה ראשונה';
+    top.append(val, spark, trend);
+    const add = document.createElement('button');
+    const due = weeksDue();
+    add.className = 'weight-btn' + (due ? ' primary' : '');
+    add.textContent = due ? 'עדכנו משקל' : '+ שקילה';
+    add.onclick = () => openWeighInModal(last.kg, todayStr());
+    const row = document.createElement('div'); row.className = 'weight-widget-row';
+    row.append(top, add);
+    card.appendChild(row);
+    return card;
+  }
+
+  function injectWeightSlot() {
+    const host = document.getElementById('menu-output');
+    if (!host) return;
+    const old = host.querySelector('#weight-slot');
+    if (old) old.remove();
+    const summary = host.querySelector('.summary-card');
+    if (!summary) return;
+    const el = weightSlotContent(); el.id = 'weight-slot';
+    summary.insertAdjacentElement('afterend', el);
+  }
+
+  // תוכן טאב "התקדמות" במודל החשבון — הגרף המלא + רשימת שקילות (עריכה/מחיקה)
+  function renderProgress(listEl) {
+    listEl.innerHTML = '';
+    const w = readWeights();
+    if (!w.length) { listEl.appendChild(seedConfirmEl()); return; }
+    const graph = document.createElement('div'); graph.className = 'weight-graph';
+    graph.innerHTML = buildWeightSvg(w, { width: 320, height: 150 });
+    const range = document.createElement('div'); range.className = 'weight-range';
+    // בלי טווח מספר–מספר (מתהפך ב-RTL); ספירה בלבד + אחרון מבודד-LTR
+    range.innerHTML = w.length + ' שקילות · אחרון <span dir="ltr">' + Number(w[w.length - 1].kg) + '</span> ק"ג';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'weight-btn primary weight-add-full';
+    addBtn.textContent = weeksDue() ? 'עדכנו משקל' : '+ שקילה';
+    addBtn.onclick = () => openWeighInModal(w[w.length - 1].kg, todayStr());
+    listEl.append(graph, range, addBtn);
+    w.slice().reverse().forEach(p => {
+      const row = document.createElement('div'); row.className = 'account-row weight-row';
+      const del = document.createElement('button'); del.className = 'row-del'; del.textContent = '✕';
+      del.title = 'מחיקת שקילה';
+      del.onclick = e => { e.stopPropagation(); deleteWeight(p.date); renderProgress(listEl); showToastSafe('נמחק'); };
+      const dd = document.createElement('span'); dd.className = 'row-date'; dd.textContent = dateLabel(p.date);
+      const kg = document.createElement('span'); kg.className = 'row-meta'; kg.textContent = p.kg + ' ק"ג';
+      row.append(del, dd, kg);
+      row.onclick = () => openWeighInModal(p.kg, p.date);
+      listEl.appendChild(row);
+    });
+  }
+  // חשיפה פנימית (namespace תת-קו) — לרינדור מהמודל ולבדיקות/אינטגרציה עתידית
+  window._shapeatWeight = { renderProgress, injectWeightSlot, logWeight, deleteWeight, readWeights, bmiOf };
+
   // ══════════ init ══════════
   sb.auth.onAuthStateChange((evt, sess) => {
     session = sess;
     updateAccountBtn();
+    try { injectWeightSlot(); } catch (e) {}   // הסלוט משתנה בין אנונימי למחובר
     if (evt === 'SIGNED_IN') {
       closeLogin(); hideBanner();
       if (!lsGet('shapeat-signup-sent')) { lsSet('shapeat-signup-sent', '1'); track('signup'); }
