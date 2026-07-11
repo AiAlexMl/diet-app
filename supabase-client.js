@@ -752,6 +752,14 @@
     }
   }
 
+  // אם מודל החשבון פתוח על טאב ההתקדמות — מרעננים אותו (שקילה/מחיקה מתוך המודל)
+  function refreshOpenProgress() {
+    if (!accountEl) return;
+    const activeTab = accountEl.querySelector('.account-tab.active');
+    const listEl = accountEl.querySelector('.account-list');
+    if (listEl && activeTab && activeTab.textContent.indexOf('התקדמות') !== -1) renderProgress(listEl);
+  }
+
   function logWeight(dateStr, rawKg) {
     const kg = clampKg(rawKg);
     if (kg == null) { showToastSafe('משקל לא תקין — הזינו ערך בין 30 ל-300 ק"ג'); return false; }
@@ -761,12 +769,14 @@
     if (session) { pendingWeightDeletes.delete(dateStr); pendingWeightUpserts.add(dateStr); markDirty('weight'); }
     underweightReferral(dateStr, kg);
     injectWeightSlot();
+    refreshOpenProgress();
     return true;
   }
   function deleteWeight(dateStr) {
     writeWeights(readWeights().filter(w => w.date !== dateStr));
     if (session) { pendingWeightUpserts.delete(dateStr); pendingWeightDeletes.add(dateStr); markDirty('weight'); }
     injectWeightSlot();
+    refreshOpenProgress();
   }
 
   // גרף קו-משקל בק"ג — SVG וניל, מספרי בלבד (בלי הזרקת טקסט משתמש). spark=תקציר בלי צירים.
@@ -903,7 +913,9 @@
     graph.innerHTML = buildWeightSvg(w, { width: 320, height: 150 });
     const range = document.createElement('div'); range.className = 'weight-range';
     // בלי טווח מספר–מספר (מתהפך ב-RTL); ספירה בלבד + אחרון מבודד-LTR
-    range.innerHTML = w.length + ' שקילות · אחרון <span dir="ltr">' + Number(w[w.length - 1].kg) + '</span> ק"ג';
+    const cnt = w.length === 1 ? 'שקילה אחת' : w.length + ' שקילות';
+    range.innerHTML = cnt + ' · אחרון <span dir="ltr">' + Number(w[w.length - 1].kg) + '</span> ק"ג'
+      + (w.length === 1 ? '<br><span class="weight-hint">שקילה נוספת ביום אחר תיצור קו מגמה 📈</span>' : '');
     const addBtn = document.createElement('button');
     addBtn.className = 'weight-btn primary weight-add-full';
     addBtn.textContent = weeksDue() ? 'עדכנו משקל' : '+ שקילה';
