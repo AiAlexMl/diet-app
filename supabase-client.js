@@ -373,29 +373,67 @@
     let sentEmail = '';
     const codeWrap = document.createElement('div');
     codeWrap.style.display = 'none';
-    const codeInput = document.createElement('input');
-    codeInput.type = 'text';
-    codeInput.inputMode = 'numeric';
-    codeInput.autocomplete = 'one-time-code';
-    codeInput.maxLength = 6;
-    codeInput.className = 'auth-email auth-code';
-    codeInput.placeholder = 'קוד בן 6 ספרות';
-    codeInput.setAttribute('aria-label', 'קוד אימות מהמייל');
+    // חלונות ספרה (auto-advance, Backspace חוזר, הדבקה מלאה, אימות אוטומטי במילוי).
+    // OTP_LEN חייב להתאים לאורך שמוגדר ב-Supabase (Authentication → Email OTP length).
+    const OTP_LEN = 6;
+    const boxesRow = document.createElement('div');
+    boxesRow.className = 'otp-boxes';
+    boxesRow.setAttribute('dir', 'ltr');   // ספרות משמאל-לימין כמו מספר
+    const boxes = [];
+    const getCode = () => boxes.map(b => b.value).join('');
+    const clearBoxes = () => boxes.forEach(b => (b.value = ''));
+    let verifying = false;
+    async function doVerify() {
+      const code = getCode();
+      if (code.length !== OTP_LEN) { setStatus('הקוד הוא ' + OTP_LEN + ' ספרות'); return; }
+      if (verifying) return;
+      verifying = true; vBtn.disabled = true; setStatus('מאמת...');
+      try {
+        const { error } = await sb.auth.verifyOtp({ email: sentEmail, token: code, type: 'email' });
+        if (error) { setStatus('קוד שגוי או שפג תוקפו, נסו שוב'); clearBoxes(); boxes[0].focus(); }
+        // הצלחה → onAuthStateChange('SIGNED_IN') סוגר את המודאל וממזג
+      } catch (e) { setStatus('האימות נכשל, נסו שוב'); }
+      verifying = false; vBtn.disabled = false;
+    }
+    for (let i = 0; i < OTP_LEN; i++) {
+      const b = document.createElement('input');
+      b.type = 'text'; b.inputMode = 'numeric'; b.maxLength = 1;
+      b.className = 'otp-box'; b.setAttribute('aria-label', 'ספרה ' + (i + 1));
+      if (i === 0) b.autocomplete = 'one-time-code';
+      b.addEventListener('input', () => {
+        b.value = b.value.replace(/\D/g, '').slice(-1);
+        if (b.value && i < OTP_LEN - 1) boxes[i + 1].focus();
+        if (getCode().length === OTP_LEN) doVerify();
+      });
+      b.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !b.value && i > 0) { e.preventDefault(); boxes[i - 1].value = ''; boxes[i - 1].focus(); }
+        else if (e.key === 'Enter') doVerify();
+      });
+      b.addEventListener('paste', e => {
+        e.preventDefault();
+        const digits = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\D/g, '').slice(0, OTP_LEN);
+        for (let j = 0; j + i < OTP_LEN && j < digits.length; j++) boxes[i + j].value = digits[j];
+        boxes[Math.min(i + digits.length, OTP_LEN - 1)].focus();
+        if (getCode().length === OTP_LEN) doVerify();
+      });
+      boxes.push(b); boxesRow.appendChild(b);
+    }
     const vBtn = document.createElement('button');
     vBtn.className = 'auth-magic';
     vBtn.textContent = 'התחברות';
+    vBtn.onclick = doVerify;
     const backBtn = document.createElement('button');
     backBtn.className = 'auth-cancel';
     backBtn.type = 'button';
     backBtn.textContent = 'שליחה לכתובת אחרת';
-    codeWrap.append(codeInput, vBtn, backBtn);
+    codeWrap.append(boxesRow, vBtn, backBtn);
 
     function showCodeStep(addr) {
       sentEmail = addr;
-      setStatus('שלחנו קוד בן 6 ספרות ל-' + addr + '. הזינו אותו כאן (תקף לשעה).');
+      setStatus('שלחנו קוד בן ' + OTP_LEN + ' ספרות ל-' + addr + '. הזינו אותו כאן (תקף לשעה).');
       email.style.display = 'none'; mBtn.style.display = 'none';
       codeWrap.style.display = '';
-      codeInput.value = ''; codeInput.focus();
+      clearBoxes(); boxes[0].focus();
     }
     function showEmailStep() {
       codeWrap.style.display = 'none';
@@ -414,18 +452,7 @@
       } catch (e) { setStatus('השליחה נכשלה, נסו שוב'); }
       mBtn.disabled = !cb.checked;
     };
-    vBtn.onclick = async () => {
-      const code = (codeInput.value || '').replace(/\D/g, '');
-      if (code.length !== 6) { setStatus('הקוד הוא 6 ספרות'); return; }
-      vBtn.disabled = true; setStatus('מאמת...');
-      try {
-        const { error } = await sb.auth.verifyOtp({ email: sentEmail, token: code, type: 'email' });
-        if (error) { setStatus('קוד שגוי או שפג תוקפו, נסו שוב'); vBtn.disabled = false; }
-        // הצלחה → onAuthStateChange('SIGNED_IN') סוגר את המודאל וממזג
-      } catch (e) { setStatus('האימות נכשל, נסו שוב'); vBtn.disabled = false; }
-    };
     backBtn.onclick = showEmailStep;
-    codeInput.addEventListener('keydown', e => { if (e.key === 'Enter') vBtn.click(); });
     email.addEventListener('keydown', e => { if (e.key === 'Enter' && !mBtn.disabled) mBtn.click(); });
 
     const status = document.createElement('p');
