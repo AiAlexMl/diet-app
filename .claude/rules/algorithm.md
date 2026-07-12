@@ -19,7 +19,7 @@ Excludes by avoided-set, allergy tags, and diet: vegan/vegetarian/lactose; **`gl
   - bulk: RMR + 300
   - Floor: `Math.max(target, female ? 1200 : 1500)`
 - **Protein**: `weight × 2g` (**vegans: × 1.6g** — hard to reach 2 from plants); if BMI ≥ 30, uses lean-body proxy (`25 × height_m²`) instead
-- **Fat floor**: `max(25g men / 40g women, 20% of target ÷ 9)`
+- **Fat target**: `max(25g men / 40g women, 25% of target ÷ 9)` — 25% of calories (raised from 20% on 12/07/2026 per a coach's expert feedback: 20% is the low end, WHO caps at ≤30%; 25% improves satiety without starving carbs). Gram floors unchanged. Measured (2016-build matrix): fat lands at 25.0% median, calorie accuracy *improved* (overall dev −1.5%→−0.8%), protein unchanged, fiber <14g/1000 nudged 2.4%→3.0% (fewer carbs ⇒ slightly less fiber; still well under the pre-fiber-work 7.3%). Carbs stay abundant by goal: cut ~43% / maintain ~52% / bulk ~57%. **Bonus:** less carb budget ⇒ **fewer inflated carb piles** — hot meals with ≥300g carbs dropped 57%→40.5% and carb-pile splits per menu 0.52→0.32 (the split mechanism below fires less because the underlying pile shrank).
 - **Carb floor**: if `protein×4 + fat×9 + 400 > target`, target is raised to fit — sets `S.carbWarning`
 - **Carbs**: `(target − protein×4 − fat×9) / 4`
 

@@ -102,7 +102,7 @@ function calcMacro() {
   const pf  = (S.diet.has('vegan') || S.noTrain) ? 1.6 : 2;
   S.proteinG = Math.round(Math.min(S.weight, pw) * pf);
   S.fatG     = Math.max(S.gender === 'female' ? 40 : 25,
-                        Math.round(S.target * 0.2 / 9));
+                        Math.round(S.target * 0.25 / 9));   // 25% מהקלוריות (WHO ≤30%; 20% היה הקצה התחתון — משוב מקצועי 12/07). רצפות גרמים נשמרות.
   const macroFloor = S.proteinG * 4 + S.fatG * 9 + 100 * 4;
   if (S.target < macroFloor) {
     S.target = macroFloor;
