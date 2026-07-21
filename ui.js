@@ -716,9 +716,10 @@ function renderMenu() {
 
 // כרטיס הפניה במקום תפריט — כשהשילוב מטרה×BMI מזיק (buildBlockText). לא בונה ולא שומר DAY.
 function renderBuildBlock(msg) {
+  const cta = S.gender === 'female' ? 'בואי' : 'בוא';
   document.getElementById('menu-output').innerHTML = `
     <div class="menu-header">
-      <h1 class="menu-title">הכלי לא מתאים למצב הזה</h1>
+      <h1 class="menu-title">רגע, ${cta} נעצור כאן</h1>
     </div>
     <div class="field-error" style="display:flex;gap:8px;align-items:flex-start">
       <span class="bmi-warning-icon">🩺</span>
