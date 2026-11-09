@@ -1370,7 +1370,7 @@ function dayHtml(day, opts) {
     const isMT = m.type === 'treatmeal';   // פינוק-ארוחה: ארוחה לכל דבר, אבל בלי עריכה (אוכלים אותו כמו שהוא)
     html += `<div class="meal-card${day.eaten[mi] ? ' meal-eaten' : ''}${m.type === 'treat' || isMT ? ' treat-card' : ''}${isEd ? ' editing' : ''}"${ro ? '' : ` id="meal-card-${mi}"`}>
       <div class="meal-header">
-        <div class="meal-title">${m.type === 'treat' || isMT ? '🍫 ' : ''}${esc(m.label)} ${tagH}${isMT ? '<span class="meal-tag tag-treat">פינוק</span>' : ''}</div>
+        <div class="meal-title">${m.type === 'treat' ? '🍫 ' : isMT ? mealTreatEmoji(m) : ''}${esc(m.label)} ${tagH}${isMT ? '<span class="meal-tag tag-treat">פינוק</span>' : ''}</div>
         <div style="display:flex;align-items:center;gap:8px">
           ${m.type === 'treat' ? `<span class="meal-time">מתי שמתחשק 🙂</span>` : m.time ? `<span class="meal-time">${m.time}</span>` : ''}
           <span class="meal-cal">${m.totCal} קל׳</span>
@@ -1699,9 +1699,16 @@ function treatBuildNote(items) {
 // ══════════════════════════════════════════
 //  פינוק-ארוחה (09/11/2026) — ראו את ההסבר המלא מעל mealTreatIds ב-app.js
 // ══════════════════════════════════════════
+// אימוג'י לפי המאכל — שוקולד ליד שווארמה לא מתאים (אלכס 09/11/2026). 🌯 הוא הקרוב ביותר לשווארמה.
+const MEAL_TREAT_EMOJI = { 206: '🍕', 207: '🍔', 208: '🌯', 209: '🧆' };
+function mealTreatEmoji(m) {
+  const id = m.items[0] && m.items[0].f && m.items[0].f.id;
+  return MEAL_TREAT_EMOJI[id] ? MEAL_TREAT_EMOJI[id] + ' ' : '';
+}
+
 function mealTreatNote(m) {
   const name = m.items.length === 1 ? m.items[0].f.name : `${m.items.length} משולשי פיצה`;
-  return `🍫 ${name} במקום ${m.label}. שאר הארוחות נבנו סביב הפינוק, כדי שהיום יישאר ביעד.`;
+  return `${name} במקום ${m.label}. שאר הארוחות נבנו סביב הפינוק, כדי שהיום יישאר ביעד.`;
 }
 
 const TREAT_WORKOUT_TIP = 'הארוחות שלפני ואחרי האימון בנויות בדיוק בשבילו (פחמימה + חלבון), אז את הפינוק עדיף לשמור רחוק מחלון האימון ולא במקומן.';
