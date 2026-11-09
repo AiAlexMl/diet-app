@@ -1392,7 +1392,7 @@ function dayHtml(day, opts) {
         : m.type === 'treat'
         ? `<button class="treat-remove" onclick="removeTreatItem(${ii})" title="הסר פינוק">✕</button>`
         : isMT
-        ? (day.eaten[mi] ? '' : `<button class="treat-remove" onclick="removeMealTreat()" title="הסר את הפינוק והחזר את הארוחה">✕</button>`)
+        ? (day.eaten[mi] ? '' : `<button class="treat-remove" onclick="removeMealTreat()" title="${gword('הסר את הפינוק והחזר את הארוחה', 'הסירי את הפינוק והחזירי את הארוחה')}" aria-label="${gword('הסר את הפינוק והחזר את הארוחה', 'הסירי את הפינוק והחזירי את הארוחה')}">✕</button>`)
         : `<button class="item-remove" onclick="removeItem(${mi},${ii})" title="הסר פריט">✕</button>`;
       if (it.isSaladGroup) {
         html += `<div class="salad-row">
