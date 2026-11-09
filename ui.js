@@ -206,7 +206,7 @@ function clearDay() {
 // קלוריות של תפריט שמור, מהארוחות שיישארו אחרי השחזור (בלי פינוקים ובלי מוסרות)
 function favCalories(payload) {
   if (!payload || !payload.meals) return 0;
-  // פינוק-ארוחה נספר: בשחזור הוא חוזר להיות ארוחה בגודל שמשלים את היום (refillMealTreatSlot)
+  // פינוק-ארוחה נספר: הוא נשאר בשחזור (ראו restoreFavorite)
   return payload.meals
     .filter(m => m.type !== 'treat' && !m.added && !m.removed)
     .reduce((s, m) => s + (m.totCal || 0), 0);
@@ -250,7 +250,9 @@ function restoreFavorite(payload) {
   day.buildId = crypto.randomUUID();         // זהות חדשה — הלב מתחיל ריק, ואין כפילות במועדפים
   day.meals = day.meals.filter(m => m.type !== 'treat' && !m.added && !m.removed);
   day.meals.forEach(m => { m.edited = false; });
-  day.meals.forEach((m, i) => { if (m.type === 'treatmeal') refillMealTreatSlot(day.meals, i); });
+  // פינוק-ארוחה **נשאר** בשחזור (אלכס, 10/11/2026): שאר הארוחות של התפריט השמור נבנו סביבו,
+  // ובלעדיו התפריט חסר. בנייה מחדש של המשבצת הניבה "ארוחת אחה"צ" של ~720 קק"ל — ארוחה מוזרה,
+  // ולעיתים קרובות מתחת ליעד. מי שלא רוצה אותו — ✕ על הכרטיס. פינוקים קטנים יורדים כמו תמיד.
   day.eaten = day.meals.map(() => false);
   day.note = null;
   day.noteAction = null;
@@ -274,8 +276,10 @@ function restoreFavorite(payload) {
 
   DAY = day;
   editingMeals.clear();
-  S.treats = [];                             // הפינוקים ירדו עם הסינון למעלה
-  S.treatFor = null;
+  // הפינוקים הקטנים ירדו עם הסינון למעלה; פינוק-ארוחה נשאר, ולכן משחזרים אותו גם ב-S
+  const keptMT = day.meals.find(m => m.type === 'treatmeal');
+  S.treats = keptMT ? keptMT.items.map(it => it.f && it.f.id).filter(id => id > 0) : [];
+  S.treatFor = keptMT ? keptMT.label : null;
   // רצפת הקלוריות הבריאה בלבד. תפריט שנבנה ע"י buildMenu תמיד מעליה, אבל מועדף
   // שנערך ידנית לפני השמירה יכול לשבת מתחתיה, וזה המקרה היחיד שכן מצדיק התערבות.
   const floor = S.gender === 'female' ? 1200 : 1500;
