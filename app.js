@@ -1270,7 +1270,8 @@ function buildMenu() {
   // פינוק מתוכנן: מקצים את התקציב שלו מראש — התפריט נבנה ומיושר סביב מה שנשאר.
   // calcMacro רץ בכל בנייה, אז ההפחתה כאן זמנית מטבעה (משוחזר בסוף הפונקציה לתצוגה).
   const fullTarget = S.target;
-  let treatMeal = null, treatWarn = null;
+  const fullProt = S.proteinG;
+  let treatMeal = null, treatWarn = null, treatProt = 0;
   if (S.treats && S.treats.length) {
     const items = S.treats.map(id => TREATS.find(x => x.id === id)).filter(Boolean).map(tf => mkItem(tf, tf.unitG));
     if (items.length) {
@@ -1288,6 +1289,12 @@ function buildMenu() {
       S.target  = Math.max(800, reduced);
       S.fatG    = Math.max(20, S.fatG - Math.round(tFat));
       S.carbG   = Math.max(50, S.carbG - Math.round(tCarb));
+      // גם החלבון של הפינוק נספר (09/11/2026). עד אז ירדו רק קלוריות/שומן/פחמימה, כי הפינוקים
+      // נבנו למתוקים (~0 חלבון) — ושווארמה (~50g) הוסיפה יום של 185g מול יעד 164.
+      // ⚠️ ובאותו זמן rebuildRest (פינוק באמצע היום) כבר חיסר חלבון — אותה שווארמה נתנה
+      // שני ימים שונים לפי מתי נוספה. הרצפה (10) זהה לשם, ובשביל העקביות.
+      treatProt = items.reduce((s, it) => s + (it.p || 0), 0);
+      S.proteinG = Math.max(10, S.proteinG - Math.round(treatProt));
       treatMeal = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items };
       recalcMeal(treatMeal);
     }
@@ -1339,6 +1346,9 @@ function buildMenu() {
   }
 
   reconcile(meals, used, ctx);   // יישור מאקרו ליעד (מול היעד המוקטן אם יש פינוק)
+  // מכאן והלאה בודקים את היום כולו מול היעד המלא — כולל החלבון שבפינוק. אחרת יום עם
+  // שווארמה, שהארוחות שלו נבנו בכוונה עם פחות חלבון, היה מתריע על חוסר חלבון שאינו קיים.
+  S.proteinG = fullProt;
 
   // שקיפות: נשארנו רחוקים מהיעד (>8%) גם אחרי כל המנופים — אומרים זאת ביושר (לא מסתירים סטייה)
   const finCal = meals.reduce((s, m) => s + (m.removed ? 0 : m.totCal), 0);
@@ -1352,7 +1362,7 @@ function buildMenu() {
   // ולכן תפריט שנחת מדויק בקלוריות ו-40% מתחת בחלבון יצא שקט לגמרי (נמדד: 91/1440, 77 בלי אזהרה).
   // הסף הוא אחוזי ולא ג/ק"ג: S.proteinG כבר מקודד את היעד הנכון לכל דיאטה (2 / 1.6 לטבעוני-ולא-מתאמן /
   // פרוקסי גוף-רזה מעל BMI 30), ורף ג/ק"ג אחיד היה צועק על כל תפריט טבעוני שנוחת על היעד שנקבע לו.
-  const finProt = meals.reduce((s, m) => s + (m.removed ? 0 : m.totP), 0);
+  const finProt = meals.reduce((s, m) => s + (m.removed ? 0 : m.totP), 0) + treatProt;
   const protDev = S.proteinG ? (finProt - S.proteinG) / S.proteinG : 0;
   // מתריעים מול הרצפה המנחה, לא מול היעד. היעד (2 למתאמן, 1.6 ללא-מתאמן ≈ פי 2 מה-RDA)
   // שאפתני ומגובה, אבל החמצה שלו אינה כשל תזונתי: בגירעון ההמלצה ליושבני היא 1.0-1.2 ג/ק"ג
