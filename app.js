@@ -1308,6 +1308,7 @@ function defaultTreatSlot(meals) {
 function refillMealTreatSlot(meals, idx) {
   const m = meals[idx];
   if (!m || m.type !== 'treatmeal') return;
+  if (!S.target) calcMacro();
   m.type = m.origType || 'hot';
   delete m.origType;
   const used = new Map();
@@ -1317,8 +1318,15 @@ function refillMealTreatSlot(meals, idx) {
   }); });
   const others = meals.reduce((s, x, i) => s + (i === idx || x.removed || x.type === 'treat' ? 0 : (x.totCal || 0)), 0);
   const budget = Math.max(250, (S.target || 0) - others);
-  m.items = buildMealBest(m.type, budget, used, { usedCarbCats: new Set(), noDairy: m.noDairy });
+  const ctx = { usedCarbCats: new Set() };
+  m.items = buildMealBest(m.type, budget, used, { ...ctx, noDairy: m.noDairy });
   recalcMeal(m);
+  // בנייה גולמית של ארוחה חמה בלי יישור יוצאת רחוק מהתקציב (נמדד: צהריים של 1,150 במקום ~680,
+  // יום של 2,279 מול 1,806). ⇐ אותו יישור שהבנייה הרגילה עושה, על היום כולו.
+  const live = meals.filter(x => !x.removed && x.type !== 'treat');
+  const savedWarn = S.menuWarning;
+  reconcile(live, used, ctx);
+  S.menuWarning = savedWarn;
 }
 
 function buildMenu() {

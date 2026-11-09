@@ -704,6 +704,8 @@ input[type="number"]:focus {
 }
 .tag-pre  { background: var(--bg-info); color: var(--accent); border: 1px solid var(--border-info); }
 .tag-post { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+/* פינוק-ארוחה (09/11/2026): תג "פינוק" ליד שם הארוחה שהפינוק החליף. #92400e על #fffbeb = 7.6:1 */
+.tag-treat { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
 
 /* תמונת מוצר (thumbnail + hover להגדלה) */
 .food-thumb {

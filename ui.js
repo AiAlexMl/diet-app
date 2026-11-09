@@ -165,6 +165,14 @@ function loadDay() {
       // סינון לפי ה-label מחק אותן מהבסיס של מחר והשאיר יום חסר ~46% (נמדד 10/07/2026).
       day.meals = day.meals.filter(m => m.type !== 'treat' && !m.added && !m.removed);
       day.meals.forEach(m => { m.edited = false; m.trimmed = false; m.trimOut = null; });   // מנעולי אתמול לא נגררים ליום חדש
+      // יום אחרי פינוק-ארוחה: תפריט הבסיס של אתמול נבנה *סביב* הפינוק (שלוש ארוחות גדולות יותר),
+      // ולכן אין מה "לשחזר" — בונים יום חדש. (מילוי המשבצת בלבד נמדד 09/11/2026: ביום בלי אימון
+      // ארוחת ערב קרה לא מצליחה למלא 720 קק"ל ⇐ 1 מכל 3 ימים מתחת ליעד ביותר מ-8%.)
+      if (day.meals.some(m => m.type === 'treatmeal')) {
+        S.treats = [];
+        S.treatFor = null;
+        return { rebuild: true };
+      }
       day.eaten = day.meals.map(() => false);
       day.note = null;
     }
@@ -174,7 +182,10 @@ function loadDay() {
     }
     // שחזור הפינוקים המתוכננים מתוך כרטיס הפינוק (כדי שהוספה/הסרה יעבדו אחרי רענון)
     const tm = day.meals.find(m => m.type === 'treat' && !m.removed);
-    S.treats = tm ? tm.items.map(it => it.f && it.f.id).filter(id => id > 0) : [];
+    const mt = day.meals.find(m => m.type === 'treatmeal' && !m.removed);
+    const ids = m => m ? m.items.map(it => it.f && it.f.id).filter(id => id > 0) : [];
+    S.treats = [...ids(mt), ...ids(tm)];
+    S.treatFor = mt ? mt.label : null;
     return day;
   } catch (e) { return null; }
 }
@@ -195,6 +206,7 @@ function clearDay() {
 // קלוריות של תפריט שמור, מהארוחות שיישארו אחרי השחזור (בלי פינוקים ובלי מוסרות)
 function favCalories(payload) {
   if (!payload || !payload.meals) return 0;
+  // פינוק-ארוחה נספר: בשחזור הוא חוזר להיות ארוחה בגודל שמשלים את היום (refillMealTreatSlot)
   return payload.meals
     .filter(m => m.type !== 'treat' && !m.added && !m.removed)
     .reduce((s, m) => s + (m.totCal || 0), 0);
@@ -238,6 +250,7 @@ function restoreFavorite(payload) {
   day.buildId = crypto.randomUUID();         // זהות חדשה — הלב מתחיל ריק, ואין כפילות במועדפים
   day.meals = day.meals.filter(m => m.type !== 'treat' && !m.added && !m.removed);
   day.meals.forEach(m => { m.edited = false; });
+  day.meals.forEach((m, i) => { if (m.type === 'treatmeal') refillMealTreatSlot(day.meals, i); });
   day.eaten = day.meals.map(() => false);
   day.note = null;
   day.noteAction = null;
@@ -262,6 +275,7 @@ function restoreFavorite(payload) {
   DAY = day;
   editingMeals.clear();
   S.treats = [];                             // הפינוקים ירדו עם הסינון למעלה
+  S.treatFor = null;
   // רצפת הקלוריות הבריאה בלבד. תפריט שנבנה ע"י buildMenu תמיד מעליה, אבל מועדף
   // שנערך ידנית לפני השמירה יכול לשבת מתחתיה, וזה המקרה היחיד שכן מצדיק התערבות.
   const floor = S.gender === 'female' ? 1200 : 1500;
@@ -885,7 +899,8 @@ loadState();          // שחזור העדפות מביקור קודם (אם י�
 applyGender();         // החלת לשון זכר/נקבה לפי המין המשוחזר
 updateMacroDisplay();
 DAY = loadDay();      // אם יש תפריט יום שמור — נכנסים ישר אליו ("מלווה יומי")
-if (DAY) { renderDay(); }
+if (DAY && DAY.rebuild) { DAY = null; renderMenu(); }   // יום חדש אחרי פינוק-ארוחה (ראו loadDay)
+else if (DAY) { renderDay(); }
 
 // ── נגישות מקלדת: קבוצות בחירה (31/08/2026) ──────────────────────────────
 // היה: כל צ'יפ וכל כרטיס `role="button"` + `tabindex="0"` בנפרד. שתי בעיות.
@@ -1212,11 +1227,12 @@ function renderMenu() {
 
   const meals = buildMenu();
   const treatMeal = meals.find(m => m.type === 'treat');
+  const mealTreat = meals.find(m => m.type === 'treatmeal');
   DAY = {
     date: todayStr(), buildId: crypto.randomUUID(),   // זהות התפריט הזה — הלב נדלק רק כשהמזהה הזה שמור
     target: S.target, fibG: S.fibG,
     meals, eaten: meals.map(() => false),
-    note: treatMeal ? treatBuildNote(treatMeal.items) : null,
+    note: mealTreat ? mealTreatNote(mealTreat) : treatMeal ? treatBuildNote(treatMeal.items) : null,
     warn: { bmi: S.bmiWarning, train: S.trainWarning, carb: S.carbWarning, menu: S.menuWarning,
             calFloor: S.calFloorWarning,
             kosherSep: S.kosherSep ? 'בכשרות שמרנו על הפרדה של 6 שעות בין הארוחה הבשרית לחלבית, לכן החלב מרוכז בבוקר ובארוחות שאינן צמודות לבשר.' : null },
@@ -1272,7 +1288,7 @@ function dayHtml(day, opts) {
   if (!ro) html += `<div class="day-progress" id="day-progress"></div>`;
 
   // כפתור פינוק: הוספה או הסרה (התפריט נבנה מחדש סביב הפינוק)
-  const hasTreat = meals.some(m => m.type === 'treat' && !m.removed);
+  const hasTreat = meals.some(m => (m.type === 'treat' || m.type === 'treatmeal') && !m.removed);
   if (!ro) {
     html += `<div class="treat-bar">` +
       `<button class="btn-treat" onclick="openTreatPicker()">🍫 ${hasTreat ? 'עוד פינוק' : 'בא לי פינוק היום'}</button>` +
@@ -1351,17 +1367,19 @@ function dayHtml(day, opts) {
     // מצב העריכה נקרא מ-editingMeals ולא מה-DOM: renderDay בונה את ה-HTML מחדש
     // אחרי כל הסרה/הוספה, וכשהמצב ישב רק כ-class הארוחה נפלה מעריכה בכל פעולה.
     const isEd = !ro && editingMeals.has(mi);
-    html += `<div class="meal-card${day.eaten[mi] ? ' meal-eaten' : ''}${m.type === 'treat' ? ' treat-card' : ''}${isEd ? ' editing' : ''}"${ro ? '' : ` id="meal-card-${mi}"`}>
+    const isMT = m.type === 'treatmeal';   // פינוק-ארוחה: ארוחה לכל דבר, אבל בלי עריכה (אוכלים אותו כמו שהוא)
+    html += `<div class="meal-card${day.eaten[mi] ? ' meal-eaten' : ''}${m.type === 'treat' || isMT ? ' treat-card' : ''}${isEd ? ' editing' : ''}"${ro ? '' : ` id="meal-card-${mi}"`}>
       <div class="meal-header">
-        <div class="meal-title">${m.type === 'treat' ? '🍫 ' : ''}${esc(m.label)} ${tagH}</div>
+        <div class="meal-title">${m.type === 'treat' || isMT ? '🍫 ' : ''}${esc(m.label)} ${tagH}${isMT ? '<span class="meal-tag tag-treat">פינוק</span>' : ''}</div>
         <div style="display:flex;align-items:center;gap:8px">
           ${m.type === 'treat' ? `<span class="meal-time">מתי שמתחשק 🙂</span>` : m.time ? `<span class="meal-time">${m.time}</span>` : ''}
           <span class="meal-cal">${m.totCal} קל׳</span>
-          ${!ro && m.type !== 'treat' ? `<button class="meal-edit-btn" onclick="toggleMealEdit(${mi})" title="${isEd ? 'שמירת הארוחה' : 'ערוך ארוחה'}">${isEd ? 'שמירה ✓' : '✏️'}</button>` : ''}
+          ${!ro && m.type !== 'treat' && !isMT ? `<button class="meal-edit-btn" onclick="toggleMealEdit(${mi})" title="${isEd ? 'שמירת הארוחה' : 'ערוך ארוחה'}">${isEd ? 'שמירה ✓' : '✏️'}</button>` : ''}
         </div>
       </div>`;
     // למתאמנים: עדיף להרחיק את הפינוק מחלון האימון (תגי לפני/אחרי אימון שמורים לארוחות עצמן)
-    if (m.type === 'treat' && m.totCal > 0 && day.tLabel && day.tLabel !== 'ללא אימון') {
+    // פינוק-ארוחה שנבחר במקום ארוחת אימון: אותו טיפ. ההחלטה של המשתמש, האפליקציה רק אומרת מה היא חושבת.
+    if (((m.type === 'treat' && m.totCal > 0) || (isMT && m.tag)) && day.tLabel && day.tLabel !== 'ללא אימון') {
       html += `<div class="treat-tip">💡 טיפ: הארוחות שלפני ואחרי האימון בנויות בדיוק בשבילו (פחמימה + חלבון), אז את הפינוק עדיף לשמור רחוק מחלון האימון ולא במקומן.</div>`;
     }
 
@@ -1373,6 +1391,8 @@ function dayHtml(day, opts) {
       const rm = ro ? ''
         : m.type === 'treat'
         ? `<button class="treat-remove" onclick="removeTreatItem(${ii})" title="הסר פינוק">✕</button>`
+        : isMT
+        ? (day.eaten[mi] ? '' : `<button class="treat-remove" onclick="removeMealTreat()" title="הסר את הפינוק והחזר את הארוחה">✕</button>`)
         : `<button class="item-remove" onclick="removeItem(${mi},${ii})" title="הסר פריט">✕</button>`;
       if (it.isSaladGroup) {
         html += `<div class="salad-row">
@@ -1399,7 +1419,7 @@ function dayHtml(day, opts) {
           : '';
         // "אל תציע יותר" — לצד ה-✕, ובאותו מצב עריכה. ✕ מסיר מהיום, זה מסיר לתמיד.
         // רק לפריטים מהמאגר (פריט ידני הוא id שלילי ואין לו מה להחריג).
-        const nv = (!ro && it.f.id > 0)
+        const nv = (!ro && it.f.id > 0 && !isMT)
           ? `<button class="item-never" onclick="neverAgain(${it.f.id})" title="אל תציע לי את זה יותר" aria-label="אל תציע לי את ${esc(it.f.name)} יותר">🚫</button>`
           : '';
         html += `<div class="food-row">
@@ -1423,9 +1443,9 @@ function dayHtml(day, opts) {
       //    חלק מהתיקון שהצבע עשה. הצבע קובע מי בולט, הסדר קובע מי נפגש ראשון.
       html += `<div class="meal-actions">
       <button class="eaten-btn${day.eaten[mi] ? ' on' : ''}" onclick="toggleEaten(${mi})">${eatenLabel(day.eaten[mi])}</button>
-      ${m.type !== 'treat' ? `<button class="alt-btn" onclick="openAltPicker(${mi})">🔄 משהו אחר</button>` : ''}
-      ${m.type !== 'treat' && trimGap(m) ? `<button class="alt-btn" onclick="balanceMeal(${mi})">⚖️ אזן את הארוחה</button>` : ''}
-      ${m.type !== 'treat' ? `<button class="alt-btn add-item-btn" onclick="openAddItemPicker(${mi})">➕ הוסף פריט</button>` : ''}
+      ${m.type !== 'treat' && !isMT ? `<button class="alt-btn" onclick="openAltPicker(${mi})">🔄 משהו אחר</button>` : ''}
+      ${m.type !== 'treat' && !isMT && trimGap(m) ? `<button class="alt-btn" onclick="balanceMeal(${mi})">⚖️ אזן את הארוחה</button>` : ''}
+      ${m.type !== 'treat' && !isMT ? `<button class="alt-btn add-item-btn" onclick="openAddItemPicker(${mi})">➕ הוסף פריט</button>` : ''}
     </div>`;
     }
     html += `</div>`;
@@ -1584,10 +1604,11 @@ function shareDay() {
 // הסייג היחיד: אם אין אף ארוחה פתוחה, אין מה לבנות מחדש ואין על מה לשאול.
 function confirmTreatRebuild(lead) {
   if (!DAY) return true;
-  const isOpen  = (m, i) => !m.removed && m.type !== 'treat' && !DAY.eaten[i] && !m.edited;
+  const isTr    = m => m.type === 'treat' || m.type === 'treatmeal';
+  const isOpen  = (m, i) => !m.removed && !isTr(m) && !DAY.eaten[i] && !m.edited;
   const open    = DAY.meals.filter(isOpen).length;
   if (!open) return true;
-  const locked  = DAY.meals.filter((m, i) => !m.removed && m.type !== 'treat' && (DAY.eaten[i] || m.edited)).length;
+  const locked  = DAY.meals.filter((m, i) => !m.removed && !isTr(m) && (DAY.eaten[i] || m.edited)).length;
 
   const what = locked
     ? (open === 1 ? 'ארוחה אחת שלא נגעת בה תיבנה מחדש. מה שסימנת או ערכת יישמר.'
@@ -1672,12 +1693,140 @@ function treatBuildNote(items) {
   return `התפריט נבנה סביב הפינוק שביקשת ✓. ${name} (${tCal} קק"ל) הוקצה מתוך היעד היומי, ושאר הארוחות הותאמו בהתאם.`;
 }
 
+// ══════════════════════════════════════════
+//  פינוק-ארוחה (09/11/2026) — ראו את ההסבר המלא מעל mealTreatIds ב-app.js
+// ══════════════════════════════════════════
+function mealTreatNote(m) {
+  const name = m.items.length === 1 ? m.items[0].f.name : `${m.items.length} משולשי פיצה`;
+  return `🍫 ${name} במקום ${m.label}. שאר הארוחות נבנו סביב הפינוק, כדי שהיום יישאר ביעד.`;
+}
+
+const TREAT_WORKOUT_TIP = 'הארוחות שלפני ואחרי האימון בנויות בדיוק בשבילו (פחמימה + חלבון), אז את הפינוק עדיף לשמור רחוק מחלון האימון ולא במקומן.';
+
+// "במקום איזו ארוחה?" — נשאל רק כשהפינוק הוא ארוחה. מועמדות: ארוחות שעוד לא נאכלו ולא נערכו
+// (ביום נקי — כולן). ברירת המחדל מסומנת מראש, כך שמי שלא רוצה לחשוב לוחץ "המשך".
+function openTreatSlotPicker(tf, cands, defIdx, onPick) {
+  closeTreatPicker();
+  closeTreatSlotPicker();
+  pushBack(closeTreatSlotPicker);
+  const ov = document.createElement('div');
+  ov.className = 'picker-overlay';
+  ov.id = 'treat-slot-picker';
+  const row = x => `<label class="picker-item slot-opt">
+      <input type="radio" name="treat-slot" value="${x.i}"${x.i === defIdx ? ' checked' : ''} onchange="treatSlotChanged()">
+      <span>${esc(x.m.label)}${x.m.tag && !/אימון/.test(x.m.label) ? ` <small>(${x.m.tag === 'pre' ? 'לפני אימון' : 'אחרי אימון'})</small>` : ''}</span>
+      <span class="picker-cal">${esc(x.m.time || '')}</span>
+    </label>`;
+  ov.innerHTML = `<div class="picker-box" role="dialog" aria-modal="true" aria-labelledby="ts-title">
+    <button class="picker-close" onclick="closeTreatSlotPicker()" aria-label="סגירה" title="סגירה">✕</button>
+    <div class="picker-title" id="ts-title">במקום איזו ארוחה?</div>
+    <div class="picker-sub">${esc(tf.name)}: ${esc('פינוק בגודל ארוחה נכנס במקום אחת הארוחות, ושאר היום נבנה סביבו.')}</div>
+    <div class="picker-list" role="radiogroup" aria-labelledby="ts-title">${cands.map(row).join('')}</div>
+    <div class="treat-tip" id="ts-tip" style="display:none">💡 ${esc(TREAT_WORKOUT_TIP)}</div>
+    <button class="btn-primary" style="width:100%;margin-top:10px" id="ts-go">המשך</button>
+    <button class="btn-secondary picker-cancel" onclick="closeTreatSlotPicker()">ביטול</button>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) closeTreatSlotPicker(); });
+  document.body.appendChild(ov);
+  ov._tags = Object.fromEntries(cands.map(x => [x.i, !!x.m.tag]));
+  document.getElementById('ts-go').onclick = () => {
+    const sel = ov.querySelector('input[name="treat-slot"]:checked');
+    const idx = sel ? Number(sel.value) : defIdx;
+    closeTreatSlotPicker();
+    onPick(idx);
+  };
+  treatSlotChanged();
+}
+
+function treatSlotChanged() {
+  const ov = document.getElementById('treat-slot-picker');
+  if (!ov) return;
+  const sel = ov.querySelector('input[name="treat-slot"]:checked');
+  const tip = document.getElementById('ts-tip');
+  if (tip) tip.style.display = sel && ov._tags[Number(sel.value)] ? '' : 'none';
+}
+
+function closeTreatSlotPicker() {
+  const el = document.getElementById('treat-slot-picker');
+  if (!el) return;
+  el.remove();
+  popBack();
+}
+
+// פינוק-ארוחה: שואלים במקום איזו ארוחה, ואז בונים (יום נקי) או ממירים את הארוחה שנבחרה (אמצע יום)
+function chooseMealTreat(id, tf) {
+  const work = DAY.eaten.some(Boolean) || DAY.meals.some(m => m.edited);
+  const cands = DAY.meals.map((m, i) => ({ m, i })).filter(x => !x.m.removed &&
+    x.m.type !== 'treat' && x.m.type !== 'treatmeal' && (!work || (!DAY.eaten[x.i] && !x.m.edited)));
+  if (!cands.length) return chooseTreat(id, { addOn: true });   // אין ארוחה פתוחה להחליף ⇒ תוספת רגילה
+  const candSet = new Set(cands.map(x => x.i));
+  let defIdx = defaultTreatSlot(DAY.meals.map((m, i) => candSet.has(i) ? m : { ...m, removed: true }));
+  if (!candSet.has(defIdx)) defIdx = cands[0].i;
+
+  openTreatSlotPicker(tf, cands, defIdx, idx => {
+    if (!confirmTreatRebuild('הוספת פינוק')) return;
+    S.treats.push(id);
+    S.treatFor = DAY.meals[idx].label;
+    if (!work) { renderMenu(); dayFigureToast('הפינוק נוסף.'); return; }
+
+    // אמצע יום: הארוחה שנבחרה הופכת לפינוק-ארוחה, והשאר מתאזן סביבה (rebalanceDay נועל אותה)
+    const mtIds = mealTreatIds(S.treats);
+    const ti = DAY.meals.findIndex(m => m.type === 'treat' && !m.removed);
+    if (ti >= 0 && mtIds.length > 1) {   // 3 משולשי פיצה: הקודמים עוברים מכרטיס הפינוק אל הארוחה
+      let move = mtIds.length - 1;
+      const tc = DAY.meals[ti];
+      tc.items = tc.items.filter(it => !(move > 0 && it.f && it.f.id === mtIds[0] && move--));
+      if (!tc.items.length) tc.removed = true;
+      recalcMeal(tc);
+    }
+    const m = DAY.meals[idx];
+    m.origType = m.type;
+    m.type = 'treatmeal';
+    m.items = mtIds.map(tid => mkItem(FOOD_BY_ID[tid], FOOD_BY_ID[tid].unitG));
+    m.trimmed = false; m.trimOut = null;
+    recalcMeal(m);
+    const res = rebalanceDay(DAY.meals, DAY.eaten);
+    DAY.note = treatNote(res, mealTreatNote(m));
+    DAY.warn.menu = res.partialWarn || null;
+    saveDay();
+    renderDay();
+    dayFigureToast('הפינוק נוסף.');
+  });
+}
+
+// הסרת פינוק-ארוחה: הארוחה שהוחלפה חוזרת. ביום נקי — בנייה מחדש; באמצע יום — רק ההמשך מתאזן.
+function removeMealTreat() {
+  if (!DAY) return;
+  const ti = DAY.meals.findIndex(m => m.type === 'treatmeal' && !m.removed);
+  if (ti < 0 || DAY.eaten[ti]) return;
+  const mtIds = DAY.meals[ti].items.map(it => it.f && it.f.id).filter(id => id > 0);
+  if (!confirmTreatRebuild('הסרת הפינוק')) return;
+  S.treats = addOnTreatIds(S.treats, mtIds);
+  S.treatFor = null;
+  if (!(DAY.eaten.some(Boolean) || DAY.meals.some(m => m.edited))) {
+    renderMenu();
+    dayFigureToast('הפינוק הוסר.');
+    return;
+  }
+  const m = DAY.meals[ti];
+  m.type = m.origType || 'hot';
+  delete m.origType;
+  m.items = [];
+  recalcMeal(m);
+  const res = rebalanceDay(DAY.meals, DAY.eaten);
+  DAY.note = treatNote(res, 'הפינוק הוסר והארוחה חזרה ✓');
+  DAY.warn.menu = res.partialWarn || null;
+  saveDay();
+  renderDay();
+  dayFigureToast('הפינוק הוסר.');
+}
+
 // הודעת ה-rebalance: שומרים את הודעות המדרגות (כמעט מלא / חצית), אחרת נוסח פינוק ייעודי
 function treatNote(res, fallback) {
   return res.note && (res.note.includes('חצית') || res.note.includes('כמעט מלא')) ? res.note : fallback;
 }
 
-function chooseTreat(idOrItem) {
+function chooseTreat(idOrItem, opts) {
   closeTreatPicker();
   // פינוק ידני מגיע כפריט מוכן (manualItem) ולא כ-id
   const manual = !!idOrItem && typeof idOrItem === 'object';
@@ -1685,6 +1834,12 @@ function chooseTreat(idOrItem) {
   if (!manual && !tf) return;
   if (!S.treats) S.treats = [];
   if (manual && !DAY) return;
+
+  // פינוק בגודל ארוחה (שווארמה/פלאפל/המבורגר, או המשולש השלישי של פיצה) מחליף ארוחה.
+  // רק הראשון ביום: אם כבר יש פינוק-ארוחה, השני נכנס כתוספת רגילה — לא חוסמים.
+  const hasMT = DAY && DAY.meals.some(m => m.type === 'treatmeal' && !m.removed);
+  if (!manual && DAY && !hasMT && !(opts && opts.addOn) && mealTreatIds([...S.treats, idOrItem]).length)
+    return chooseMealTreat(idOrItem, tf);
 
   // באמצע יום: לא מאפסים כלום — מוסיפים לכרטיס הפינוק ומעדכנים רק את ההמשך.
   // "אמצע יום" הוא גם ארוחה *שנערכה ידנית* ולא רק ארוחה שסומנה כנאכלה: משתמשת
@@ -1728,6 +1883,9 @@ function chooseTreat(idOrItem) {
 
 function removeTreat() {
   const ti = DAY ? DAY.meals.findIndex(m => m.type === 'treat' && !m.removed) : -1;
+  const mi = DAY ? DAY.meals.findIndex(m => m.type === 'treatmeal' && !m.removed) : -1;
+  // רק פינוק-ארוחה ואין כרטיס פינוק ⇒ אותו מסלול כמו ה-✕ שעל הארוחה
+  if (ti < 0 && mi >= 0) return removeMealTreat();
 
   // באמצע יום: מסירים את כרטיס הפינוק (אם טרם נאכל) ומעדכנים את ההמשך.
   // גם כאן "אמצע יום" כולל עריכה ידנית, לא רק סימון (ראו chooseTreat).
@@ -1736,7 +1894,12 @@ function removeTreat() {
     DAY.meals[ti].removed = true;
     DAY.meals[ti].items = [];
     recalcMeal(DAY.meals[ti]);
+    if (mi >= 0 && !DAY.eaten[mi]) {   // פינוק-ארוחה שעוד לא נאכל: הארוחה חוזרת ותיבנה מחדש
+      const mm = DAY.meals[mi];
+      mm.type = mm.origType || 'hot'; delete mm.origType; mm.items = []; recalcMeal(mm);
+    }
     S.treats = [];
+    S.treatFor = null;
     const res = rebalanceDay(DAY.meals, DAY.eaten);
     DAY.note = treatNote(res, 'הפינוקים הוסרו וההמשך עודכן ✓');
     DAY.warn.menu = res.partialWarn || null;
@@ -1751,6 +1914,7 @@ function removeTreat() {
   if (!confirmRebuild()) return;
   if (!confirmTreatRebuild('הסרת פינוק')) return;
   S.treats = [];
+  S.treatFor = null;
   renderMenu();
   dayFigureToast('הפינוק הוסר.');
 }
@@ -2147,6 +2311,7 @@ function resetApp() {
   S.noTrain = false;
   S.goal   = 'maintain';
   S.treats = [];
+  S.treatFor = null;
 
   document.querySelectorAll('.chip').forEach(el => el.classList.remove('active', 'active-danger'));
   ['cut','maintain','bulk'].forEach(x => document.getElementById(x + '-btn').classList.remove('active'));
