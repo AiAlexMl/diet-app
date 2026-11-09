@@ -1718,9 +1718,18 @@ const TREAT_WORKOUT_TIP = 'הארוחות שלפני ואחרי האימון ב�
 // "במקום איזו ארוחה?" — נשאל רק כשהפינוק הוא ארוחה. מועמדות: ארוחות שעוד לא נאכלו ולא נערכו
 // (ביום נקי — כולן). ברירת המחדל מסומנת מראש, כך שמי שלא רוצה לחשוב לוחץ "המשך".
 function openTreatSlotPicker(tf, cands, defIdx, onPick) {
-  closeTreatPicker();
-  closeTreatSlotPicker();
-  pushBack(closeTreatSlotPicker);
+  // ⚠️ השאלה **יורשת** את רשומת ההיסטוריה של בוחר הפינוקים, ולא סוגרת אותו ופותחת חדשה.
+  //    סגירה = history.back() אסינכרוני; ה-pushState שאחריו נמחק כשה-back מגיע באיחור,
+  //    וה-back של "המשך" יצא מהאפליקציה לדף שלפניה. (אלכס נזרק החוצה, 10/11/2026.
+  //    הבדיקה לא תפסה כי רצה בלשונית ריקה — אין "לפני" לחזור אליו.)
+  const tp = document.getElementById('treat-picker');
+  if (tp && backStack.length) {
+    tp.remove();
+    backStack[backStack.length - 1] = closeTreatSlotPicker;
+  } else {
+    closeTreatSlotPicker();
+    pushBack(closeTreatSlotPicker);
+  }
   const ov = document.createElement('div');
   ov.className = 'picker-overlay';
   ov.id = 'treat-slot-picker';
@@ -1843,19 +1852,21 @@ function treatNote(res, fallback) {
 }
 
 function chooseTreat(idOrItem, opts) {
-  closeTreatPicker();
+  // ⚠️ הבוחר נסגר רק *אחרי* בדיקת פינוק-ארוחה: במקרה הזה שאלת המשבצת יורשת את רשומת
+  //    ההיסטוריה שלו (openTreatSlotPicker), וסגירה מוקדמת כאן הייתה מחזירה את המרוץ.
   // פינוק ידני מגיע כפריט מוכן (manualItem) ולא כ-id
   const manual = !!idOrItem && typeof idOrItem === 'object';
   const tf = manual ? null : FOOD_BY_ID[idOrItem];
-  if (!manual && !tf) return;
+  if (!manual && !tf) { closeTreatPicker(); return; }
   if (!S.treats) S.treats = [];
-  if (manual && !DAY) return;
+  if (manual && !DAY) { closeTreatPicker(); return; }
 
   // פינוק בגודל ארוחה (שווארמה/פלאפל/המבורגר, או המשולש השלישי של פיצה) מחליף ארוחה.
   // רק הראשון ביום: אם כבר יש פינוק-ארוחה, השני נכנס כתוספת רגילה — לא חוסמים.
   const hasMT = DAY && DAY.meals.some(m => m.type === 'treatmeal' && !m.removed);
   if (!manual && DAY && !hasMT && !(opts && opts.addOn) && mealTreatIds([...S.treats, idOrItem]).length)
     return chooseMealTreat(idOrItem, tf);
+  closeTreatPicker();
 
   // באמצע יום: לא מאפסים כלום — מוסיפים לכרטיס הפינוק ומעדכנים רק את ההמשך.
   // "אמצע יום" הוא גם ארוחה *שנערכה ידנית* ולא רק ארוחה שסומנה כנאכלה: משתמשת
