@@ -22,6 +22,7 @@ const S = {
   menuWarning: null,    // מוצג כשאי אפשר לעמוד ביעד עם ההעדפות (גלישה קלורית בלתי-פתירה)
   calFloorWarning: null,// היעד הועלה לרצפה הקלורית הבריאה
   treats: [],           // ids מתוך TREATS — פינוקים מתוכננים שהתפריט נבנה סביבם
+  treatFor: null,       // שם הארוחה שפינוק-הארוחה מחליף ("ארוחת צהריים"); null = ברירת מחדל
 };
 
 // ── ALL foods flat array (מאוחד מ-DB) ──
@@ -949,7 +950,7 @@ function reconcile(meals, used, ctx) {
             (!f.tags.includes('tuna') || !tunaUsed(used)) && allowed(f))
           .sort((a, b) => ((S.liked.has(b.id) ? 1 : 0) - (S.liked.has(a.id) ? 1 : 0)) ||
                           (b.p / Math.max(b.cal, 1) - a.p / Math.max(a.cal, 1)));
-        const targets = meals.filter(m => !m.removed && m.type !== 'treat' && m.type !== 'hot')
+        const targets = meals.filter(m => !m.removed && m.type !== 'treat' && m.type !== 'treatmeal' && m.type !== 'hot')
           .sort((a, b) => a.totP - b.totP);
         for (const f of cand) {
           // בכשר לא מזריקים חלב לארוחה בחלון 6ש' אחרי בשר (m.noDairy); מועמד פרווה (ביצה/טונה/קטנייה) מותר בכל מקום
@@ -1260,6 +1261,66 @@ function trainWarnText() {
   return null;
 }
 
+// ══════════════════════════════════════════
+//  פינוק-ארוחה (09/11/2026)
+//  שווארמה, פלאפל או המבורגר אינם תוספת ליום — אוכלים אותם *במקום* ארוחה. עד כאן כל פינוק
+//  היה כרטיס נפרד, וכל ארבע הארוחות התכווצו סביבו (שווארמה ⇐ ארבע ארוחות של ~250 קק"ל).
+//  עכשיו פינוק-ארוחה תופס את המקום והשעה של ארוחה שהמשתמש בוחר, ושאר הארוחות נבנות בגודל רגיל.
+//  · רק פינוקים שמסומנים meal:true במאגר, או 3 משולשי פיצה. "כוס קפה זאת לא ארוחת שווארמה".
+//  · לכל היותר אחד ביום. שני נכנס כתוספת רגילה, כמו כל פינוק — לא חוסמים.
+//  · סוג הארוחה 'treatmeal': ארוחה לכל דבר (✓ אכלתי, ספירת התקדמות, מה שהמאמן רואה),
+//    אבל נעולה כמו פינוק — reconcile ו-rebalanceDay לא בונים אותה מחדש.
+// ══════════════════════════════════════════
+const PIZZA_ID = 206, PIZZA_MEAL_N = 3;
+
+// אילו מתוך ids (מערך S.treats) מרכיבים את פינוק-הארוחה של היום. [] = אין.
+function mealTreatIds(ids) {
+  if (!ids || !ids.length) return [];
+  const meal = ids.find(id => { const f = TREATS.find(x => x.id === id); return f && f.meal; });
+  if (meal) return [meal];
+  const pizzas = ids.filter(id => id === PIZZA_ID);
+  return pizzas.length >= PIZZA_MEAL_N ? pizzas.slice(0, PIZZA_MEAL_N) : [];
+}
+
+// ids פחות פינוק-הארוחה (מסיר מופע אחד לכל id שבפינוק-הארוחה — חשוב לפיצה)
+function addOnTreatIds(ids, mealIds) {
+  const rest = (ids || []).slice();
+  mealIds.forEach(id => { const k = rest.indexOf(id); if (k >= 0) rest.splice(k, 1); });
+  return rest;
+}
+
+// ברירת המחדל לשאלה "במקום איזו ארוחה?": ארוחה שאינה ארוחת אימון.
+// עדיפות לארוחה חמה (צהריים) — **רק אם יש ביום ארוחה חמה נוספת**. אחרת הערב.
+// ⚠️ נמדד 09/11/2026: בלוח אימון-בוקר הצהריים היא הארוחה החמה *היחידה*, והחלפתה הוציאה
+//    את מנת הבשר היחידה ביום ⇐ חלבון עד 1.08 ג/ק"ג ו-182 ימים מתחת ל-1.6 (כולם בבוקר).
+function defaultTreatSlot(meals) {
+  const ok = (m, i) => !m.removed && !m.tag && m.type !== 'treat' && m.type !== 'treatmeal';
+  const hots = meals.filter(m => !m.removed && m.type === 'hot').length;
+  const hot = hots > 1 ? meals.findIndex((m, i) => ok(m, i) && m.type === 'hot') : -1;
+  if (hot >= 0) return hot;
+  for (let i = meals.length - 1; i >= 0; i--) if (ok(meals[i], i) && meals[i].type !== 'snack') return i;
+  for (let i = meals.length - 1; i >= 0; i--) if (ok(meals[i], i)) return i;
+  return meals.findIndex(m => !m.removed && m.type !== 'treat' && m.type !== 'treatmeal');
+}
+
+// פינוק-ארוחה → ארוחה רגילה שוב (יום חדש / שחזור מועדף / הסרת הפינוק). בונה אותה מחדש
+// מול מה שחסר ליעד, בלי לגעת בשאר הארוחות. אין reconcile: שאר היום כבר מאוזן סביבה.
+function refillMealTreatSlot(meals, idx) {
+  const m = meals[idx];
+  if (!m || m.type !== 'treatmeal') return;
+  m.type = m.origType || 'hot';
+  delete m.origType;
+  const used = new Map();
+  meals.forEach((x, i) => { if (i !== idx && !x.removed) x.items.forEach(it => {
+    if (it.isSaladGroup) (it._comps || []).forEach(c => c.f && used.set(c.f.id, (used.get(c.f.id) || 0) + c.g));
+    else if (it.f && it.f.id > 0) used.set(it.f.id, (used.get(it.f.id) || 0) + it.g);
+  }); });
+  const others = meals.reduce((s, x, i) => s + (i === idx || x.removed || x.type === 'treat' ? 0 : (x.totCal || 0)), 0);
+  const budget = Math.max(250, (S.target || 0) - others);
+  m.items = buildMealBest(m.type, budget, used, { usedCarbCats: new Set(), noDairy: m.noDairy });
+  recalcMeal(m);
+}
+
 function buildMenu() {
   calcMacro();
   S.bmiWarning = bmiWarnText();
@@ -1272,19 +1333,27 @@ function buildMenu() {
   const fullTarget = S.target;
   const fullProt = S.proteinG;
   let treatMeal = null, treatWarn = null, treatProt = 0;
-  if (S.treats && S.treats.length) {
-    const items = S.treats.map(id => TREATS.find(x => x.id === id)).filter(Boolean).map(tf => mkItem(tf, tf.unitG));
-    if (items.length) {
+  // פינוק-ארוחה: נשלף מתוך S.treats ויקבל את המקום של ארוחה. השאר (אם יש) — כרטיס הפינוק הרגיל.
+  const mtIds  = mealTreatIds(S.treats);
+  const addIds = addOnTreatIds(S.treats, mtIds);
+  const mtItems  = mtIds.map(id => TREATS.find(x => x.id === id)).filter(Boolean).map(tf => mkItem(tf, tf.unitG));
+  const addItems = addIds.map(id => TREATS.find(x => x.id === id)).filter(Boolean).map(tf => mkItem(tf, tf.unitG));
+  if (mtItems.length || addItems.length) {
+    const items = [...mtItems, ...addItems];
+    {
       const tCal  = items.reduce((s, it) => s + it.cal, 0);
       const tFat  = items.reduce((s, it) => s + it.fat, 0);
       const tCarb = items.reduce((s, it) => s + it.c, 0);
       const tName = items.length === 1 ? items[0].f.name : `${items.length} פינוקים`;
       const reduced = S.target - tCal;
+      // אזהרת ה-25% נספרת רק על פינוקי-התוספת: פינוק-ארוחה הוא ארוחה, ו-720 קק"ל לארוחת
+      // צהריים אינו חריג. אזהרה על דבר נורמלי היא רעש, ומלמדת להתעלם גם מהאזהרות שחשובות.
+      const addCal = addItems.reduce((s, it) => s + it.cal, 0);
       if (tCal > 0 && reduced < 800) {
         // הפינוק גדול מכדי להיכנס ביעד: לא בונים יום מתחת ל-800 קק"ל (safety) — מתריעים על החריגה
         treatWarn = `הגזמנו קצת 🙂 הפינוק שבחרת (${tName}, ${tCal} קק"ל) גדול ביחס ליעד היומי — גם עם ארוחות מינימליות היום יחרוג בכ-${800 + tCal - S.target} קק"ל. אפשר לבחור פינוק קטן יותר, או ליהנות היום ולחזור למסלול מחר.`;
-      } else if (tCal > S.target * 0.25) {
-        treatWarn = `${gword('שים', 'שימי')} לב: הפינוק תופס כ-${Math.round(tCal / S.target * 100)}% מהיעד היומי — שאר הארוחות קוצצו בהתאם.`;
+      } else if (addCal > S.target * 0.25) {
+        treatWarn = `${gword('שים', 'שימי')} לב: הפינוק תופס כ-${Math.round(addCal / S.target * 100)}% מהיעד היומי — שאר הארוחות קוצצו בהתאם.`;
       }
       S.target  = Math.max(800, reduced);
       S.fatG    = Math.max(20, S.fatG - Math.round(tFat));
@@ -1295,14 +1364,36 @@ function buildMenu() {
       // שני ימים שונים לפי מתי נוספה. הרצפה (10) זהה לשם, ובשביל העקביות.
       treatProt = items.reduce((s, it) => s + (it.p || 0), 0);
       S.proteinG = Math.max(10, S.proteinG - Math.round(treatProt));
-      treatMeal = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items };
-      recalcMeal(treatMeal);
+      if (addItems.length) {
+        treatMeal = { label: 'פינוק', icon: 'gift', time: '', pct: 0, tag: null, type: 'treat', big: false, items: addItems };
+        recalcMeal(treatMeal);
+      }
     }
   }
 
   const t = S.target;
   const key = (S.noTrain || !S.time) ? 'noTrain' : S.time;
   const mealDefs = mealPlan(key, t);
+
+  // פינוק-ארוחה תופס משבצת: הארוחה שנבחרה (לפי שם) או ברירת המחדל. המשבצת יוצאת מהבנייה,
+  // וה-pct של השאר מנורמל מחדש — אחרת הנתח שלה היה נעלם והארוחות הלא-חמות יוצאות קטנות.
+  let mtSlot = null, mtIdx = -1;
+  if (mtItems.length) {
+    mtIdx = S.treatFor ? mealDefs.findIndex(d => d.label === S.treatFor) : -1;
+    if (mtIdx < 0) mtIdx = defaultTreatSlot(mealDefs);
+    if (mtIdx >= 0) {
+      mtSlot = mealDefs.splice(mtIdx, 1)[0];
+      const ps = mealDefs.reduce((s, d) => s + d.pct, 0) || 1;
+      mealDefs.forEach(d => { d.pct = d.pct / ps; });
+      // הפינוק החליף את הארוחה החמה *היחידה* ביום (לוח בוקר/ללא אימון, כשנבחרה הצהריים):
+      // בלי ארוחה חמה אין מנת בשר, והחלבון קורס (נמדד: פלאפל ⇐ 94% מהימים מתחת ל-1.6 ג/ק"ג).
+      // ⇐ ארוחת הערב הופכת לארוחה החמה של היום — ארוחת ערב חמה היא דבר רגיל לגמרי.
+      if (mtSlot.type === 'hot' && !mealDefs.some(d => d.type === 'hot')) {
+        for (let i = mealDefs.length - 1; i >= 0; i--)
+          if (!mealDefs[i].tag && mealDefs[i].type === 'dinner') { mealDefs[i].type = 'hot'; break; }
+      }
+    }
+  }
   const used = new Map();
   const ctx = { usedCarbCats: new Set() }; // גיוון קטגוריות פחמימה לאורך היום
 
@@ -1318,6 +1409,9 @@ function buildMenu() {
   if (kMeatSep) {
     const mins = tm => { const [h, m] = String(tm).split(':').map(Number); return (h || 0) * 60 + (m || 0); };
     const meatMins = meals.filter(m => m.type === 'hot').map(m => mins(m.time));
+    // פינוק-ארוחה בשרי (שווארמה/המבורגר) הוא ארוחה בשרית בשעה שלו — חלבי לא ייפול 6ש' אחריו.
+    // (פינוק רגיל הוא בלי שעה, ולכן הכלל לא ראה אותו עד היום.)
+    if (mtSlot && mtItems.some(it => it.f && it.f.meatTreat)) meatMins.push(mins(mtSlot.time));
     meals.forEach(m => { if (m.type !== 'hot') m.noDairy = meatMins.some(ht => { const d = mins(m.time) - ht; return d > 0 && d <= 360; }); });
     S.kosherSep = meals.some(m => m.noDairy);   // דגל לתצוגת הערת המידע
   } else S.kosherSep = false;
@@ -1379,6 +1473,13 @@ function buildMenu() {
     S.menuWarning = `שומן יומי של כ-${Math.round(finFat)}g מול יעד של ${S.fatG}g — חלק מהמאכלים שסומנו כאהובים עשירים בשומן, והם נשארים בתפריט לפי ההעדפה. החלפת חלק מהם בחלופות רזות תאזן את התפריט.`;
 
   S.target = fullTarget;                    // שחזור היעד המלא לתצוגה ולפס ההתקדמות
+  // פינוק-ארוחה חוזר למקום ולשעה של הארוחה שהחליף. origType נשמר כדי שאפשר יהיה להחזיר אותה.
+  if (mtSlot) {
+    const tm = { label: mtSlot.label, icon: mtSlot.icon, time: mtSlot.time, pct: 0, tag: mtSlot.tag,
+                 type: 'treatmeal', origType: mtSlot.type, big: false, items: mtItems };
+    recalcMeal(tm);
+    meals.splice(Math.min(mtIdx, meals.length), 0, tm);
+  }
   if (treatMeal) meals.push(treatMeal);     // הפינוק מוצג ככרטיס משלו, מחוץ ל-reconcile
   if (treatWarn) S.menuWarning = treatWarn; // אזהרת פינוק גוברת על אזהרות כלליות — היא הסיבה הישירה
   return meals;
@@ -1418,7 +1519,8 @@ function rebalanceDay(meals, eaten) {
   // 🔑 וגם ארוחה שהמשתמשת ערכה ידנית (m.edited): היא הביעה כוונה מפורשת לגביה,
   // והמנוע לא רשאי לבנות אותה מחדש. בלי זה, עריכה בארוחה אחת נמחקה ברגע
   // שנגעו בארוחה אחרת ולחצו איזון — אובדן נתונים שקט. (דווח 08/08/2026)
-  const isLockedIdx = i => eaten[i] || meals[i].type === 'treat' || meals[i].edited;
+  // פינוק-ארוחה נעול כמו פינוק: אוכלים אותו כמו שהוא, ושאר היום מתאזן סביבו
+  const isLockedIdx = i => eaten[i] || meals[i].type === 'treat' || meals[i].type === 'treatmeal' || meals[i].edited;
   const open = meals.map((m, i) => ({ m, i })).filter(x => !isLockedIdx(x.i) && !x.m.removed);
   const lockedMeals = meals.filter((m, i) => isLockedIdx(i) && !m.removed);
   const isWorkout = x => !!x.m.tag;   // ארוחת לפני/אחרי אימון — מוגנת: לא נמחקת ולא מאבדת את החלבון
