@@ -1700,10 +1700,12 @@ function treatBuildNote(items) {
 //  פינוק-ארוחה (09/11/2026) — ראו את ההסבר המלא מעל mealTreatIds ב-app.js
 // ══════════════════════════════════════════
 // אימוג'י לפי המאכל — שוקולד ליד שווארמה לא מתאים (אלכס 09/11/2026). 🌯 הוא הקרוב ביותר לשווארמה.
-const MEAL_TREAT_EMOJI = { 206: '🍕', 207: '🍔', 208: '🌯', 209: '🧆' };
+// ⚠️ המפה בתוך הפונקציה ולא const ברמת הקובץ: ui.js מרנדר יום שמור כבר בטעינה (~שורה 887),
+//    לפני שהכרזה כאן הייתה מגיעה — TDZ ⇐ "Cannot access before initialization".
 function mealTreatEmoji(m) {
+  const map = { 206: '🍕', 207: '🍔', 208: '🌯', 209: '🧆' };
   const id = m.items[0] && m.items[0].f && m.items[0].f.id;
-  return MEAL_TREAT_EMOJI[id] ? MEAL_TREAT_EMOJI[id] + ' ' : '';
+  return map[id] ? map[id] + ' ' : '';
 }
 
 function mealTreatNote(m) {
