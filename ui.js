@@ -1602,12 +1602,14 @@ function shareDay() {
 // כל השאר נבנה מחדש — גם במסלול ה"עדין". "שום דבר לא נזרק" נכון רק לגבי מה
 // שננעל, ולא לגבי הצהריים והערב שהמשתמש כבר קרא. (12/08/2026)
 // הסייג היחיד: אם אין אף ארוחה פתוחה, אין מה לבנות מחדש ואין על מה לשאול.
-function confirmTreatRebuild(lead) {
+// question (אופציונלי): שאלה שנשאלת **תמיד**, גם כשאין מה לבנות מחדש — ופרטי הבנייה מצורפים
+// אליה בדיאלוג אחד. (הסרת פינוק-ארוחה, 09/11/2026: אלכס ביקש "האם אתה בטוח" לפני שה-✕ מוחק.)
+function confirmTreatRebuild(lead, question) {
   if (!DAY) return true;
   const isTr    = m => m.type === 'treat' || m.type === 'treatmeal';
   const isOpen  = (m, i) => !m.removed && !isTr(m) && !DAY.eaten[i] && !m.edited;
   const open    = DAY.meals.filter(isOpen).length;
-  if (!open) return true;
+  if (!open) return question ? confirm(question) : true;
   const locked  = DAY.meals.filter((m, i) => !m.removed && !isTr(m) && (DAY.eaten[i] || m.edited)).length;
 
   const what = locked
@@ -1616,6 +1618,7 @@ function confirmTreatRebuild(lead) {
     : 'כל הארוחות ייבנו מחדש.';
   // הרמז מוצג רק כשאין עדיין שום מנעול, אחרת הוא מיותר: כבר יש לו מנעולים
   const hint = locked ? '' : '\n\nאם כבר אכלת ארוחה, אפשר לבטל, לסמן אותה "אכלתי ✓", והיא תישמר.';
+  if (question) return confirm(`${question}\n\n${what}${hint}`);
   return confirm(`${lead} תעדכן את היום.\n\n${what}${hint}\n\nלהמשיך?`);
 }
 
@@ -1800,7 +1803,11 @@ function removeMealTreat() {
   const ti = DAY.meals.findIndex(m => m.type === 'treatmeal' && !m.removed);
   if (ti < 0 || DAY.eaten[ti]) return;
   const mtIds = DAY.meals[ti].items.map(it => it.f && it.f.id).filter(id => id > 0);
-  if (!confirmTreatRebuild('הסרת הפינוק')) return;
+  // נוסח אלכס (09/11/2026), שואלים תמיד — ה-✕ מוחק פינוק שנבחר במכוון
+  const lbl = DAY.meals[ti].label;
+  const back = lbl === 'לפני אימון' ? 'בארוחה שלפני האימון' : lbl === 'אחרי אימון' ? 'בארוחה שאחרי האימון' : 'ב' + lbl;
+  const q = `האם ${gword('אתה בטוח שתרצה', 'את בטוחה שתרצי')} למחוק את הפינוק ולהחליף אותו חזרה ${back}?`;
+  if (!confirmTreatRebuild('הסרת הפינוק', q)) return;
   S.treats = addOnTreatIds(S.treats, mtIds);
   S.treatFor = null;
   if (!(DAY.eaten.some(Boolean) || DAY.meals.some(m => m.edited))) {
