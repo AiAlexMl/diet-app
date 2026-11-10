@@ -1721,7 +1721,6 @@ function openPizzaCount() {
   if (!box) return chooseTreat(206, { count: 1 });
   box.innerHTML = `<button class="picker-close" onclick="closeTreatPicker()" aria-label="סגירה" title="סגירה">✕</button>
     <div class="picker-title" id="pz-title">כמה משולשים? 🍕</div>
-    <div class="picker-sub">משולש אחד הוא פינוק קטן. שניים או שלושה הם ארוחה, ונכנסים במקום אחת הארוחות.</div>
     <div class="pizza-count" role="group" aria-labelledby="pz-title">
       <button class="btn-secondary" onclick="chooseTreat(206, { count: 1 })" aria-label="משולש אחד">1</button>
       <button class="btn-secondary" onclick="chooseTreat(215)" aria-label="2 משולשים">2</button>
