@@ -977,6 +977,32 @@ document.addEventListener('keydown', e => {
   if (el) { e.preventDefault(); el.click(); }
 });
 
+// ── חיפוש ⇄ תוצאות בחצים (10/11/2026) ──────────────────────────────────
+// אלכס: "למה אי אפשר לעבור עם החצים?" — בשדה חיפוש מצפים שחץ למטה ייכנס לתוצאות.
+// ↓ מהשדה ⇐ התוצאה הראשונה · ↑/↓ בין התוצאות · ↑ מהראשונה ⇐ חזרה לשדה ·
+// Enter בשדה כשנשארה תוצאה אחת ⇐ בוחר אותה. חל על שני החיפושים באפליקציה.
+const SEARCH_LISTS = { 'treat-search': 'treat-list', 'alt-search': 'alt-food-list' };
+document.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter') return;
+  const t = e.target;
+  if (t && SEARCH_LISTS[t.id]) {
+    const items = [...(document.getElementById(SEARCH_LISTS[t.id]) || { querySelectorAll: () => [] }).querySelectorAll('.picker-item')];
+    if (e.key === 'ArrowDown' && items.length) { e.preventDefault(); items[0].focus(); }
+    if (e.key === 'Enter' && items.length === 1) { e.preventDefault(); items[0].click(); }
+    return;
+  }
+  if (e.key === 'Enter') return;   // Enter על תוצאה — המאזין שלמעלה
+  const item = t && t.closest && t.closest('.picker-item');
+  const input = item && Object.keys(SEARCH_LISTS).map(id => document.getElementById(id))
+    .find(inp => inp && document.getElementById(SEARCH_LISTS[inp.id]).contains(item));
+  if (!input) return;
+  const items = [...document.getElementById(SEARCH_LISTS[input.id]).querySelectorAll('.picker-item')];
+  const k = items.indexOf(item);
+  e.preventDefault();
+  if (e.key === 'ArrowDown' && k < items.length - 1) items[k + 1].focus();
+  if (e.key === 'ArrowUp') (k > 0 ? items[k - 1] : input).focus();
+});
+
 // מודאל הדיסקליימר: מיקוד ראשוני + מלכודת פוקוס (Tab לא בורח אל התוכן שמאחור)
 (function setupDisclaimerModal(){
   const dlg = document.getElementById('disclaimer-overlay');
