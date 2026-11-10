@@ -1716,11 +1716,27 @@ function confirmRebuild() {
   return true;
 }
 
+function openPizzaCount() {
+  const box = document.querySelector('#treat-picker .picker-box');
+  if (!box) return chooseTreat(206, { count: 1 });
+  box.innerHTML = `<button class="picker-close" onclick="closeTreatPicker()" aria-label="סגירה" title="סגירה">✕</button>
+    <div class="picker-title" id="pz-title">כמה משולשים? 🍕</div>
+    <div class="picker-sub">משולש אחד הוא פינוק קטן. שניים או שלושה הם ארוחה, ונכנסים במקום אחת הארוחות.</div>
+    <div class="pizza-count" role="group" aria-labelledby="pz-title">
+      <button class="btn-secondary" onclick="chooseTreat(206, { count: 1 })" aria-label="משולש אחד">1</button>
+      <button class="btn-secondary" onclick="chooseTreat(215)" aria-label="2 משולשים">2</button>
+      <button class="btn-secondary" onclick="chooseTreat(216)" aria-label="3 משולשים">3</button>
+    </div>
+    <button class="btn-secondary picker-cancel" onclick="closeTreatPicker()">ביטול</button>`;
+  const first = box.querySelector('.pizza-count button');
+  if (first) first.focus();
+}
+
 // שורות בוחר הפינוקים, מסוננות לפי מה שהוקלד (אלכס 10/11/2026: "סתם מציק לגלגל עד שמוצאים").
 // אותו דפוס כמו altFoodRows בחלון "אכלתי משהו אחר". לא נמצא ⇐ מפנים להזנה הידנית שמתחת.
 function treatRows(query) {
   const q = (query || '').trim();
-  return TREATS.filter(tr => !q || tr.name.includes(q)).map(tr =>
+  return TREATS.filter(tr => !tr.hidden && (!q || tr.name.includes(q))).map(tr =>
     `<div class="picker-item" role="button" tabindex="0" onclick="chooseTreat(${tr.id})">
       <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
       <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>
@@ -1797,7 +1813,7 @@ function treatBuildNote(items) {
 // ⚠️ המפה בתוך הפונקציה ולא const ברמת הקובץ: ui.js מרנדר יום שמור כבר בטעינה (~שורה 887),
 //    לפני שהכרזה כאן הייתה מגיעה — TDZ ⇐ "Cannot access before initialization".
 function mealTreatEmoji(m) {
-  const map = { 206: '🍕', 207: '🍔', 208: '🌯', 209: '🧆' };
+  const map = { 206: '🍕', 207: '🍔', 208: '🌯', 209: '🧆', 215: '🍕', 216: '🍕' };
   const id = m.items[0] && m.items[0].f && m.items[0].f.id;
   return map[id] ? map[id] + ' ' : '';
 }
@@ -1971,6 +1987,10 @@ function chooseTreat(idOrItem, opts) {
   if (!S.treats) S.treats = [];
   if (manual && !DAY) { closeTreatPicker(); return; }
 
+  // פיצה: "כמה משולשים?" (10/11/2026). 1 = פינוק קטן; 2/3 = פינוק-ארוחה (215/216). השאלה נבנית
+  // בתוך חלון הבוחר עצמו, כך שרשומת ההיסטוריה שלו ממשיכה להחזיק (ראו openTreatSlotPicker).
+  if (idOrItem === 206 && !(opts && opts.count)) return openPizzaCount();
+
   // פינוק בגודל ארוחה (שווארמה/פלאפל/המבורגר, או המשולש השלישי של פיצה) מחליף ארוחה.
   // רק הראשון ביום: אם כבר יש פינוק-ארוחה, השני נכנס כתוספת רגילה — לא חוסמים.
   const hasMT = DAY && DAY.meals.some(m => m.type === 'treatmeal' && !m.removed);
@@ -2106,7 +2126,7 @@ function openAltPicker(mi) {
       <button class="ptab" onclick="altTab(this, 'alt-foods')">מהמאגר</button>
       <button class="ptab" onclick="altTab(this, 'alt-manual')">ידני</button>
     </div>
-    <div id="alt-treats" class="picker-list">` + TREATS.map(tr =>
+    <div id="alt-treats" class="picker-list">` + TREATS.filter(tr => !tr.hidden).map(tr =>
       `<div class="picker-item" role="button" tabindex="0" onclick="altFood(${tr.id})">
         <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
         <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>

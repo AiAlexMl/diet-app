@@ -142,6 +142,10 @@ const TREATS = [
   { id:207, name:"המבורגר",         prep:"", p:13.0, c:20.0, f:11.0, fib:1.2, cal:230, tags:["treat"], unitG:250, unitLabel:"מנה (250g)", meal:true, meatTreat:true },
   { id:208, name:"שווארמה בפיתה",   prep:"", p:11.0, c:14.0, f:7.0,  fib:1.0, cal:160, tags:["treat"], unitG:450, unitLabel:"מנה (450g)", meal:true, meatTreat:true },
   { id:209, name:"פלאפל בפיתה",     prep:"", p:6.0,  c:18.0, f:5.0,  fib:2.5, cal:135, tags:["treat"], unitG:400, unitLabel:"מנה (400g)", meal:true },
+  // פיצה כארוחה (10/11/2026): "כמה משולשים?" בבוחר — 1 = משולש פיצה (206, פינוק קטן), 2/3 = אלה.
+  // hidden: לא מופיעים כשורה ברשימה. אותם ערכים בדיוק כמו המשולש (per-100g), רק unitG ×2/×3.
+  { id:215, name:"פיצה (2 משולשים)", prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:260, unitLabel:"2 משולשים (260g)", meal:true, dairyTreat:true, hidden:true },
+  { id:216, name:"פיצה (3 משולשים)", prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:390, unitLabel:"3 משולשים (390g)", meal:true, dairyTreat:true, hidden:true },
 ];
 
 // תבניות שעות ארוחות לפי זמן אימון
