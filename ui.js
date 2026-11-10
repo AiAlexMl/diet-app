@@ -1798,6 +1798,17 @@ function openTreatSlotPicker(tf, cands, defIdx, onPick) {
     closeTreatSlotPicker();
     onPick(idx);
   };
+  // מקלדת (אלכס 10/11/2026): הפוקוס על הבחירה המסומנת, כדי שהחצים יעברו בין הארוחות מיד
+  // (התנהגות radio מובנית — הדפדפן מזיז את הבחירה), ו-Enter = "המשך" עם הארוחה שנבחרה.
+  // מיקוד ב-radio לא מקפיץ מקלדת בטלפון, ולכן בלי תנאי pointer כמו בחיפוש.
+  const checked = ov.querySelector('input[name="treat-slot"]:checked');
+  if (checked) checked.focus();
+  ov.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (e.target.closest('.picker-cancel, .picker-close')) return;   // Enter על "ביטול"/✕ — שלהם
+    e.preventDefault();
+    document.getElementById('ts-go').click();
+  });
   treatSlotChanged();
 }
 
