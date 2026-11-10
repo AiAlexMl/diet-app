@@ -902,6 +902,34 @@ function stepNav(n) {
   }
 }
 
+// "בונים תפריט!" במסך ההעדפות (10/11/2026). עד עכשיו קרא ל-renderMenu ישירות — בלי לשאול גם
+// כשהיום כבר סומן. כמעט לא קרה, כי מהתפריט לא היה דרך לחזור לכאן; מאז שפס השלבים לחיץ, מי שאכל
+// בוקר, חזר לעדכן משקל ובנה — איבד את הסימון בשקט.
+// · יש סימונים/עריכות ⇐ שואלים קודם (כמו "תפריט נוסף").
+// · הפינוקים יורדים (אלכס): שינוי פרטים = בסיס חדש, ו"במקום ארוחת הצהריים" כבר לא בהכרח אותו דבר.
+//   "תפריט נוסף" לעומת זאת שומר עליהם — אותו יום, אותן החלטות.
+function buildFromPrefs() {
+  if (DAY && DAY.meals && DAY.meals.length) {
+    const marks  = DAY.eaten.some(Boolean);
+    const edits  = DAY.meals.some(m => m.edited);
+    const treats = (S.treats && S.treats.length) ||
+      DAY.meals.some(m => (m.type === 'treat' || m.type === 'treatmeal') && !m.removed);
+    if (marks || edits) {
+      const parts = [];
+      if (marks)  parts.push('· סימוני "אכלתי" של היום יתאפסו');
+      if (edits)  parts.push('· הארוחות שערכת ידנית יימחקו');
+      if (treats) parts.push('· הפינוקים יוסרו (אפשר להוסיף שוב)');
+      if (!confirm('לבנות תפריט חדש?\n\n' + parts.join('\n'))) return;
+    }
+    S.treats = [];
+    S.treatFor = null;
+    renderMenu();
+    if (treats && !(marks || edits)) showToast('הפינוקים הוסרו. אפשר להוסיף שוב מ"בא לי פינוק".');
+    return;
+  }
+  renderMenu();
+}
+
 // מעבר ממסך הפרטים: חוסם אם יש שדה מחוץ לטווח (גיל/גובה/משקל)
 function goToFromDetails() {
   if (inputErrors().length) {
