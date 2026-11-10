@@ -57,6 +57,10 @@ const VARIANT_GROUPS = [[20, 21], [15, 16, 17], [45, 46, 100]];   // קוטג' /
 const variantBlocked = (f, used) =>
   VARIANT_GROUPS.some(g => g.includes(f.id) && g.some(id => id !== f.id && used.has(id)));
 
+// המאכל הראשון ברשימה, ומאכל אהוב קודם. בלי זה הפיצול/ההזרקה בחרו תמיד בטטה/אורז לבן — הראשונים
+// במאגר — גם כשסומנו תפוח אדמה או קינואה. בלי אהובים: בדיוק כמו ALL.find (אותו סדר, אותו מאכל).
+const likedFirst = arr => arr.find(f => S.liked.has(f.id)) || arr[0];
+
 // ערבוב (Fisher-Yates) — לגיוון בחירת מאכלים מועדפים
 const shuffle = arr => {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -485,11 +489,11 @@ const MEAL_TEMPLATES = {
 
 // ממרח (טחינה/חמאת בוטנים) — נצמד ללחם/פריכייה: השם מציין "עם X",
 // והממרח עצמו מקבל שורה נפרדת עם כמות וקלוריות משלו. מחזיר את שורת הממרח (או null).
-function makeSpread(breadItem, used) {
+function makeSpread(breadItem, used, force) {
   const spreads = ALL.filter(f => f.condiment && !f.tags.includes('oil') && allowed(f) && !used.has(f.id));
   if (!spreads.length) return null;
   const liked = spreads.filter(f => S.liked.has(f.id));
-  if (!liked.length && Math.random() >= 0.4) return null;
+  if (!liked.length && !force && Math.random() >= 0.4) return null;
   const pool = liked.length ? liked : spreads;
   const f = pool[Math.floor(Math.random() * pool.length)];
   const g = f.unitG || 15;
@@ -560,6 +564,12 @@ function buildFromTemplate(tpl, cal, used, ctx) {
     if (s.protPct && item.f && (item.f.tags.includes('meat') || item.f.tags.includes('fish')) && !item.f.tags.includes('tuna')) {
       item._mainProt = true; item._minG = mainProtFloor();
     }
+    // קטנייה כמנה עיקרית (צמחוני/טבעוני) — רצפת מנה, כמו לבשר. בלעדיה, ביום שגולש מעל היעד שלבי
+    // האיזון כיווצו את הארוחה החמה לבדה (שאר הארוחות ביחידות קבועות), ויצאו צהריים של
+    // "30g אפונה + 30g בורגול + כרובית" = 75 קק"ל. (סקירה 11/11/2026)
+    // ⚠️ נוסתה גם רצפת 60g לדגן בארוחה חמה: 13 אזהרות חריגה נוספות (צמחוני חיטוב, +5-6%) ואפס
+    //    שיפור בארוחות הזעירות. ירדה — הרצפה של הקטנייה היא שעושה את העבודה.
+    else if (s.protPct && item.f && item.f.tags.includes('legume') && !item.f.dip) item._minG = 100;
     if (item.f) item.f.tags.forEach(t => mealTags.add(t));   // עדכון תגי הארוחה (סלט = ירקות בלבד, לא רלוונטי לכשרות)
     // ממרח רק כשאין כבר חלבון בארוחה (קוטג'/ביצה/טונה ⇐ אין צורך בממרח)
     let spreadItem = null;
@@ -569,6 +579,14 @@ function buildFromTemplate(tpl, cal, used, ctx) {
     if (!SELF_USE.includes(s.special)) use(used, item);
     if (spreadItem) items.push(spreadItem);
     if (s.protPct) hasProtein = true;
+  }
+  // פרוסה/פריכיות לבד היא לא ארוחה ("ארוחת אחה"צ: לחם מלא, פרוסה אחת" — 74 קק"ל). קורה כשמשבצת
+  // הגבינה האופציונלית נשארת ריקה (טבעוני, כשר-ללא-לקטוז) והממרח נפל בהגרלה. ⇐ ממרח חובה.
+  // אין ממרח פנוי (טבעוני: טחינה וחמאת בוטנים כבר נוצלו היום) ⇐ פרי לצד, כמו בתבנית bread_spread.
+  if (items.length === 1 && items[0].f && _sliced(items[0].f)) {
+    const sp = makeSpread(items[0], used, true) ||
+      pick(ALL.filter(f => f.tags.includes('fruit') && !(ctx && ctx.noDairy && isDairyKosher(f))), used, Math.max(80, cal * 0.4), 0, 200);
+    if (sp) { if (sp.f.tags.includes('fruit')) use(used, sp); items.push(sp); }
   }
   return items;
 }
@@ -707,6 +725,20 @@ function reUnit(it, count) {     // ירק עמילני לפי יחידות של
 //  וגיוון היום מוגנים בלי קוד נוסף.
 //  ⚠️ המאכל שהוסר לא חוזר — זו כל הסיבה שהמשתמש הסיר אותו.
 // ══════════════════════════════════════════
+// האם תבנית כלשהי של סוג הארוחה הזה הייתה שמה את f בצלחת? (משבצת match, או משבצת מיוחדת חמה)
+function fitsMealType(f, type, used) {
+  const tpls = MEAL_TEMPLATES[type];
+  if (!tpls) return true;
+  return tpls.some(tpl => tpl.slots.some(s => {
+    if (s.match) return s.match(f, used || new Map());
+    if (s.special === 'hot_side') return f.tags.includes('hot_carb') || (f.tags.includes('legume') && !f.dip);
+    if (s.special === 'hot_carb') return f.tags.includes('hot_carb');
+    if (s.special === 'dip') return !!f.dip;
+    if (s.special === 'hotveg' || s.special === 'hotveg_or_salad') return f.tags.includes('hot_veg');
+    return false;   // salad — קבוצת סלט, לא מאכל בודד
+  }));
+}
+
 function topUpMeal(meal, used, ctx) {
   if (!meal || !Array.isArray(meal.trimOut) || !meal.trimOut.length) return { added: 0, left: 0 };
   used = used || new Map(); ctx = ctx || { usedCarbCats: new Set() };
@@ -722,10 +754,21 @@ function topUpMeal(meal, used, ctx) {
   //    קבוצה והכניסה כוסמת *וגם* פסטה לאותה צלחת — מספרים נכונים, ארוחה לא הגיונית.
   //    (נתפס בבדיקה 13/08/2026, וזה בדיוק הסיכון שבגללו מודדים קוהרנטיות ולא רק מאקרו.)
   const takenTags = new Set();
+  // ⚠️ סוג הארוחה וכשרות (11/11/2026). "אותה משפחה" נשענה על התגית grain, שמשותפת ללחם ולאורז,
+  //    ולכן הסרת לחם מארוחת בוקר הכניסה 296g אורז לבן לצד קוטג' וסלט (135 מתוך 462 = 29%).
+  //    ⇐ רק מאכל שתבנית מאותו סוג ארוחה הייתה שמה בה (או ממרח ליד לחם). וכשרות: בלי בשר+חלב
+  //    באותה ארוחה, ובלי חלב בחלון 6 השעות (נמצאה שיבולת-בחלב בנשנוש שאחרי בשר).
+  const hasBread = () => meal.items.some(it => it.f && _sliced(it.f));
+  const fitsType = f => fitsMealType(f, meal.type, used) ||
+    (f.condiment && !f.tags.includes('oil') && hasBread());
+  const noDairy = !!(ctx.noDairy || meal.noDairy);
+  const mealTags = () => new Set(meal.items.flatMap(x => x.f ? x.f.tags : []));
   let added = 0;
   for (let k = 0; k < 2 && gapCal >= 60; k++) {
+    const tags = mealTags();
     const base = ALL.filter(f => !excl.has(f.id) && tasteOk(f, meal) &&
-      !f.tags.some(t => takenTags.has(t)));
+      !f.tags.some(t => takenTags.has(t)) && fitsType(f) &&
+      kosherOk(f, tags) && !(noDairy && isDairyKosher(f)));
     const kin  = kinTags.size ? base.filter(f => f.tags.some(t => kinTags.has(t))) : [];
     // מנסים קודם מאותה משפחה כמו מה שהוסר (ממרח בממרח, עמילן בעמילן); אם אין, כל
     // מה שעובר את שער הטעם. maxG הוא תקרת **גרמים**, לא קלוריות.
@@ -733,6 +776,11 @@ function topUpMeal(meal, used, ctx) {
     if (!it) break;
     use(used, it);
     (it.f.tags || []).forEach(t => takenTags.add(t));
+    // ממרח חדש נצמד ללחם כמו בבנייה ("לחם מלא עם חמאת בוטנים")
+    if (it.f.condiment) {
+      const br = meal.items.find(x => x.f && _sliced(x.f) && !(x.displayName || '').includes(' עם '));
+      if (br) br.displayName = (br.displayName || br.f.name) + ' עם ' + it.f.name;
+    }
     meal.items.push(it);
     gapCal -= it.cal;
     added++;
@@ -775,9 +823,19 @@ function adjustEgg(it, targetG) {
 
 // כיוונון שומן (שלב 2): שמן סלט → אגוזים קיימים → הוספת אגוזים לנשנוש → החלפת חלבון שמן ברזה.
 // שמן זית = 100% שומן (רציף), ולכן השומן מתכוונן עדין; ההחלפה לרזה פותרת "שומן תקוע גבוה".
-function adjustFat(meals) {
+function adjustFat(meals, used) {
   const items = meals.flatMap(m => m.items);
-  const usedIds = new Set(items.map(it => it.f && it.f.id));
+  // "בשימוש" = מה שבארוחות האלה *וגם* מה שב-used של היום. באיזון אמצע-יום meals הן רק הפתוחות,
+  // ובלי used ההחלפה לרזה הכניסה יוגורט שכבר נאכל בבוקר. (סקירה 11/11/2026)
+  const usedIds = new Set([...items.map(it => it.f && it.f.id), ...(used ? used.keys() : [])]);
+  // החלפת מזון במקום: מעדכנים את used כדי שבחירה מאוחרת (שלב 1ב) לא תבחר שוב את אותו מזון
+  const swapUsed = (oldId, newId, gOld, gNew) => {
+    usedIds.add(newId);
+    if (!used) return;
+    const left = (used.get(oldId) || 0) - gOld;
+    if (left > 0) used.set(oldId, left); else used.delete(oldId);
+    used.set(newId, (used.get(newId) || 0) + gNew);
+  };
   const dF = meals.reduce((s, m) => s + m.totF, 0);
   let delta = S.fatG - dF;                        // חיובי = להוסיף שומן
   if (Math.abs(delta) <= S.fatG * FAT_TOL) return;
@@ -798,15 +856,22 @@ function adjustFat(meals) {
       reNuts(it, it.g + delta / (it.f.f / 100));
       delta -= (it.fat - before);
     });
-    // 3) אם עדיין חסר ואין אגוזים כלל — מנת אגוזים קטנה לנשנוש (בית הגיוני לאגוזים)
+    // 3) אם עדיין חסר ואין אגוזים כלל — מנת אגוזים קטנה לנשנוש (בית הגיוני לאגוזים).
+    //    אין נשנוש (לוח צהריים) ⇒ ארוחת בוקר שאין בה מלוח (דייסה/יוגורט/קורנפלקס). אחרת לא מוסיפים:
+    //    עד 11/11 זה נפל לארוחה האחרונה ויצא "טונה + סלט + שקדים" (76 מתוך 1,344). שומן מעט מתחת
+    //    ליעד אינו נזק — שלב 3 משלים את הקלוריות בפחמימה.
     if (delta > S.fatG * FAT_TOL && !items.some(it => it.f && it.f.tags.includes('nuts'))) {
-      const snack = meals.find(m => m.type === 'snack') || meals[meals.length - 1];
+      const live = meals.filter(m => !m.removed && m.items.length);
+      const snack = live.find(m => m.type === 'snack') ||
+        live.find(m => m.type === 'breakfast' && !m.items.some(it => it.isSaladGroup || tasteProfile(it.f) === 'savory'));
       const cand = [88, 89, 90].map(id => ALL.find(f => f.id === id)).filter(f => f && allowed(f) && !usedIds.has(f.id));
       const nut = cand.find(f => S.liked.has(f.id)) || cand[0];
       if (snack && nut && nut.f) {
         const it = mkItem(nut, nut.unitG || 30);
         reNuts(it, delta / (nut.f / 100));
         snack.items.push(it);
+        usedIds.add(nut.id);
+        if (used) use(used, it);
       }
     }
   } else {
@@ -818,6 +883,7 @@ function adjustFat(meals) {
       const lean = ALL.find(f => f.id === LEANER[it.f.id]);
       if (!lean || !allowed(lean) || usedIds.has(lean.id)) return;
       const before = it.fat;
+      swapUsed(it.f.id, lean.id, it.g, it.g);
       it.f = lean; setMacros(it, lean, it.g);   // אותה כמות, מזון רזה יותר
       need -= (before - it.fat);
     });
@@ -845,10 +911,11 @@ function adjustFat(meals) {
           .sort((a, b) => a.f - b.f)[0];
         // שימור רצפת/תקרת המנה המרכזית גם בהחלפה (סלמון 90g→הודו לפי חלבון היה יורד ל-66g, מתחת לרצפה)
         if (lean) {
-          const protG = fattest.p; fattest.f = lean;
+          const protG = fattest.p, oldId = fattest.f.id, oldG = fattest.g; fattest.f = lean;
           const g = Math.max(fattest._minG || 30,
             Math.min(fattest._mainProt ? mainProtCap() : 350, Math.round(protG / lean.p * 100)));
           reG(fattest, g);
+          swapUsed(oldId, lean.id, oldG, g);
         }
       }
     }
@@ -972,7 +1039,7 @@ function reconcile(meals, used, ctx) {
     }
 
     // ── שלב 2: שומן → ±8% (שמן → אגוזים → הוספה לנשנוש → החלפת חלבון שמן ברזה) ──
-    adjustFat(meals);
+    adjustFat(meals, used);
 
     // ── שלב 3: קלוריות → ±4% ע"י פחמימות (וכמוצא אחרון גם חלבון) ──
     const dCal = meals.reduce((s, m) => s + m.totCal, 0);
@@ -1134,8 +1201,8 @@ function reconcile(meals, used, ctx) {
         const hasLeg = m.items.some(it => it.f && it.f.tags.includes('legume') && !it.f.dip);
         // קטנייה ⇒ לכל היותר פחמימה אחת לצידה; בלי קטנייה ⇒ עד 2 פריטי פחמימה
         if (m.items.some(it => it.f && isElasticGrain(it.f)) || carbs.length >= (hasLeg ? 1 : 2)) continue;
-        const gr = ALL.find(f => isElasticGrain(f) && !f.tags.includes('breakfast') && allowed(f) &&
-          !used.has(f.id) && !m.items.some(x => x.f && x.f.id === f.id));
+        const gr = likedFirst(ALL.filter(f => isElasticGrain(f) && !f.tags.includes('breakfast') && allowed(f) &&
+          !used.has(f.id) && !m.items.some(x => x.f && x.f.id === f.id)));
         if (!gr) break;
         const cap = hasLeg ? Math.min(250, grainCap(gr)) : grainCap(gr);
         const g = Math.max(gr.unitG || 40, Math.min(cap, Math.round(under / gr.cal * 100)));
@@ -1191,14 +1258,14 @@ function reconcile(meals, used, ctx) {
     if (!big || big.cal <= SPLIT_CAL) return;
     const moveCal = big.cal * 0.5;
     if (isGrainItem(big)) {   // דגן ענק → להוסיף עמילן
-      const st = ALL.find(f => f.tags.includes('starch') && f.plural && f.unitG && allowed(f) && !used.has(f.id) && !m.items.some(x => x.f && x.f.id === f.id));
+      const st = likedFirst(ALL.filter(f => f.tags.includes('starch') && f.plural && f.unitG && allowed(f) && !used.has(f.id) && !m.items.some(x => x.f && x.f.id === f.id)));
       if (!st) return;
       const units = Math.max(1, Math.min(2, Math.round(moveCal / (st.cal * st.unitG / 100))));
       const sItem = mkItem(st, units * st.unitG); use(used, sItem);
       reG(big, Math.max(big.f.unitG || 30, Math.round((big.cal - sItem.cal) / big.f.cal * 100)));
       m.items.push(sItem);
     } else {                  // ערימת עמילן → להוסיף דגן ולהקטין את העמילן ביחידות
-      const gr = ALL.find(f => isElasticGrain(f) && !f.tags.includes('breakfast') && allowed(f) && !used.has(f.id) && !m.items.some(x => x.f && x.f.id === f.id));
+      const gr = likedFirst(ALL.filter(f => isElasticGrain(f) && !f.tags.includes('breakfast') && allowed(f) && !used.has(f.id) && !m.items.some(x => x.f && x.f.id === f.id)));
       if (!gr) return;
       const gItem = mkItem(gr, Math.max(gr.unitG || 40, Math.round(moveCal / gr.cal * 100))); use(used, gItem);
       const newUnits = Math.max(1, Math.round((big.cal - gItem.cal) / (big.f.cal * big.f.unitG / 100)));
@@ -1329,17 +1396,19 @@ function within6hAfterMeat(meals, idx) {
 // שעה לנשנוש שנוסף באמצע היום: אמצע הפער הגדול ביותר בין שתי ארוחות עם שעה, כשהמאוחרת
 // מביניהן עוד לא נאכלה (הנשנוש בעתיד, לא בעבר). מעוגל לרבע שעה. אין פער כזה ⇒ '' (בלי שעה).
 function addedSnackTime(meals, eaten) {
-  const pts = meals.map((m, i) => ({ t: timeMins(m.time), done: !!eaten[i] }))
+  const pts = meals.map((m, i) => ({ t: timeMins(m.time), done: !!eaten[i], tag: m.tag }))
     .filter((p, i) => p.t !== null && !meals[i].removed).sort((a, b) => a.t - b.t);
+  const taken = new Set(pts.map(p => p.t));
   let best = null;
   for (let k = 1; k < pts.length; k++) {
     if (pts[k].done) continue;
+    if (pts[k].tag === 'post' && pts[k - 1].tag === 'pre') continue;   // זה האימון עצמו
     const gap = pts[k].t - pts[k - 1].t;
     if (gap > 0 && (!best || gap > best.gap)) best = { gap, mid: pts[k - 1].t + gap / 2 };
   }
   if (!best) return '';
   const q = Math.round(best.mid / 15) * 15;
-  return `${String(Math.floor(q / 60)).padStart(2, '0')}:${String(q % 60).padStart(2, '0')}`;
+  return taken.has(q) ? '' : minsToTime(q);
 }
 
 function buildMenu() {
@@ -1440,6 +1509,9 @@ function buildMenu() {
   const buildInto = (m, budget) => { m.budget = budget; m.items = buildMealBest(m.type, budget, used, { ...ctx, noDairy: m.noDairy }); recalcMeal(m); };
 
   meals.filter(m => m.type !== 'hot').forEach(m => buildInto(m, m.budget));
+  // ארוחה שלא נמצא לה אף מאכל (טבעוני ביום של 6-7 ארוחות: כל הפירות/האגוזים/הלחמים כבר נוצלו)
+  // יורדת מהיום במקום להופיע ככרטיס ריק. התקציב שלה עובר לארוחות החמות שנבנות עכשיו.
+  for (let i = meals.length - 1; i >= 0; i--) if (meals[i].type !== 'hot' && !meals[i].items.length) meals.splice(i, 1);
   const hot = meals.filter(m => m.type === 'hot');
   const usedCal = meals.filter(m => m.type !== 'hot').reduce((s, m) => s + m.totCal, 0);
   const remaining = Math.max(0, t - usedCal);
@@ -1499,7 +1571,9 @@ function buildMenu() {
     const tm = { label: mtSlot.label, icon: mtSlot.icon, time: mtSlot.time, pct: 0, tag: mtSlot.tag,
                  type: 'treatmeal', origType: mtSlot.type, big: false, items: mtItems };
     recalcMeal(tm);
-    meals.splice(Math.min(mtIdx, meals.length), 0, tm);
+    // לפי השעה ולא לפי האינדקס: ארוחה ריקה שירדה למעלה מזיזה את האינדקסים
+    const at = meals.findIndex(m => m.time && tm.time && m.time > tm.time);
+    meals.splice(at < 0 ? meals.length : at, 0, tm);
   }
   if (treatMeal) meals.push(treatMeal);     // הפינוק מוצג ככרטיס משלו, מחוץ ל-reconcile
   if (treatWarn) S.menuWarning = treatWarn; // אזהרת פינוק גוברת על אזהרות כלליות — היא הסיבה הישירה
@@ -1536,6 +1610,20 @@ function rebuildRest(meals, eaten, mealIdx, actualItems, opts) {
 // וגם הוספת/הסרת פינוק באמצע יום (בלי לאפס סימונים).
 // משנה את meals/eaten במקום; מחזיר { note, partialWarn } להצגה.
 function rebalanceDay(meals, eaten) {
+  // 🔑 כל איזון מתחיל ממבנה היום המקורי (11/11/2026). עד אז ארוחה שהמנוע מחק (חצית את היעד /
+  //    יתרה קטנה / צמצום מספר ארוחות) נשארה מחוקה לתמיד: הוספת שווארמה מחקה את אחה"צ והערב,
+  //    הסרתה השאירה "בוקר + נשנוש קל + שלושה נשנוש נוסף" — 30 מתוך 30 בבדיקה.
+  //    ⇐ מה שהמנוע מחק (autoRemoved) חוזר, מה שהמנוע שינה (light) חוזר לשמו ולסוגו, והנשנושים
+  //    שהמנוע הוסיף ועוד לא נאכלו יורדים (נוספים מחדש לפי הצורך למטה). מה שהמשתמשת מחקה — נשאר.
+  meals.forEach((m, i) => {
+    if (eaten[i] || m.edited) return;
+    if (m.autoRemoved) { m.removed = false; m.autoRemoved = false; m.items = []; recalcMeal(m); }
+    if (m.light) { m.label = m.light.label; m.type = m.light.type; delete m.light; }
+    if (m.added && !m.removed) { m.removed = true; m.items = []; recalcMeal(m); }
+  });
+  // מחיקה ע"י המנוע — מסומנת, כדי שהאיזון הבא יוכל להחזיר אותה
+  const autoRemove = m => { m.removed = true; m.autoRemoved = !m.added; m.items = []; recalcMeal(m); };
+
   // פינוק מתוכנן שטרם נאכל שומר על מקומו (תקציבו שמור) — נספר כ"נעול".
   // 🔑 וגם ארוחה שהמשתמשת ערכה ידנית (m.edited): היא הביעה כוונה מפורשת לגביה,
   // והמנוע לא רשאי לבנות אותה מחדש. בלי זה, עריכה בארוחה אחת נמחקה ברגע
@@ -1586,7 +1674,7 @@ function rebalanceDay(meals, eaten) {
         recalcMeal(x.m);
         keptWorkout = true;
       } else {
-        x.m.removed = true; x.m.items = []; recalcMeal(x.m);
+        autoRemove(x.m);
       }
     });
     return {
@@ -1604,10 +1692,12 @@ function rebalanceDay(meals, eaten) {
     open.forEach(x => {
       if (keepers.includes(x)) {
         x.m.items = isWorkout(x) ? proteinSnack(each, x.m) : buildMealBest('snack', each, used, ctxFor(x.m));
-        if (!isWorkout(x)) x.m.label = 'נשנוש קל';
+        // ארוחה שהפכה לנשנוש קל: גם הסוג משתנה (אחרת reconcile הבא מזריק לה דגן כ"ארוחה חמה"),
+        // והמקור נשמר כדי שאיזון הבא יחזיר אותה
+        if (!isWorkout(x)) { x.m.light = { label: x.m.label, type: x.m.type }; x.m.label = 'נשנוש קל'; x.m.type = 'snack'; }
         recalcMeal(x.m);
       } else {
-        x.m.removed = true; x.m.items = []; recalcMeal(x.m);
+        autoRemove(x.m);
       }
     });
     return {
@@ -1637,8 +1727,7 @@ function rebalanceDay(meals, eaten) {
       let di = openMeals.length - 1;
       while (di >= 0 && openMeals[di].tag) di--;   // מאתרים את האחרונה שאינה ארוחת אימון
       if (di < 0) break;                            // נשארו רק ארוחות אימון — לא נוגעים
-      const drop = openMeals.splice(di, 1)[0];
-      drop.removed = true; drop.items = []; recalcMeal(drop);
+      autoRemove(openMeals.splice(di, 1)[0]);
     }
     const perMeal = tR / Math.max(openMeals.length, 1);
     let extra = perMeal > 800 ? 3 : perMeal > 600 ? 2 : perMeal > 450 ? 1 : 0;
@@ -1649,11 +1738,13 @@ function rebalanceDay(meals, eaten) {
       // הוצג בסוף הרשימה — אחרי ארוחת ערב של 22:00). המיקום במערך נשאר בסוף, כדי לא להזיז
       // אינדקסים (eaten / editingMeals); הסדר לתצוגה נקבע לפי השעה ב-dayHtml.
       const nm = { label: 'נשנוש נוסף', icon: 'coffee', time: addedSnackTime(meals, eaten), pct: 0.15, tag: null, type: 'snack', big: false, items: [], added: true };
-      meals.push(nm);
-      eaten.push(false);
-      openMeals.push(nm);
+      // משבצת של נשנוש שהמנוע הוסיף בעבר והוריד — ממוחזרת, כדי שהמערך לא יגדל בכל איזון
+      let ni = meals.findIndex((m, i) => m.added && m.removed && !m.edited && !eaten[i]);
+      if (ni >= 0) { Object.keys(meals[ni]).forEach(k => delete meals[ni][k]); Object.assign(meals[ni], nm); }
+      else { meals.push(nm); eaten.push(false); ni = meals.length - 1; }
+      openMeals.push(meals[ni]);
       // כשרות: עם שעה — לפי החלון; בלי שעה (לא נמצא פער) — שמרני, בלי חלב אם יש בשר ביום
-      if (kosherSepOn()) nm.noDairy = nm.time ? within6hAfterMeat(meals, meals.length - 1) : meals.some(isMeatMeal);
+      if (kosherSepOn()) meals[ni].noDairy = meals[ni].time ? within6hAfterMeat(meals, ni) : meals.some(isMeatMeal);
     }
 
     const pctSum = openMeals.reduce((s, m) => s + (m.pct || 0), 0) || openMeals.length;
@@ -1672,7 +1763,9 @@ function rebalanceDay(meals, eaten) {
       recalcMeal(m);
     });
 
-    reconcile(openMeals);
+    // used/ctx של היום: בלעדיהם reconcile התחיל מ-Map ריק, ושלב 1ב הזריק יוגורט/קוטג' שכבר נאכלו
+    // בבוקר (נמדד 11/11/2026: 33 מתוך 480 ימים — מאכל כפול, וריאנט כפול או טונה מעל קופסה).
+    reconcile(openMeals, used, ctx);
     partialWarn = S.menuWarning;
   } finally {
     Object.assign(S, saved);
@@ -1694,6 +1787,20 @@ function rebalanceDay(meals, eaten) {
   };
 }
 
+// שעה לנשנוש נוסף: אמצע הפער הגדול ביותר בלוח, מעוגל לרבע שעה. הפער שבין "לפני אימון" ל"אחרי
+// אימון" הוא האימון עצמו, ולכן לא נחשב. פער של פחות משעתיים — אין מקום (null).
+const minsToTime = q => `${String(Math.floor(q / 60)).padStart(2, '0')}:${String(q % 60).padStart(2, '0')}`;
+function snackSlot(defs) {
+  const pts = defs.map(d => ({ t: timeMins(d.time), tag: d.tag })).filter(p => p.t !== null).sort((a, b) => a.t - b.t);
+  let best = null;
+  for (let k = 1; k < pts.length; k++) {
+    if (pts[k].tag === 'post' && pts[k - 1].tag === 'pre') continue;
+    const gap = pts[k].t - pts[k - 1].t;
+    if (gap >= 120 && (!best || gap > best.gap)) best = { gap, mid: pts[k - 1].t + gap / 2 };
+  }
+  return best ? minsToTime(Math.round(best.mid / 15) * 15) : null;
+}
+
 // תבנית ארוחות לפי זמן אימון + תוספת נשנושים ליעד קלורי גבוה (מסה) — כדי לפזר את התקציב
 // על יותר ארוחות ולא לדחוס מנות ענק (מפתחי גוף אוכלים 5–6 ארוחות).
 function mealPlan(key, target) {
@@ -1702,9 +1809,15 @@ function mealPlan(key, target) {
   // ארוחה חמה יחידה (בוקר/ללא-אימון) עם יעד גבוה: נשנוש נוסף, כדי שהמנה החמה היחידה לא תישא
   // ~50% מהיום (קורה בעיקר בדיאטה מגבילה שבה שאר הארוחות לא מתמלאות). מפזר לארוחות סבירות יותר.
   if ((key === 'noTrain' || key === 'morning') && target > 2200) extra += 1;
-  const slots = [{ time: '10:30' }, { time: '16:00' }, { time: '21:30' }, { time: '14:30' }];
-  for (let i = 0; i < extra && i < slots.length; i++)
-    defs.push({ label: 'נשנוש נוסף', icon: 'coffee', time: slots[i].time, pct: 0.13, tag: null, type: 'snack', big: false });
+  // השעה נקבעת מהלוח עצמו (11/11/2026). עד אז היו ארבע שעות קבועות (10:30/16:00/21:30/14:30),
+  // והן התנגשו בלוח: "אחרי אימון 16:00" ו"נשנוש נוסף 16:00", ארוחת ערב 21:00 ונשנוש 21:30.
+  // נמדד: 168 מתוך 1,344 תפריטים עם שתי ארוחות באותה שעה — כולל גבר 80 ק"ג בשמירה.
+  for (let i = 0; i < extra && i < 4; i++) {
+    const tm = snackSlot(defs);
+    if (!tm) break;   // אין פער של שעתיים לפחות — לא דוחסים ארוחה, התקציב מתחלק בין הקיימות
+    defs.push({ label: 'נשנוש נוסף', icon: 'coffee', time: tm, pct: 0.13, tag: null, type: 'snack', big: false });
+    defs.sort((a, b) => a.time.localeCompare(b.time));
+  }
   defs.sort((a, b) => a.time.localeCompare(b.time));
   const sum = defs.reduce((s, d) => s + d.pct, 0) || 1;
   defs.forEach(d => d.pct /= sum);

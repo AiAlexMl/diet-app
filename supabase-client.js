@@ -166,7 +166,9 @@
           (!meta.day || newer(row.client_updated_at, meta.day))) {
         lsSet(DAY_KEY, JSON.stringify(row.payload));
         meta.day = row.client_updated_at; saveMeta();
-        try { DAY = loadDay(); if (DAY) renderDay(); } catch (e) {}   // אותו מסלול כמו בעליית עמוד
+        // אותו מסלול כמו בעליית עמוד, כולל { rebuild: true } (יום חדש שצריך תפריט חדש) —
+        // בלעדיו DAY היה נשאר אובייקט בלי meals ו-renderDay נופל בשקט בתוך ה-catch
+        try { DAY = loadDay(); if (DAY && DAY.rebuild) { DAY = null; renderMenu(); } else if (DAY) renderDay(); } catch (e) {}
       }
       // מועדפים: איחוד לפי fav_id — saved_at מאוחר גובר; לא מחיים מחיקה שממתינה לעלייה
       const { data: cloudFavs } = await sb.from('favorites')

@@ -104,6 +104,17 @@ const todayStr = () => new Date().toLocaleDateString('en-CA');
 
 // פריט → נתונים שטוחים (בלי refs); משחזרים את f לפי id (תקף גם אחרי adjustEgg/lean-swap)
 function serializeDay(day) {
+  return {
+    date: day.date, buildId: day.buildId || null, target: day.target, fibG: day.fibG || null, eaten: day.eaten, note: day.note || null,
+    warn: day.warn, warnAction: day.warnAction || null,
+    tips: day.tips || null, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
+    meals: serializeMeals(day.meals),
+    base: day.base || null,   // תפריט הבסיס כפי שנבנה (כבר בצורה שטוחה) — ראו loadDay
+    baseWarn: day.baseWarn || null,
+  };
+}
+
+function serializeMeals(meals) {
   const item = it => it.isSaladGroup
     ? { salad: true, label: it.label, parts: it.parts, comps: it._comps.map(c => ({ id: c.f.id, g: c.g })),
         oilG: it._oilG || 0, cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
@@ -112,21 +123,29 @@ function serializeDay(day) {
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
     : { id: it.f.id, g: it.g, dispG: it.dispG, displayName: it.displayName,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
-  return {
-    date: day.date, buildId: day.buildId || null, target: day.target, fibG: day.fibG || null, eaten: day.eaten, note: day.note || null,
-    warn: day.warn, warnAction: day.warnAction || null,
-    tips: day.tips || null, gLabel: day.gLabel, tLabel: day.tLabel, morningTip: day.morningTip,
-    meals: day.meals.map(m => ({
-      label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type, removed: m.removed || false, added: m.added || false, edited: m.edited || false,
-      // הגזימה נשמרת, אחרת רענון מעלים את "אזן את הארוחה" ואת רשימת ההחרגה
-      trimmed: m.trimmed || false, trimOut: m.trimOut || null,
-      totCal: m.totCal, totP: m.totP, totC: m.totC, totF: m.totF, totFib: m.totFib,
-      items: m.items.map(item),
-    })),
-  };
+  return meals.map(m => ({
+    label: m.label, icon: m.icon, time: m.time, pct: m.pct, tag: m.tag, type: m.type, removed: m.removed || false, added: m.added || false, edited: m.edited || false,
+    // הגזימה נשמרת, אחרת רענון מעלים את "אזן את הארוחה" ואת רשימת ההחרגה
+    trimmed: m.trimmed || false, trimOut: m.trimOut || null,
+    // origType: לאיזה סוג חוזר פינוק-ארוחה שמוסר. autoRemoved/light: מה שהמנוע מחק או הפך לנשנוש
+    // קל, כדי שאיזון הבא יחזיר (rebalanceDay). בלי לשמור אותם — רענון היה מקבע את המחיקה.
+    origType: m.origType || undefined, autoRemoved: m.autoRemoved || undefined, light: m.light || undefined,
+    totCal: m.totCal, totP: m.totP, totC: m.totC, totF: m.totF, totFib: m.totFib,
+    items: m.items.map(item),
+  }));
 }
 
 function deserializeDay(d) {
+  return {
+    date: d.date, buildId: d.buildId || null, target: d.target, fibG: d.fibG || null, eaten: d.eaten || [], note: d.note || null,
+    warn: d.warn || {}, warnAction: d.warnAction || null,
+    tips: d.tips || null, gLabel: d.gLabel, tLabel: d.tLabel, morningTip: d.morningTip,
+    meals: deserializeMeals(d.meals),
+    base: d.base || null, baseWarn: d.baseWarn || null,
+  };
+}
+
+function deserializeMeals(meals) {
   const item = it => it.salad
     ? { isSaladGroup: true, label: it.label, parts: it.parts,
         _comps: it.comps.map(c => ({ f: FOOD_BY_ID[c.id], g: c.g })).filter(c => c.f),
@@ -137,12 +156,7 @@ function deserializeDay(d) {
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib }
     : { f: FOOD_BY_ID[it.id], g: it.g, dispG: it.dispG, displayName: it.displayName,
         cal: it.cal, p: it.p, c: it.c, fat: it.fat, fib: it.fib };
-  return {
-    date: d.date, buildId: d.buildId || null, target: d.target, fibG: d.fibG || null, eaten: d.eaten || [], note: d.note || null,
-    warn: d.warn || {}, warnAction: d.warnAction || null,
-    tips: d.tips || null, gLabel: d.gLabel, tLabel: d.tLabel, morningTip: d.morningTip,
-    meals: d.meals.map(m => ({ ...m, items: m.items.map(item).filter(it => it.isSaladGroup || it.f) })),
-  };
+  return meals.map(m => ({ ...m, items: m.items.map(item).filter(it => it.isSaladGroup || it.f) }));
 }
 
 function saveDay() {
@@ -159,6 +173,18 @@ function loadDay() {
     if (day.date !== todayStr()) {           // יום חדש — חוזרים לתפריט הבסיס הנקי
       day.date = todayStr();
       day.buildId = crypto.randomUUID();     // תפריט בסיס חדש = זהות חדשה (הלב מתחיל ריק)
+      // 🔑 תפריט הבסיס כפי שנבנה (11/11/2026). הסינון שלמטה מסיר רק פינוקים/נוספות/מוסרות, ולכן
+      //    כל מה שהשתנה *בתוך* ארוחה נגרר למחר: "ארוחה במסעדה 1,100" נשארה בצהריים של היום הבא,
+      //    ו-31 מתוך 80 ימים נפתחו בסטייה של יותר מ-8% מהיעד — בזמן שההודעה הבטיחה "מחר חוזרים
+      //    לתפריט הרגיל". הבסיס נשמר ב-renderMenu ובשחזור מועדף, ולא משתנה באמצע היום.
+      //    בסיס שנבנה סביב פינוק (תוספת או ארוחה) קטן ממה שצריך בלעדיו ⇐ בונים יום חדש.
+      if (day.base) {
+        if (day.base.some(m => m.type === 'treat' || m.type === 'treatmeal')) {
+          S.treats = []; S.treatFor = null;
+          return { rebuild: true };
+        }
+        day.meals = deserializeMeals(day.base);
+      }
       // מסירים פינוקים, ארוחות שנוספו אגב איזון אמצע-יום (added), וארוחות שהוסרו —
       // כך מחר לא נגרר עם פינוקים של אתמול או נשנושים שצצו תוך כדי. הסימונים מתאפסים.
       // לפי הדגל בלבד: גם buildMenu מוסיף ארוחות בשם "נשנוש נוסף" ליעד גבוה (בלי added) —
@@ -168,13 +194,21 @@ function loadDay() {
       // יום אחרי פינוק-ארוחה: תפריט הבסיס של אתמול נבנה *סביב* הפינוק (שלוש ארוחות גדולות יותר),
       // ולכן אין מה "לשחזר" — בונים יום חדש. (מילוי המשבצת בלבד נמדד 09/11/2026: ביום בלי אימון
       // ארוחת ערב קרה לא מצליחה למלא 720 קק"ל ⇐ 1 מכל 3 ימים מתחת ליעד ביותר מ-8%.)
-      if (day.meals.some(m => m.type === 'treatmeal')) {
+      // יום ישן בלי בסיס שמור (נשמר לפני 11/11/2026): אין דרך לדעת מה השתנה בו, ולכן בודקים את
+      // התוצאה — יום שסוטה ביותר מ-8% מהיעד אינו "תפריט הבסיס", ובונים חדש.
+      const cal = day.meals.reduce((s, m) => s + (m.totCal || 0), 0);
+      const off = !day.base && day.target && Math.abs(cal - day.target) / day.target > 0.08;
+      if (day.meals.some(m => m.type === 'treatmeal') || off) {
         S.treats = [];
         S.treatFor = null;
         return { rebuild: true };
       }
+      if (!day.base) day.base = serializeMeals(day.meals);
       day.eaten = day.meals.map(() => false);
       day.note = null;
+      // אזהרות אמצע-היום של אתמול לא נגררות; חוזרת האזהרה שהייתה לתפריט הבסיס עצמו
+      day.warn = { ...(day.warn || {}), menu: day.baseWarn || null };
+      day.warnAction = null;
     }
     if (!day.buildId) {                      // יום שנשמר לפני פיצ'ר הזהות — מקצים ומתמידים מיד,
       day.buildId = crypto.randomUUID();     // אחרת כל רענון היה מגריל מזהה חדש והלב לא היה נדלק לעולם
@@ -273,6 +307,9 @@ function restoreFavorite(payload) {
                kosherSep: (payload.warn && payload.warn.kosherSep) || null };
   day.warnAction = null;
   day.tips = dietTips();
+  // התפריט המשוחזר הוא הבסיס החדש: לכאן חוזרים ביום הבא (loadDay)
+  day.base = serializeMeals(day.meals);
+  day.baseWarn = gap;
 
   DAY = day;
   editingMeals.clear();
@@ -318,12 +355,15 @@ function saveFavorite() {
   const now = new Date().toISOString();
   let fav = list.find(f => f.payload && f.payload.buildId && f.payload.buildId === DAY.buildId);
   let created = false;
+  // מועדף = התפריט כפי שהוא מוצג. הבסיס לא נשמר בו (מכפיל את הגודל בענן), ובשחזור התפריט המשוחזר
+  // הופך לבסיס החדש (restoreFavorite).
+  const favPayload = () => { const p = serializeDay(DAY); delete p.base; delete p.baseWarn; return p; };
   if (fav) {
-    fav.payload = serializeDay(DAY);
+    fav.payload = favPayload();
     fav.saved_at = now;
   } else {
     created = true;
-    fav = { fav_id: crypto.randomUUID(), date: DAY.date, saved_at: now, payload: serializeDay(DAY) };
+    fav = { fav_id: crypto.randomUUID(), date: DAY.date, saved_at: now, payload: favPayload() };
     list.unshift(fav);
     while (list.length > FAV_CAP) list.pop();   // הרשימה ממוינת חדש→ישן; מפילים את הישן
   }
@@ -608,6 +648,14 @@ function removeItem(mi, ii) {
   const meal = DAY.meals[mi];
   const gone = meal.items[ii];
   meal.items.splice(ii, 1);
+  // ממרח שהוסר יורד גם משם הלחם ("לחם מלא עם טחינה גולמית" ⇐ "לחם מלא")
+  if (gone && gone.f && gone.f.condiment) {
+    const tail = ' עם ' + gone.f.name;
+    meal.items.forEach(it => { if (it.displayName && it.displayName.endsWith(tail)) {
+      it.displayName = it.displayName.slice(0, -tail.length);
+      if (it.displayName === it.f.name) it.displayName = undefined;
+    } });
+  }
   meal.edited = true;   // מנעול: איזון עתידי לא יבנה מחדש ארוחה שהמשתמשת קבעה
   // ── רישום הגזימה (13/08/2026) ──
   // `edited` לבדו לא הבחין בין "הסרתי פריט והארוחה חסרה" לבין "הצהרתי מה אכלתי
@@ -697,7 +745,9 @@ function balanceMeal(mi) {
       else if (it.f && it.f.id > 0) used.set(it.f.id, (used.get(it.f.id) || 0) + it.g);
     });
   });
-  const res = topUpMeal(meal, used, { usedCarbCats: new Set() });
+  // כשרות: noDairy לא נשמר ב-serializeDay, ולכן מחושב כאן מול היום כפי שהוא
+  const res = topUpMeal(meal, used, { usedCarbCats: new Set(),
+    noDairy: kosherSepOn() && within6hAfterMeat(DAY.meals, mi) });
 
   DAY.note = res.added
     ? `אזנו את ${meal.label}: ${Math.round(meal.totCal)} קק"ל במקום ${before}.`
@@ -1316,6 +1366,8 @@ function renderMenu() {
       : { morning: 'אימון בוקר', noon: 'אימון צהריים', evening: 'אימון ערב' }[S.time],
     morningTip: S.time === 'morning',
   };
+  DAY.base = serializeMeals(meals);      // תפריט הבסיס — לכאן חוזרים ביום חדש (loadDay)
+  DAY.baseWarn = S.menuWarning || null;
   saveDay();
   renderDay();
 }
