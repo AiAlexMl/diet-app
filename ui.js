@@ -1701,6 +1701,9 @@ function openTreatPicker() {
   </div>`;
   ov.addEventListener('click', e => { if (e.target === ov) closeTreatPicker(); });
   document.body.appendChild(ov);
+  // מיקוד ישר בחיפוש — **רק עם עכבר** (אלכס 10/11/2026). במגע זה מקפיץ מקלדת שמסתירה חצי
+  // מהרשימה, ובטלפון רוב האנשים רוצים קודם לגלול ולראות מה יש.
+  try { if (matchMedia('(pointer: fine)').matches) document.getElementById('treat-search').focus(); } catch (e) {}
 }
 
 // פינוק שאינו ברשימה. אותו מסלול בדיוק כמו פינוק רגיל, רק שהפריט נבנה
