@@ -1638,6 +1638,17 @@ function confirmRebuild() {
   return true;
 }
 
+// שורות בוחר הפינוקים, מסוננות לפי מה שהוקלד (אלכס 10/11/2026: "סתם מציק לגלגל עד שמוצאים").
+// אותו דפוס כמו altFoodRows בחלון "אכלתי משהו אחר". לא נמצא ⇐ מפנים להזנה הידנית שמתחת.
+function treatRows(query) {
+  const q = (query || '').trim();
+  return TREATS.filter(tr => !q || tr.name.includes(q)).map(tr =>
+    `<div class="picker-item" role="button" tabindex="0" onclick="chooseTreat(${tr.id})">
+      <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
+      <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>
+    </div>`).join('') || `<div class="picker-sub">לא ברשימה. אפשר להזין אותו בעצמך למטה 👇</div>`;
+}
+
 function openTreatPicker() {
   closeTreatPicker();
   pushBack(closeTreatPicker);   // חזרה באנדרואיד סוגרת את הבורר, לא את האפליקציה
@@ -1648,11 +1659,9 @@ function openTreatPicker() {
     <button class="picker-close" onclick="closeTreatPicker()" aria-label="סגירה" title="סגירה">✕</button>
     <div class="picker-title">מה בא לך היום? 🍫</div>
     <div class="picker-sub">התפריט ייבנה מחדש כך שהפינוק נכנס ביעד היומי</div>
-    <div class="picker-list">` + TREATS.map(tr =>
-      `<div class="picker-item" role="button" tabindex="0" onclick="chooseTreat(${tr.id})">
-        <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
-        <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>
-      </div>`).join('') + `</div>
+    <input id="treat-search" class="picker-input" type="search" placeholder="חיפוש פינוק..." aria-label="חיפוש פינוק"
+      oninput="document.getElementById('treat-list').innerHTML = treatRows(this.value)">
+    <div class="picker-list" id="treat-list">${treatRows('')}</div>
     <div class="picker-sub" style="margin:12px 0 6px">לא ברשימה? הזינו בעצמכם:</div>
     <div class="ai-qty">
       <label style="flex:1.4"><span>מה הפינוק</span>
@@ -1739,7 +1748,7 @@ function openTreatSlotPicker(tf, cands, defIdx, onPick) {
   ov.id = 'treat-slot-picker';
   const row = x => `<label class="picker-item slot-opt">
       <input type="radio" name="treat-slot" value="${x.i}"${x.i === defIdx ? ' checked' : ''} onchange="treatSlotChanged()">
-      <span>${esc(x.m.label)}${x.m.tag && !/אימון/.test(x.m.label) ? ` <small>(${x.m.tag === 'pre' ? 'לפני אימון' : 'אחרי אימון'})</small>` : ''}</span>
+      <span>${esc(x.m.label)}${x.m.tag && !/אימון/.test(x.m.label) ? ` <small>(${x.m.tag === 'pre' ? 'לפני אימון' : 'אחרי אימון'})</small>` : ''}${x.kosherNote ? `<small class="slot-kosher">${esc(x.kosherNote)}</small>` : ''}</span>
       <span class="picker-cal">${esc(x.m.time || '')}</span>
     </label>`;
   ov.innerHTML = `<div class="picker-box" role="dialog" aria-modal="true" aria-labelledby="ts-title">
@@ -1784,6 +1793,11 @@ function chooseMealTreat(id, tf) {
   const cands = DAY.meals.map((m, i) => ({ m, i })).filter(x => !x.m.removed &&
     x.m.type !== 'treat' && x.m.type !== 'treatmeal' && (!work || (!DAY.eaten[x.i] && !x.m.edited)));
   if (!cands.length) return chooseTreat(id, { addOn: true });   // אין ארוחה פתוחה להחליף ⇒ תוספת רגילה
+  // כשרות + פינוק חלבי (פיצה): הודעה — לא חסימה — ליד משבצת שבתוך 6 שעות אחרי ארוחה בשרית בתפריט.
+  // (אלכס 10/11/2026: פיצה היא החלטה של הרגע, אחרי שכבר אכלו צהריים — המנוע לא יכול לשנות ארוחה
+  //  שנאכלה, ולכן לא מתכננים מסביב אלא אומרים. השעון לא ידוע, ולכן 'בתפריט' ובלי מספר שעות.)
+  if (kosherSepOn() && tf.dairyTreat)
+    cands.forEach(x => { if (within6hAfterMeat(DAY.meals, x.i)) x.kosherNote = `${gword('שים', 'שימי')} לב: פחות מ-6 שעות אחרי ארוחה בשרית בתפריט`; });
   const candSet = new Set(cands.map(x => x.i));
   let defIdx = defaultTreatSlot(DAY.meals.map((m, i) => candSet.has(i) ? m : { ...m, removed: true }));
   if (!candSet.has(defIdx)) defIdx = cands[0].i;

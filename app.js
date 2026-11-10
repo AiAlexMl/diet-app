@@ -1303,6 +1303,30 @@ function defaultTreatSlot(meals) {
   return meals.findIndex(m => !m.removed && m.type !== 'treat' && m.type !== 'treatmeal');
 }
 
+// ══════════════════════════════════════════
+//  כשרות — הפרדת 6 שעות בשר→חלב, גם *אחרי* הבנייה (10/11/2026)
+//  buildMenu אוכף את הכלל בבנייה, אבל rebalanceDay (פינוק באמצע היום, "אכלתי משהו אחר")
+//  לא העביר את noDairy בכלל — ארוחה שנבנתה מחדש יכלה לצאת עם קוטג' שעה אחרי בשר.
+//  "בשרית" = ארוחה חמה (שמרני, כמו בבנייה), או ארוחה שיש בה בשר / פינוק בשרי. דג אינו בשר.
+// ══════════════════════════════════════════
+const kosherSepOn = () => S.diet.has('kosher') && !S.diet.has('vegetarian') && !S.diet.has('vegan');
+const timeMins = tm => { if (!tm) return null; const [h, m] = String(tm).split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+function isMeatMeal(m) {
+  if (!m || m.removed) return false;
+  if (m.type === 'hot') return true;
+  return (m.items || []).some(it => it.f && (it.f.tags.includes('meat') || it.f.meatTreat));
+}
+// האם הארוחה במקום idx נופלת בחלון של עד 6 שעות *אחרי* ארוחה בשרית אחרת ביום
+function within6hAfterMeat(meals, idx) {
+  const t = timeMins(meals[idx] && meals[idx].time);
+  return meals.some((o, j) => {
+    if (j === idx || !isMeatMeal(o)) return false;
+    const to = timeMins(o.time);
+    if (t === null || to === null) return t === null;   // נשנוש שנוסף בלי שעה: שמרני — אם יש בשר ביום
+    return t - to > 0 && t - to <= 360;
+  });
+}
+
 function buildMenu() {
   calcMacro();
   S.bmiWarning = bmiWarnText();
@@ -1518,13 +1542,19 @@ function rebalanceDay(meals, eaten) {
   }));
   const ctx = { usedCarbCats: new Set() };
 
+  // כשרות: מחשבים מחדש את חלון 6 השעות לכל ארוחה פתוחה, מול היום *כפי שהוא עכשיו* —
+  // כולל פינוק בשרי שנוסף זה עתה וארוחות שנאכלו. (הדגלים מהבנייה גם לא נשמרים ב-serializeDay.)
+  if (kosherSepOn()) open.forEach(x => { x.m.noDairy = within6hAfterMeat(meals, x.i); });
+  const ctxFor = m => ({ ...ctx, noDairy: !!m.noDairy });
+
   // נשנוש חלבון לארוחת אימון מוגנת: תבנית snack, ואם יצאה דלת-חלבון — חלבון ישיר
   // (גבינה/יוגורט/ביצה/בשר/דג/קטנייה — מכסה גם טבעונים וגם ימים שבהם החלב כבר נוצל)
-  const proteinSnack = budget => {
-    let items = buildMealBest('snack', budget, used, ctx);
+  const proteinSnack = (budget, m) => {
+    let items = buildMealBest('snack', budget, used, ctxFor(m || {}));
     if (items.reduce((s, it) => s + (it.p || 0), 0) < 8) {
-      const pool = ALL.filter(f => isCheese(f) || isYogurt(f) || f.tags.includes('egg') ||
-        f.tags.includes('meat') || f.tags.includes('fish') || (f.tags.includes('legume') && !f.dip));
+      const pool = ALL.filter(f => (isCheese(f) || isYogurt(f) || f.tags.includes('egg') ||
+        f.tags.includes('meat') || f.tags.includes('fish') || (f.tags.includes('legume') && !f.dip)) &&
+        !(m && m.noDairy && isDairyKosher(f)));
       const pr = pick(pool, used, budget, 12, 250);
       if (pr) { use(used, pr); items = [pr]; }
     }
@@ -1537,7 +1567,7 @@ function rebalanceDay(meals, eaten) {
     let keptWorkout = false;
     open.forEach(x => {
       if (isWorkout(x)) {
-        x.m.items = proteinSnack(180);
+        x.m.items = proteinSnack(180, x.m);
         recalcMeal(x.m);
         keptWorkout = true;
       } else {
@@ -1558,7 +1588,7 @@ function rebalanceDay(meals, eaten) {
     const each = Math.max(Math.round(tR / keepers.length), 120);
     open.forEach(x => {
       if (keepers.includes(x)) {
-        x.m.items = isWorkout(x) ? proteinSnack(each) : buildMealBest('snack', each, used, ctx);
+        x.m.items = isWorkout(x) ? proteinSnack(each, x.m) : buildMealBest('snack', each, used, ctxFor(x.m));
         if (!isWorkout(x)) x.m.label = 'נשנוש קל';
         recalcMeal(x.m);
       } else {
@@ -1601,6 +1631,8 @@ function rebalanceDay(meals, eaten) {
     for (let k = 0; k < extra; k++) {
       // added:true => ארוחה שנוצרה אגב איזון אמצע-יום (לא חלק מתפריט הבסיס); מנוקה ביום חדש (loadDay)
       const nm = { label: 'נשנוש נוסף', icon: 'coffee', time: '', pct: 0.15, tag: null, type: 'snack', big: false, items: [], added: true };
+      // בלי שעה אין חלון לחשב — בכשרות, אם יש בשר ביום, הנשנוש נבנה בלי חלב (שמרני)
+      if (kosherSepOn()) nm.noDairy = meals.some(isMeatMeal);
       meals.push(nm);
       eaten.push(false);
       openMeals.push(nm);
@@ -1610,7 +1642,7 @@ function rebalanceDay(meals, eaten) {
     const shareOf = m => (m.pct || pctSum / openMeals.length) / pctSum;
 
     openMeals.filter(m => m.type !== 'hot').forEach(m => {
-      m.items = buildMealBest(m.type, Math.round(tR * shareOf(m)), used, ctx);
+      m.items = buildMealBest(m.type, Math.round(tR * shareOf(m)), used, ctxFor(m));
       recalcMeal(m);
     });
     const hotOpen = openMeals.filter(m => m.type === 'hot');
@@ -1618,7 +1650,7 @@ function rebalanceDay(meals, eaten) {
     const remaining = Math.max(0, tR - usedCal);
     const hotPct = hotOpen.reduce((s, m) => s + (m.pct || 0), 0) || 1;
     hotOpen.forEach(m => {
-      m.items = buildMealBest(m.type, Math.round(remaining * (m.pct || 1) / hotPct), used, ctx);
+      m.items = buildMealBest(m.type, Math.round(remaining * (m.pct || 1) / hotPct), used, ctxFor(m));
       recalcMeal(m);
     });
 

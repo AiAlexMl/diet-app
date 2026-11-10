@@ -706,6 +706,8 @@ input[type="number"]:focus {
 .tag-post { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
 /* פינוק-ארוחה (09/11/2026): תג "פינוק" ליד שם הארוחה שהפינוק החליף. #92400e על #fffbeb = 7.6:1 */
 .tag-treat { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+/* שורת כשרות בשאלת המשבצת (10/11/2026): הודעה, לא חסימה. #92400e על לבן = 7.1:1 */
+.slot-kosher { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: #92400e; }
 
 /* תמונת מוצר (thumbnail + hover להגדלה) */
 .food-thumb {
