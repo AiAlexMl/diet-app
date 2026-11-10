@@ -390,8 +390,14 @@ header { position: relative; }
   background: var(--border);
   transition: background .4s ease;
 }
-.step.done   { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
-.step.active { background: var(--accent); opacity: .4; }
+/* הפס החזק = המסך שבו נמצאים; שלבים שכבר עברו = חלש; שלבים שעוד לא הגיעו = אפור.
+   (היה הפוך — עברו חזק, נוכחי חלש. אלכס 10/11/2026: מאז שהפס לחיץ הוא ניווט, "אתה כאן" צריך לבלוט.) */
+.step.done   { background: var(--accent); opacity: .35; }
+.step.active { background: linear-gradient(90deg, var(--accent), var(--accent-2)); opacity: 1; }
+/* אזור לחיצה של 44px סביב פס של 5px, בלי לשנות את המראה (כמו .item-remove) */
+.step { position: relative; cursor: pointer; }
+.step::before { content: ""; position: absolute; inset: -20px 0; }
+.step:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
 
 /* ── כותרות מסך ── */
 .screen-title {

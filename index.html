@@ -65,9 +65,10 @@
   <!-- שלושה שלבים: פרטים ← העדפות ← תפריט. בחירת מאכלים ירדה מהמסלול (31/08/2026)
        והפכה לחלון אופציונלי, כי ברירת המחדל היא לתת למנוע לבנות. -->
   <div class="step-bar">
-    <div class="step active" id="s0"></div>
-    <div class="step"        id="s1"></div>
-    <div class="step"        id="s2"></div>
+    <!-- לחיץ (10/11/2026): הדרך לחזור לפרטים/להעדפות מתוך התפריט בלי איפוס, בלי להוסיף כפתור למסך -->
+    <div class="step active" id="s0" role="button" tabindex="0" aria-label="פרטים אישיים" onclick="stepNav(0)"></div>
+    <div class="step"        id="s1" role="button" tabindex="0" aria-label="העדפות תזונה" onclick="stepNav(1)"></div>
+    <div class="step"        id="s2" role="button" tabindex="0" aria-label="התפריט" onclick="stepNav(2)"></div>
   </div>
   </header>
 

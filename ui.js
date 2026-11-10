@@ -772,6 +772,7 @@ function goTo(n) {
   document.querySelectorAll('.step').forEach((s, i) => {
     s.classList.toggle('done',   i < n);
     s.classList.toggle('active', i === n);
+    if (i === n) s.setAttribute('aria-current', 'step'); else s.removeAttribute('aria-current');
   });
   if (n === 1) updateTrainWarn();
   // מסכי הבורר ירדו מהמסלול (31/08/2026) — הרינדור שלהם עבר ל-openFoodPicker.
@@ -886,6 +887,21 @@ function updateMacroDisplay() {
   // אין החלפה שקטה של ערך חורג — מוצגת הודעת שגיאה (inputErrors) והמעבר נחסם עד תיקון
 });
 
+// ── ניווט בפס השלבים (10/11/2026) ──
+// הדרך לחזור לפרטים/להעדפות מתוך התפריט בלי "התחל מחדש", בלי להוסיף כפתור למסך.
+// לא בונה כלום: תפריט חדש נבנה רק ב"בונים תפריט!". שלב 3 חוזר ליום הקיים כפי שהוא.
+// קדימה עוברים דרך אותן בדיקות כמו הכפתורים (שדות בטווח, שער BMI) — לא מדלגים עליהן.
+function stepNav(n) {
+  const cur = [...document.querySelectorAll('.screen')].findIndex(s => s.style.display !== 'none');
+  if (n === cur) return;
+  if (n === 0) return goTo(0);
+  if (n === 1) return cur === 0 ? goToFromDetails() : goTo(1);
+  if (n === 2 && DAY && DAY.meals && DAY.meals.length) {
+    if (cur === 0 && inputErrors().length) return goToFromDetails();   // מציג את השגיאה במקום לברוח ממנה
+    return renderDay();
+  }
+}
+
 // מעבר ממסך הפרטים: חוסם אם יש שדה מחוץ לטווח (גיל/גובה/משקל)
 function goToFromDetails() {
   if (inputErrors().length) {
@@ -973,7 +989,7 @@ A11Y_GROUPS.forEach(([sel, gr, ir]) => document.querySelectorAll(sel).forEach(g 
 syncGroupAria();
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-  const el = e.target.closest && e.target.closest('.chip, .time-card, .cat-tab, .food-card, .picker-item');
+  const el = e.target.closest && e.target.closest('.chip, .time-card, .cat-tab, .food-card, .picker-item, .step');
   if (el) { e.preventDefault(); el.click(); }
 });
 
