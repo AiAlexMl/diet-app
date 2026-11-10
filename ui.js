@@ -1735,10 +1735,11 @@ function openPizzaCount() {
 // אותו דפוס כמו altFoodRows בחלון "אכלתי משהו אחר". לא נמצא ⇐ מפנים להזנה הידנית שמתחת.
 function treatRows(query) {
   const q = (query || '').trim();
-  return TREATS.filter(tr => !tr.hidden && (!q || tr.name.includes(q))).map(tr =>
+  // pickName/pickPer: שם לשורה בבוחר כשהכמות נבחרת בשלב הבא (פיצה: "כמה משולשים?"). בכרטיס נשאר name.
+  return TREATS.filter(tr => !tr.hidden && (!q || (tr.pickName || tr.name).includes(q) || tr.name.includes(q))).map(tr =>
     `<div class="picker-item" role="button" tabindex="0" onclick="chooseTreat(${tr.id})">
-      <span>${esc(tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
-      <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל</span>
+      <span>${esc(tr.pickName || tr.name)} <small>(${esc(tr.unitLabel)})</small></span>
+      <span class="picker-cal">${Math.round(tr.cal * tr.unitG / 100)} קק"ל${tr.pickPer ? " " + esc(tr.pickPer) : ""}</span>
     </div>`).join('') || `<div class="picker-sub">לא ברשימה. אפשר להזין אותו בעצמך למטה 👇</div>`;
 }
 
