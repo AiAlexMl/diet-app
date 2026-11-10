@@ -127,6 +127,21 @@ try {
   const { data: af } = await a.client.from('favorites').select('fav_id').eq('trainee_id', a.id);
   check("מתאמן א' מוחק מועדף שלו", !f4 && (af || []).length === 0, f4?.message);
 
+  // ── 2ב'. תקרת מועדפים למשתמש (011): 100 עוברים, ה-101 נדחה, עדכון של קיים עובר גם בתקרה ──
+  const favRow = id => ({ trainee_id: a.id, fav_id: id, date: today,
+    saved_at: new Date().toISOString(), payload: { date: today, meals: [] } });
+  const capIds = Array.from({ length: 100 }, () => crypto.randomUUID());
+  const { error: c1 } = await a.client.from('favorites').insert(capIds.map(favRow));
+  check('100 מועדפים נכתבים (011)', !c1, c1?.message);
+  const { error: c2 } = await a.client.from('favorites').insert(favRow(crypto.randomUUID()));
+  check('🔑 המועדף ה-101 נדחה (תקרה למשתמש)', !!c2);
+  const { error: c3 } = await a.client.from('favorites').upsert(favRow(capIds[0]));
+  check('עדכון מועדף קיים עובר גם בתקרה', !c3, c3?.message);
+  const { error: c4 } = await b.client.from('favorites').insert({ ...favRow(crypto.randomUUID()), trainee_id: b.id });
+  check("התקרה של א' לא חוסמת את ב'", !c4, c4?.message);
+  await a.client.from('favorites').delete().eq('trainee_id', a.id);
+  await b.client.from('favorites').delete().eq('trainee_id', b.id);
+
   // ── 2ג. weight_logs: עצמי עובד, של אחר חסום, ורצפות השפיות של ה-DB ──
   // הטבלה הכי רגישה שיש (היסטוריית משקל = מידע בריאותי, תיקון 13) והיא נוספה
   // במיגרציה 003 אחרי שהקובץ הזה נכתב, כלומר ה-RLS שלה מעולם לא נבדק בפועל.
@@ -203,6 +218,23 @@ try {
   });
   check('day_log עם תאריך עתידי (+5 ימים) נדחה', !!fe);
 
+  // ── 4א. חלון תאריכים אחורה + גודל prefs (011) ──
+  const dayRow = dt => ({ trainee_id: a.id, date: dt, payload: { date: dt, meals: [] }, client_updated_at: new Date().toISOString() });
+  const old30 = new Date(Date.now() - 30 * 864e5).toLocaleDateString('en-CA');
+  const old3  = new Date(Date.now() - 3 * 864e5).toLocaleDateString('en-CA');
+  const { error: oe } = await a.client.from('day_logs').upsert(dayRow(old30));
+  check('🔑 day_log מלפני 30 יום נדחה ללקוח', !!oe);
+  const { error: oe2 } = await a.client.from('day_logs').upsert(dayRow(old3));
+  check('day_log מלפני 3 ימים עובר (בתוך החלון)', !oe2, oe2?.message);
+  const { error: oe3 } = await admin.from('day_logs').upsert(dayRow(old30));
+  check('service_role כותב תאריך ישן (שחזור מגיבוי לא נחסם)', !oe3, oe3?.message);
+  const { error: oe4 } = await a.client.from('day_summaries').upsert({
+    trainee_id: a.id, date: old30, meals_planned: 4, meals_eaten: 1, completed: false });
+  check('day_summary מלפני 30 יום נדחה ללקוח', !!oe4);
+  const { error: pe2 } = await a.client.from('profiles')
+    .update({ prefs: { blob: 'x'.repeat(40000) } }).eq('id', a.id);
+  check('🔑 prefs מעל 16KB נדחה', !!pe2);
+
   // ══════════════════════════════════════════════════════════
   // 4ב. שכבת המאמנים (מיגרציה 004)
   // המבחנים הקריטיים: מאמנת לא מגיעה ל-day_logs ולא ל-weight_logs, בשום מסלול.
@@ -276,6 +308,13 @@ try {
   const { data: wt3 } = await a.client.rpc('coach_weight_trend', { trainee: b.id });
   check('🔑 מתאמנת קוראת coach_weight_trend על אחרת → ריק', (wt3 || []).length === 0);
 
+  // 011: רשומת ההסכמה קפואה גם ברגע הניתוק — לא משכתבים שם או גרסת נוסח תוך כדי הסרה
+  const { error: tamper } = await coach.client.from('coach_links')
+    .update({ status: 'revoked', trainee_display_name: 'שם אחר', consent_text_version: 9 })
+    .eq('trainee_id', a.id).eq('status', 'active');
+  const { data: still } = await a.client.from('coach_links').select('status,trainee_display_name').eq('trainee_id', a.id);
+  check('🔑 מאמנת לא משכתבת את רשומת ההסכמה בזמן הסרה', !!tamper && still?.[0]?.status === 'active' && still?.[0]?.trainee_display_name === 'מתאמנת א');
+
   // המאמנת מסירה (הכרעת 08/08: בלי תור אישורים, אבל עם יכולת הסרה)
   const { error: rv } = await coach.client.from('coach_links')
     .update({ status: 'revoked' }).eq('trainee_id', a.id).eq('status', 'active');
@@ -310,6 +349,16 @@ try {
     Object.keys(row).length === 2);
   const { data: rawEv } = await anonC.from('events').select('*').limit(1);
   check('🔑 anon עדיין לא קורא שורות מ-events', (rawEv || []).length === 0);
+
+  // ── 4ג. מאמנת מוחקת את החשבון שלה (011) — לפני כן ה-FK חסם את המחיקה ──
+  const { error: cd } = await coach.client.rpc('delete_my_account');
+  check('🔑 delete_my_account רץ גם למאמנת', !cd, cd?.message);
+  const { data: cgone } = await admin.from('coaches').select('id').eq('id', crow.id);
+  check('פרופיל המאמנת נמחק עם החשבון', (cgone || []).length === 0);
+  const { data: lgone } = await admin.from('coach_links').select('id').eq('coach_id', crow.id);
+  check('הקישורים למתאמנות נמחקו איתו', (lgone || []).length === 0);
+  const { data: bStill } = await admin.from('profiles').select('id').eq('id', b.id);
+  check('המתאמנת עצמה לא נפגעה ממחיקת המאמנת', (bStill || []).length === 1);
 
   // ── 5. delete_my_account: מוחק את המשתמש וכל הדאטה ──
   const { error: da } = await b.client.rpc('delete_my_account');

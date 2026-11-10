@@ -1432,6 +1432,22 @@
   // ══════════ init ══════════
   sb.auth.onAuthStateChange((evt, sess) => {
     session = sess;
+    // 🔑 החלפת חשבון באותו דפדפן (11/11/2026). התנתקות משאירה את הנתונים במכשיר — זה מכוון.
+    //    אבל כשחשבון **אחר** מתחבר, firstMerge היה מעלה אליו את ההעדפות, היום והמועדפים של
+    //    הקודם, ומציג לו את גרף המשקל של הקודם. ⇒ זוכרים מי התחבר אחרון; חשבון אחר מתחיל
+    //    ממכשיר נקי, ואז טוען את הנתונים שלו מהענן. הענן של הקודם לא נפגע.
+    //    חשבון ראשון במכשיר (אין uid שמור): הנתונים האנונימיים שלו, והם מתמזגים כמו תמיד.
+    if (sess && sess.user) {
+      if (meta.uid && meta.uid !== sess.user.id) {
+        clearTimeout(pushTimer);
+        [STATE_KEY, DAY_KEY, FAV_KEY, WEIGHT_KEY, UW_KEY, FAV_INTENT_KEY, META_KEY,
+         'shapeat-coach', 'shapeat-coach-brand'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+        lsSet(META_KEY, JSON.stringify({ uid: sess.user.id }));
+        location.reload();   // S ו-DAY שבזיכרון הם של הקודם; טעינה מחדש ⇒ INITIAL_SESSION ⇒ pull
+        return;
+      }
+      if (!meta.uid) { meta.uid = sess.user.id; saveMeta(); }
+    }
     updateAccountBtn();
     try { injectWeightSlot(); } catch (e) {}   // הסלוט משתנה בין אנונימי למחובר
     if (evt === 'SIGNED_IN') {
@@ -1448,7 +1464,12 @@
       if (ji && ji.invite && Date.now() - ji.ts < JOIN_MS) { doJoin(ji); }
     }
     if (evt === 'SIGNED_OUT') closeAccountModal();
-    if (evt === 'INITIAL_SESSION' && sess) pull();
+    if (evt === 'INITIAL_SESSION' && sess) {
+      pull();
+      // כוונת-חיבור למאמנת ששרדה טעינה מחדש של החלפת חשבון (למעלה) — אותו חלון זמן
+      const ji2 = parse(lsGet(JOIN_KEY));
+      if (ji2 && ji2.invite && Date.now() - ji2.ts < JOIN_MS) { lsSet(JOIN_KEY, ''); doJoin(ji2); }
+    }
     if (sess) syncCoachBrand();   // מיתוג לפי הקישור בדאטהבייס, בכל כניסה
   });
 
