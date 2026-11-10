@@ -1560,21 +1560,24 @@ function dayHtml(day, opts) {
     <div class="share-card-q">מכירים מישהו שמתלבט כל יום מה לאכול?</div>
     <button class="share-card-btn" onclick="shareReferral()">שליחה בוואטסאפ</button>
   </div>`;
+    // PDF חסום רק בפינוק *קטן* (כרטיס צד). פינוק-ארוחה הוא ארוחה ביום — תפריט עם "ארוחת צהריים:
+    // שווארמה" הוא תכנון אמיתי, ובלעדיו המסמך חסר ארוחה. (אלכס 10/11/2026)
+    const hasSmallTreat = meals.some(m => m.type === 'treat' && !m.removed);
     // פעולות שקטות: "היום הוא המוצר" — ייצור תפריט חוזר הוא פעולה משנית, לא ה-CTA של המסך.
     // הדפסה/PDF: חסומה כשיש פינוק (hasTreat מחושב למעלה) — תפריט מודפס עם פינוק יוצא בחוסר מאקרו
     // (הפינוק שמר תקציב), ולהציג פינוק במסמך "רשמי" לא מקצועי. מסירים את הפינוק ואז מדפיסים נקי.
     html += `
   <div class="menu-quiet-actions">
     <button class="pill-btn" onclick="if (confirmRebuild()) renderMenu()">↻ תפריט נוסף</button>
-    ${hasTreat
-      ? `<button class="pill-btn" disabled title="הסר את הפינוק כדי לשמור תפריט נקי">📄 שמירה כ-PDF</button>`
+    ${hasSmallTreat
+      ? `<button class="pill-btn" disabled title="${gword('הסר', 'הסירי')} את הפינוק כדי לשמור תפריט נקי">📄 שמירה כ-PDF</button>`
       : `<button class="pill-btn" onclick="window.print()">📄 שמירה כ-PDF</button>`}
     <button class="pill-btn" onclick="shareDay()">📤 שיתוף</button>
     <!-- נקודת כניסה שנייה לבורר. בלעדיה, אחרי שנבנה תפריט הדרך היחידה לשנות
          העדפות הייתה "התחל מחדש (איפוס)", כלומר לאבד הכל בשביל לשנות מאכל אחד. -->
     <button class="pill-btn" onclick="openFoodPicker('like')">🍽️ המאכלים שלי</button>
-  </div>${hasTreat
-    ? `<div class="print-hint" style="text-align:center;margin-top:6px;font-size:12px;color:var(--text-tert)">📄 כדי לשמור תפריט נקי, הסר קודם את הפינוק 🙂</div>`
+  </div>${hasSmallTreat
+    ? `<div class="print-hint" style="text-align:center;margin-top:6px;font-size:12px;color:var(--text-tert)">📄 כדי לשמור תפריט נקי, ${gword('הסר', 'הסירי')} קודם את הפינוק 🙂</div>`
     : ''}
   <button class="reset-link" onclick="resetApp()">התחל מחדש (איפוס)</button>
   <div class="coach-cta" style="text-align:center;margin-top:18px;font-size:13px;color:#8b8fa3">
