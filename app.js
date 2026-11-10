@@ -1327,6 +1327,22 @@ function within6hAfterMeat(meals, idx) {
   });
 }
 
+// שעה לנשנוש שנוסף באמצע היום: אמצע הפער הגדול ביותר בין שתי ארוחות עם שעה, כשהמאוחרת
+// מביניהן עוד לא נאכלה (הנשנוש בעתיד, לא בעבר). מעוגל לרבע שעה. אין פער כזה ⇒ '' (בלי שעה).
+function addedSnackTime(meals, eaten) {
+  const pts = meals.map((m, i) => ({ t: timeMins(m.time), done: !!eaten[i] }))
+    .filter((p, i) => p.t !== null && !meals[i].removed).sort((a, b) => a.t - b.t);
+  let best = null;
+  for (let k = 1; k < pts.length; k++) {
+    if (pts[k].done) continue;
+    const gap = pts[k].t - pts[k - 1].t;
+    if (gap > 0 && (!best || gap > best.gap)) best = { gap, mid: pts[k - 1].t + gap / 2 };
+  }
+  if (!best) return '';
+  const q = Math.round(best.mid / 15) * 15;
+  return `${String(Math.floor(q / 60)).padStart(2, '0')}:${String(q % 60).padStart(2, '0')}`;
+}
+
 function buildMenu() {
   calcMacro();
   S.bmiWarning = bmiWarnText();
@@ -1630,12 +1646,15 @@ function rebalanceDay(meals, eaten) {
     extra = Math.min(extra, 6 - openMeals.length);   // לא יותר מ-6 ארוחות פתוחות
     for (let k = 0; k < extra; k++) {
       // added:true => ארוחה שנוצרה אגב איזון אמצע-יום (לא חלק מתפריט הבסיס); מנוקה ביום חדש (loadDay)
-      const nm = { label: 'נשנוש נוסף', icon: 'coffee', time: '', pct: 0.15, tag: null, type: 'snack', big: false, items: [], added: true };
-      // בלי שעה אין חלון לחשב — בכשרות, אם יש בשר ביום, הנשנוש נבנה בלי חלב (שמרני)
-      if (kosherSepOn()) nm.noDairy = meals.some(isMeatMeal);
+      // שעה: באמצע הפער הגדול ביותר שלפני ארוחה שעוד לא נאכלה (אלכס 10/11/2026: נשנוש בלי שעה
+      // הוצג בסוף הרשימה — אחרי ארוחת ערב של 22:00). המיקום במערך נשאר בסוף, כדי לא להזיז
+      // אינדקסים (eaten / editingMeals); הסדר לתצוגה נקבע לפי השעה ב-dayHtml.
+      const nm = { label: 'נשנוש נוסף', icon: 'coffee', time: addedSnackTime(meals, eaten), pct: 0.15, tag: null, type: 'snack', big: false, items: [], added: true };
       meals.push(nm);
       eaten.push(false);
       openMeals.push(nm);
+      // כשרות: עם שעה — לפי החלון; בלי שעה (לא נמצא פער) — שמרני, בלי חלב אם יש בשר ביום
+      if (kosherSepOn()) nm.noDairy = nm.time ? within6hAfterMeat(meals, meals.length - 1) : meals.some(isMeatMeal);
     }
 
     const pctSum = openMeals.reduce((s, m) => s + (m.pct || 0), 0) || openMeals.length;

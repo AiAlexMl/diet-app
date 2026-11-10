@@ -1388,7 +1388,12 @@ function dayHtml(day, opts) {
     </div>`;
   }
 
-  meals.forEach((m, mi) => {
+  // סדר התצוגה לפי השעה, והאינדקס (mi) נשאר של המערך — כל הכפתורים ממשיכים לפנות לארוחה הנכונה.
+  // נדרש כי נשנוש שנוסף באמצע היום יושב בסוף המערך אבל מקבל שעה באמצע היום (10/11/2026).
+  // בלי שעה (כרטיס הפינוק) ⇒ בסוף, בסדר המקורי.
+  const tOf = m => { const t = m.time && /^\d{1,2}:\d{2}$/.test(m.time) ? m.time.split(':').map(Number) : null; return t ? t[0] * 60 + t[1] : Infinity; };
+  const order = meals.map((m, mi) => mi).sort((a, b) => (tOf(meals[a]) - tOf(meals[b])) || (a - b));
+  order.forEach(mi => { const m = meals[mi];
     if (m.removed) return;   // ארוחה שהוסרה בתיקון יום (חצה את היעד)
     const tagH = m.tag
       ? `<span class="meal-tag ${m.tag === 'pre' ? 'tag-pre' : 'tag-post'}">${m.tag === 'pre' ? 'לפני אימון' : 'אחרי אימון'}</span>`
