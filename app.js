@@ -43,7 +43,16 @@ const grainCap = f => f.tags.includes('breakfast')
     ? ({ cut: 320, maintain: 480, bulk: 600 }[S.goal] || 480)   // ארוחה חמה יחידה — תקרה גבוהה (הפיצול שומר על מנות ריאליסטיות); נחוץ לסגירת היעד
     : ({ cut: 280, maintain: 350, bulk: 450 }[S.goal] || 450);  // רב-ארוחות-חמות (צהריים/ערב) — תקרה רגילה, ללא שינוי
 // רצפת מנת-חלבון מרכזית (בשר/דג בארוחה חמה) — מנה ריאליסטית, לא 30g. goal-aware, ניתן לכיול.
-const mainProtFloor = () => ({ cut: 70, maintain: 85, bulk: 90 }[S.goal] || 85);
+// ⬆️ הועלתה 13/11/2026 מ-70/85/90: נמדד ש-31% מתפריטי אוכלי-הבשר יצאו עם מנה מתחת ל-100g (52% במסה),
+// והעשירון התחתון היה 90g — "שלושה יוגורטים ו-90 גרם עוף". הרצפה לבדה מנפחת חלבון; היא באה יחד
+// עם הניקוד ב-buildMealBest שמשאיר חלבון לצלחת (ראו שם).
+// ⚠️ ותלויה גם ביעד הקלורי (~5% ממנו, בגרמים, מעוגל ל-5): אצל אישה קטנה בחיטוב (יעד 1,200) עם
+//    שתי ארוחות חמות, שתי מנות של 100g דחפו את היום ל-1,304 קק"ל (+8.7%). ⇒ 1,200 ⇐ 70g (כמו קודם),
+//    1,600 ⇐ 80g, 2,000 ⇐ 100g, ומשם התקרה לפי המטרה. ביום עם פינוק היעד המוקטן מקטין גם את הרצפה.
+const mainProtFloor = () => {
+  const cap = { cut: 100, maintain: 110, bulk: 120 }[S.goal] || 110;
+  return Math.max(70, Math.min(cap, Math.round((S.target || 2000) * 0.05 / 5) * 5));
+};
 // תקרת הגשה למנה המרכזית — צלחת ריאלית (לא 350g בשר): כשמגיעים לתקרה, יתרת החלבון
 // מושלמת דרך שאר המנופים / הזרקת מנת חלבון קלה (protein top-up ב-reconcile).
 const mainProtCap = () => ({ cut: 250, maintain: 280, bulk: 320 }[S.goal] || 280);
@@ -623,6 +632,15 @@ function buildMeal(type, cal, used, ctx) {
 function buildMealBest(type, budget, used, ctx) {
   const expFat = S.fatG * budget / Math.max(S.target, 1);   // חלק השומן הצפוי לארוחה
   const expFib = S.fibG * budget / Math.max(S.target, 1);   // חלק הסיבים הצפוי לארוחה
+  // 🥩 חלבון מהמקור (13/11/2026): הארוחות הקלות נבנות ראשונות ומביאות גביע/קופסה שלמים, וביחד
+  //    עברו את החלק היחסי שלהן — חצי מהחלבון היומי הגיע מחוץ לארוחות החמות. הבשר הוא המנוף היחיד
+  //    ששלב 1 יכול לכווץ, ולכן הוא התכווץ לרצפה, או ירד לגמרי בריכוז (ארוחת אימון בלי בשר: 11%).
+  //    ⇐ בארוחה קלה מעדיפים גרסה שלא מביאה יותר חלבון מהחלק היחסי שלה, וכך נשאר חלבון לצלחת.
+  //    רק כשיש למשתמש בשר/דג: אצל צמחוני/טבעוני הארוחות הקלות *הן* מקור החלבון (נמדד: 0 שינוי שם).
+  const expProt = S.proteinG * budget / Math.max(S.target, 1);
+  //    ולא בנשנוש-החלבון של ארוחת אימון מוגנת (rebalanceDay → proteinSnack), ששם חלבון הוא כל המטרה.
+  const protSteer = type !== 'hot' && !(ctx && ctx.wantProtein) && ALL.some(f =>
+    (f.tags.includes('meat') || f.tags.includes('fish')) && !f.tags.includes('tuna') && allowed(f));
   let best = null, bestUsed = null, bestScore = Infinity;
   for (let i = 0; i < 5; i++) {
     const u = new Map(used);
@@ -631,13 +649,15 @@ function buildMealBest(type, budget, used, ctx) {
     const cal = items.reduce((s, x) => s + x.cal, 0);
     const fat = items.reduce((s, x) => s + (x.fat || 0), 0);
     const fib = items.reduce((s, x) => s + (x.fib || 0), 0);
+    const prot = items.reduce((s, x) => s + (x.p || 0), 0);
     // ניקוד: קרבה לתקציב קלורי + עדיפות לבנייה רזה (כדי לרסן שומן מהמקור)
     // + סיבים מהמקור: קנס על מחסור מול החלק היחסי (רצפה) וקנס על עודף רק מעל ~2.2× (רצועה
     //   רחוקה — מרסן ערימות קטניות טבעוניות בלי לגעת בתפריט רגיל). כמו השומן: אין שלב reconcile.
     const score = Math.abs(cal - budget) / Math.max(budget, 1)
                 + 0.6 * Math.max(0, fat - expFat) / Math.max(expFat, 8)
                 + 0.7 * Math.max(0, expFib - fib) / Math.max(expFib, 4)
-                + 0.5 * Math.max(0, fib - 2.5 * expFib) / Math.max(expFib, 4);
+                + 0.5 * Math.max(0, fib - 2.5 * expFib) / Math.max(expFib, 4)
+                + (protSteer ? Math.max(0, prot - expProt) / Math.max(expProt, 8) : 0);
     if (score < bestScore) { bestScore = score; best = items; bestUsed = u; }
   }
   if (bestUsed) { used.clear(); bestUsed.forEach((v, k) => used.set(k, v)); }
@@ -659,8 +679,10 @@ function convertDemeatedMeal(meal, used, ctx) {
   };
   const strats = [
     { w: 3, build: () => anchor(f => f.tags.includes('egg'), .35, 200) },                          // ביצים + פחמימה + סלט
-    // עוגן קוטג'/יוגורט — מושמט בכשר: הארוחה שאיבדה בשר צמודה לארוחת הבשר שנשמרה, וחלב לצידה יפר הפרדה
-    ...(S.diet.has('kosher') ? [] : [{ w: 2, build: () => anchor(f => f.id === 20 || f.id === 21 || isYogurt(f), .4, 250) }]),   // קוטג'/יוגורט + פחמימה
+    // ⛔ עוגן קוטג'/יוגורט הוסר (12/11/2026). הארוחה שאיבדה בשר היא צלחת חמה (פסטה/אורז + ירק מבושל),
+    //    ויוגורט לצידה אינו ארוחה: "אחרי אימון: יוגורט יווני + פסטה מלאה 249g + חציל". tasteOk לא עצר
+    //    את זה כי חלב מסווג ניטרלי. נמדד: 58 מתוך 234 ההמרות (2% מכל התפריטים, 3% בלוחות עם שתי
+    //    ארוחות חמות). נשארו ביצה וקטנייה — שתיהן מנות שיושבות על צלחת חמה.
     { w: 1, build: () => { const it = anchor(f => f.tags.includes('legume') && !f.dip && f.p >= 7, .4, 250);   // קטנייה עתירת-חלבון (עדשים/חומוס/שעועית) — לא אפונה
                            if (it) { it._minG = Math.min(it.g, 120);                                // רצפה כדי ששלב-1 לא יכווץ אותה לסמלית
                              meal.items.forEach(x => {                                               // תוחמים את הפחמימה כשיש קטנייה (העודף לארוחת הבשר), כדי שלא יהיה "הר"
@@ -1653,7 +1675,7 @@ function rebalanceDay(meals, eaten) {
   // נשנוש חלבון לארוחת אימון מוגנת: תבנית snack, ואם יצאה דלת-חלבון — חלבון ישיר
   // (גבינה/יוגורט/ביצה/בשר/דג/קטנייה — מכסה גם טבעונים וגם ימים שבהם החלב כבר נוצל)
   const proteinSnack = (budget, m) => {
-    let items = buildMealBest('snack', budget, used, ctxFor(m || {}));
+    let items = buildMealBest('snack', budget, used, { ...ctxFor(m || {}), wantProtein: true });
     if (items.reduce((s, it) => s + (it.p || 0), 0) < 8) {
       const pool = ALL.filter(f => (isCheese(f) || isYogurt(f) || f.tags.includes('egg') ||
         f.tags.includes('meat') || f.tags.includes('fish') || (f.tags.includes('legume') && !f.dip)) &&

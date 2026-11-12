@@ -138,6 +138,19 @@ Test: `internal/engine-review-test.mjs` (fails 10/12 on the pre-fix code, so it 
 
 🔍 **Found, not fixed:** Stage 1b injects a legume (lentils 172 g, seitan, tofu) into a **vegan breakfast** of crackers + fruit + nuts — `tasteOk` lets it through because all three are neutral. 18/1,344. Gating Stage 1b with `fitsMealType` would fix it but removes vegan breakfast protein; measure before deciding.
 
+## Meat on the plate (13/11/2026) — supersedes the 70/85/90 floor quoted above
+
+Found while picking a sample day for the "תפריט תזונה למתאמן" SEO page: only 21 of 3,000 days gave a trainee two real meat mains. Measured on 3,840 menus (`internal/seo/exp/meat-measure.mjs`): **29% had a meat main under 100 g (bulk: 49%)**, 6% a hot meal with no meat at all (12% on noon/evening schedules — on noon always a workout meal), 2% yogurt on a hot plate.
+
+**Why:** the light meals are built first and each brings a whole cup/tub, so together they over-deliver protein — **half the day's protein came from outside the hot meals**. Meat is the only lever Stage 1 can shrink, so it sat on the floor, or the concentration rule removed it. Bulk was worst *because* it has more snacks at the same protein target.
+
+Three changes:
+- **Protein steered from the source** (`buildMealBest`): for a non-hot meal, a penalty on protein above the meal's proportional share (`S.proteinG·budget/target`, weight 1.0). Only when the user has meat/fish available (vegetarian/vegan light meals *are* the protein source — 0 menus changed there), and not for `proteinSnack` (`ctx.wantProtein`). Same from-the-source principle as fat and fiber: no reconcile stage.
+- **`mainProtFloor()` = min(goal cap 100/110/120, ~5% of the calorie target in grams), never under 70.** The goal-only floor pushed a 1,200-kcal cut with two hot meals to 1,304 kcal (+8.7%) — caught by `engine-review-test`, not by the experiment (that body wasn't in its matrix). 1,200 ⇒ 70 g, 1,600 ⇒ 80 g, 2,000 ⇒ 100 g. A treat day's reduced target lowers the floor too.
+- **The cottage/yogurt anchor was removed from `convertDemeatedMeal`.** A de-meated meal is a hot plate; "יוגורט יווני + פסטה מלאה 249g + חציל" is not a meal, and `tasteOk` let it through because dairy is neutral. Egg and legume remain.
+
+**Measured after** (same 3,840): main under 100 g **29% → 6%** (bulk 49% → 0%; the rest are low calorie targets, where the floor is lower by design), hot meal without meat **6% → 2%**, yogurt on a hot plate **2% → 0**, median smallest main 118 → 128 g, protein outside the hot meals 49% → 43%. Harness (same seeds): 398/1,440 treat-free menus changed, **0 vegetarian/vegan**; calorie |dev| median 2.3% / p90 3.8% unchanged; days >8% off 32 → 33; warnings 58 → 59; treat mode essentially unchanged. A floor-only variant was rejected: it inflated protein (>+10% over target in 170 menus vs 92) and added meatless hot meals.
+
 ## Per-item removal (`removeItem` / `balanceAfterRemoval`)
 
 Each meal card has a ✏️ **edit toggle** (`toggleMealEdit`, pure CSS `.editing` class; hidden on `type:'treat'` and ✓-eaten meals) that reveals an ✕ on every item row. ✕ = `removeItem(mi, ii)` — **"just skip"**: splices the item, `recalcMeal`, drops it from the daily summary/progress, **no rebuild** (other meals untouched); empty meal → `m.removed = true`. A green note explains it and offers an opt-in **"⚖️ אזן את ההמשך"** button via the transient `DAY.noteAction` field (rendered beside `DAY.note`, not persisted). `balanceAfterRemoval(mi)` reuses `rebuildRest` (locks the edited meal as eaten with its **remaining** items — the user ate the rest — and rebuilds only the untouched meals); if the meal was emptied it falls back to plain `rebalanceDay`. Treat rows instead show an always-visible ✕ → `removeTreatItem`.
