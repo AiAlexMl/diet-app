@@ -1580,12 +1580,33 @@ function buildMenu() {
   // מהצומח) היה מקבל אזהרה חסרת פשר ב-141 תפריטים.
   const protPerKg = finProt / Math.max(S.protRefW || S.weight, 1);
   const protLow = S.noTrain ? protPerKg < 1.0 : (protPerKg < 1.6 && protDev < -0.15);
-  if (!S.menuWarning && protLow)
-    S.menuWarning = `התפריט מגיע לכ-${Math.round(finProt)}g חלבון מול יעד של ${S.proteinG}g. עם ההעדפות וההגבלות שנבחרו קשה להגיע ליעד בלי לשבש את הארוחות; סימון עוד מקורות חלבון יעזור לצמצם את הפער.`;
+  const protMsg = protLow ? `התפריט מגיע לכ-${Math.round(finProt)}g חלבון מול יעד של ${S.proteinG}g. עם ההעדפות וההגבלות שנבחרו קשה להגיע ליעד בלי לשבש את הארוחות; סימון עוד מקורות חלבון יעזור לצמצם את הפער.` : null;
+  if (!S.menuWarning && protLow) S.menuWarning = protMsg;
   // שקיפות שומן: מאכלים אהובים שמנים לא מוחלפים (העדפות מנצחות) — אבל לא מסתירים את המחיר
   const finFat = meals.reduce((s, m) => s + (m.removed ? 0 : m.totF), 0);
   if (!S.menuWarning && finFat > S.fatG * 1.5)
     S.menuWarning = `שומן יומי של כ-${Math.round(finFat)}g מול יעד של ${S.fatG}g — חלק מהמאכלים שסומנו כאהובים עשירים בשומן, והם נשארים בתפריט לפי ההעדפה. החלפת חלק מהם בחלופות רזות תאזן את התפריט.`;
+
+  // ── יום עם פינוק: אזהרה אחת, על היום הגמור, שמזכירה את הפינוק (13/11/2026, נוסח אלכס) ──
+  // עד היום יום פינוק קיבל את האזהרות הכלליות, שכולן אומרות "המאכלים שסימנת" / "ההגבלות שנבחרו",
+  // בזמן שהמשתמש רק הוסיף שווארמה. נמדד: 26-41% מימי פינוק-ארוחה קיבלו אזהרה כזו, וחלקם נחתו בכלל
+  // על היעד (הבדיקה ב-reconcile רצה על היעד המוקטן, לא על היום כולו). ⇒ כאן בודקים את היום הגמור
+  // מול היעד המלא: עד 4% אין אזהרה; מעל = "יוצא מעל"; יותר מ-8% מתחת = "יוצא מתחת".
+  // "הגזמנו קצת" (treatWarn) לא נוגעים — היא נכונה, והיא גוברת בשורה הבאה ממילא. אזהרת חלבון נשמרת.
+  const tAll = [...mtItems, ...addItems];
+  if (tAll.length && !treatWarn) {
+    const dayCal = finCal + tAll.reduce((s, it) => s + it.cal, 0);
+    const diff = Math.round(dayCal - fullTarget), rel = diff / Math.max(fullTarget, 1);
+    const one = tAll.length === 1 || tAll.every(it => it.f.defName === tAll[0].f.defName);
+    const tName = one ? (tAll[0].f.defName || 'הפינוק') : 'הפינוקים';
+    const tAround = one ? (tAll[0].f.around || 'סביבו') : 'סביבם';
+    const tMsg = rel > 0.04
+      ? `${gword('שים', 'שימי')} לב: עם ${tName} היום יוצא כ-${diff} קק"ל מעל היעד. זה בסדר, מחר חוזרים למסלול 💪`
+      : rel < -0.08
+      ? `${gword('שים', 'שימי')} לב: אחרי ${tName} נשאר פחות מקום לבנות ${tAround}, והיום יוצא כ-${-diff} קק"ל מתחת ליעד. אפשר להוסיף נשנוש קטן.`
+      : null;
+    S.menuWarning = tMsg || protMsg;
+  }
 
   S.target = fullTarget;                    // שחזור היעד המלא לתצוגה ולפס ההתקדמות
   // פינוק-ארוחה חוזר למקום ולשעה של הארוחה שהחליף. origType נשמר כדי שאפשר יהיה להחזיר אותה.

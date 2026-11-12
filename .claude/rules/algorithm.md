@@ -138,6 +138,10 @@ Test: `internal/engine-review-test.mjs` (fails 10/12 on the pre-fix code, so it 
 
 🔍 **Found, not fixed:** Stage 1b injects a legume (lentils 172 g, seitan, tofu) into a **vegan breakfast** of crackers + fruit + nuts — `tasteOk` lets it through because all three are neutral. 18/1,344. Gating Stage 1b with `fitsMealType` would fix it but removes vegan breakfast protein; measure before deciding.
 
+## Treat-day warning (13/11/2026, wording by Alex)
+
+On a day with any planned treat, `buildMenu` replaces the generic calorie warnings with **one message about the finished day vs the full target**, naming the treat (`defName` / `around` in `TREATS`, data.js): within 4% ⇒ no warning; over 4% ⇒ "{שים/שימי} לב: עם {השווארמה} היום יוצא כ-N קק"ל מעל היעד. זה בסדר, מחר חוזרים למסלול 💪"; under 8% ⇒ "...אחרי {השווארמה} נשאר פחות מקום לבנות {סביבה}, והיום יוצא כ-N קק"ל מתחת ליעד. אפשר להוסיף נשנוש קטן." The protein warning is kept when there's no calorie message; "הגזמנו קצת" (`treatWarn`) still wins. **Why:** the generic messages all blame "foods you marked / restrictions you chose", and reconcile's overshoot check runs against the *reduced* target, so 26–41% of meal-treat days got a warning that misdescribed the day — some landed on target. Measured: treat-mode warnings 1,624 → 1,522, zero warnings on days within tolerance, **0 menus changed** in either harness mode.
+
 ## Meat on the plate (13/11/2026) — supersedes the 70/85/90 floor quoted above
 
 Found while picking a sample day for the "תפריט תזונה למתאמן" SEO page: only 21 of 3,000 days gave a trainee two real meat mains. Measured on 3,840 menus (`internal/seo/exp/meat-measure.mjs`): **29% had a meat main under 100 g (bulk: 49%)**, 6% a hot meal with no meat at all (12% on noon/evening schedules — on noon always a workout meal), 2% yogurt on a hot plate.

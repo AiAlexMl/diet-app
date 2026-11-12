@@ -126,26 +126,27 @@ const DB = {
 
 // ── פינוקים (ids 200+) — לא חלק מה-DB ולא מופיעים במסכי הבחירה ──
 // ערכים ל-100g כמו בשאר המאגר; unitG = גודל המנה. משמשים את כפתור הפינוק ואת "אכלתי משהו אחר".
+// defName/around: השם בה"א הידיעה ומילת "סביב" לפי המין — לאזהרת יום-פינוק ("עם השווארמה...", "לבנות סביבה").
 const TREATS = [
-  { id:200, name:"קפה הפוך",            prep:"", p:2.6,  c:3.6,  f:1.9,  fib:0,   cal:46,  tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)" },
-  { id:210, name:"קפה הפוך גדול",       prep:"", p:2.6,  c:3.6,  f:1.9,  fib:0,   cal:46,  tags:["treat"], unitG:350, unitLabel:"כוס גדולה (350 מ\"ל)" },
-  { id:211, name:"קפה הפוך (סויה)",     prep:"", p:2.5,  c:2.2,  f:1.6,  fib:0,   cal:40,  tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)" },
-  { id:213, name:"קפה שחור",            prep:"", p:0,    c:0,    f:0,    fib:0,   cal:0,   tags:["treat"], unitG:150, unitLabel:"כוס קטנה (150 מ\"ל)" },
-  { id:214, name:"נס קפה (עם חלב)",     prep:"", p:1.4,  c:2.4,  f:0.9,  fib:0,   cal:21,  tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)" },
-  { id:201, name:"קולה זירו",       prep:"", p:0,    c:0,    f:0,    fib:0,   cal:0,   tags:["treat"], unitG:330, unitLabel:"פחית (330 מ\"ל)" },
-  { id:202, name:"קולה",            prep:"", p:0,    c:10.6, f:0,    fib:0,   cal:42,  tags:["treat"], unitG:330, unitLabel:"פחית (330 מ\"ל)" },
-  { id:203, name:"בירה",            prep:"", p:0.5,  c:3.6,  f:0,    fib:0,   cal:43,  tags:["treat"], unitG:330, unitLabel:"בקבוק (330 מ\"ל)" },
-  { id:204, name:"חטיף שוקולד",     prep:"", p:7.0,  c:55.0, f:30.0, fib:2.0, cal:530, tags:["treat"], unitG:50,  unitLabel:"חטיף (50g)" },
-  { id:212, name:"שוקולד (פס קטן)", prep:"", p:7.0,  c:58.0, f:32.0, fib:1.0, cal:540, tags:["treat"], unitG:13,  unitLabel:"פס קטן (13g)" },
-  { id:205, name:"גלידה",           prep:"", p:3.5,  c:24.0, f:10.0, fib:0.5, cal:200, tags:["treat"], unitG:100, unitLabel:"2 כדורים (100g)" },
-  { id:206, name:"משולש פיצה",      prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:130, unitLabel:"משולש (130g)", dairyTreat:true, pickName:"פיצה", pickPer:"למשולש" },
-  { id:207, name:"המבורגר",         prep:"", p:13.0, c:20.0, f:11.0, fib:1.2, cal:230, tags:["treat"], unitG:250, unitLabel:"מנה (250g)", meal:true, meatTreat:true },
-  { id:208, name:"שווארמה בפיתה",   prep:"", p:11.0, c:14.0, f:7.0,  fib:1.0, cal:160, tags:["treat"], unitG:450, unitLabel:"מנה (450g)", meal:true, meatTreat:true },
-  { id:209, name:"פלאפל בפיתה",     prep:"", p:6.0,  c:18.0, f:5.0,  fib:2.5, cal:135, tags:["treat"], unitG:400, unitLabel:"מנה (400g)", meal:true },
+  { id:200, name:"קפה הפוך",            prep:"", p:2.6,  c:3.6,  f:1.9,  fib:0,   cal:46,  tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)", defName:"הקפה", around:"סביבו" },
+  { id:210, name:"קפה הפוך גדול",       prep:"", p:2.6,  c:3.6,  f:1.9,  fib:0,   cal:46,  tags:["treat"], unitG:350, unitLabel:"כוס גדולה (350 מ\"ל)", defName:"הקפה", around:"סביבו" },
+  { id:211, name:"קפה הפוך (סויה)",     prep:"", p:2.5,  c:2.2,  f:1.6,  fib:0,   cal:40,  tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)", defName:"הקפה", around:"סביבו" },
+  { id:213, name:"קפה שחור",            prep:"", p:0,    c:0,    f:0,    fib:0,   cal:0,   tags:["treat"], unitG:150, unitLabel:"כוס קטנה (150 מ\"ל)", defName:"הקפה", around:"סביבו" },
+  { id:214, name:"נס קפה (עם חלב)",     prep:"", p:1.4,  c:2.4,  f:0.9,  fib:0,   cal:21,  tags:["treat"], unitG:240, unitLabel:"כוס (240 מ\"ל)", defName:"הנס קפה", around:"סביבו" },
+  { id:201, name:"קולה זירו",       prep:"", p:0,    c:0,    f:0,    fib:0,   cal:0,   tags:["treat"], unitG:330, unitLabel:"פחית (330 מ\"ל)", defName:"הקולה", around:"סביבה" },
+  { id:202, name:"קולה",            prep:"", p:0,    c:10.6, f:0,    fib:0,   cal:42,  tags:["treat"], unitG:330, unitLabel:"פחית (330 מ\"ל)", defName:"הקולה", around:"סביבה" },
+  { id:203, name:"בירה",            prep:"", p:0.5,  c:3.6,  f:0,    fib:0,   cal:43,  tags:["treat"], unitG:330, unitLabel:"בקבוק (330 מ\"ל)", defName:"הבירה", around:"סביבה" },
+  { id:204, name:"חטיף שוקולד",     prep:"", p:7.0,  c:55.0, f:30.0, fib:2.0, cal:530, tags:["treat"], unitG:50,  unitLabel:"חטיף (50g)", defName:"חטיף השוקולד", around:"סביבו" },
+  { id:212, name:"שוקולד (פס קטן)", prep:"", p:7.0,  c:58.0, f:32.0, fib:1.0, cal:540, tags:["treat"], unitG:13,  unitLabel:"פס קטן (13g)", defName:"השוקולד", around:"סביבו" },
+  { id:205, name:"גלידה",           prep:"", p:3.5,  c:24.0, f:10.0, fib:0.5, cal:200, tags:["treat"], unitG:100, unitLabel:"2 כדורים (100g)", defName:"הגלידה", around:"סביבה" },
+  { id:206, name:"משולש פיצה",      prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:130, unitLabel:"משולש (130g)", dairyTreat:true, pickName:"פיצה", pickPer:"למשולש", defName:"הפיצה", around:"סביבה" },
+  { id:207, name:"המבורגר",         prep:"", p:13.0, c:20.0, f:11.0, fib:1.2, cal:230, tags:["treat"], unitG:250, unitLabel:"מנה (250g)", meal:true, meatTreat:true, defName:"ההמבורגר", around:"סביבו" },
+  { id:208, name:"שווארמה בפיתה",   prep:"", p:11.0, c:14.0, f:7.0,  fib:1.0, cal:160, tags:["treat"], unitG:450, unitLabel:"מנה (450g)", meal:true, meatTreat:true, defName:"השווארמה", around:"סביבה" },
+  { id:209, name:"פלאפל בפיתה",     prep:"", p:6.0,  c:18.0, f:5.0,  fib:2.5, cal:135, tags:["treat"], unitG:400, unitLabel:"מנה (400g)", meal:true, defName:"הפלאפל", around:"סביבו" },
   // פיצה כארוחה (10/11/2026): "כמה משולשים?" בבוחר — 1 = משולש פיצה (206, פינוק קטן), 2/3 = אלה.
   // hidden: לא מופיעים כשורה ברשימה. אותם ערכים בדיוק כמו המשולש (per-100g), רק unitG ×2/×3.
-  { id:215, name:"פיצה (2 משולשים)", prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:260, unitLabel:"2 משולשים (260g)", meal:true, dairyTreat:true, hidden:true },
-  { id:216, name:"פיצה (3 משולשים)", prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:390, unitLabel:"3 משולשים (390g)", meal:true, dairyTreat:true, hidden:true },
+  { id:215, name:"פיצה (2 משולשים)", prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:260, unitLabel:"2 משולשים (260g)", meal:true, dairyTreat:true, hidden:true, defName:"הפיצה", around:"סביבה" },
+  { id:216, name:"פיצה (3 משולשים)", prep:"", p:9.0,  c:30.0, f:8.0,  fib:1.5, cal:230, tags:["treat"], unitG:390, unitLabel:"3 משולשים (390g)", meal:true, dairyTreat:true, hidden:true, defName:"הפיצה", around:"סביבה" },
 ];
 
 // תבניות שעות ארוחות לפי זמן אימון
