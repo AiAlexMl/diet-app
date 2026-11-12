@@ -11,6 +11,21 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://shapeat.co.il/menus/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://shapeat.co.il/menu-trainee/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://shapeat.co.il/menu-weight-loss/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://shapeat.co.il/menu-1500/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

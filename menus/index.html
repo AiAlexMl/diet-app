@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<!-- דף המרכז של סדרת התפריטים לדוגמה. נבנה ע"י internal/seo/hub.mjs, לא לערוך ביד. -->
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תפריטים לדוגמה: ימים מלאים עם מאקרו, מאוכל ישראלי | ShapEat</title>
+<link rel="icon" type="image/png" href="/brand/AVATAR-shapeat.png">
+<link rel="canonical" href="https://shapeat.co.il/menus/">
+<meta name="description" content="תפריטים יומיים לדוגמה מאוכל ישראלי, לפי מטרה ולפי קלוריות, עם חלבון, שומן ופחמימות לכל ארוחה. כל תפריט חושב לאדם מסוים, ואפשר לבנות אחד לפי הנתונים שלך בחינם.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="תפריטים לדוגמה: ימים מלאים עם מאקרו">
+<meta property="og:description" content="תפריטים יומיים מאוכל ישראלי, לפי מטרה ולפי קלוריות. כל אחד חושב לאדם מסוים.">
+<meta property="og:image" content="https://shapeat.co.il/brand/AVATAR-shapeat.jpg">
+<meta property="og:url" content="https://shapeat.co.il/menus/">
+<link rel="stylesheet" href="/brand/fonts/heebo.css">
+<style>
+  :root{ --accent:#4f46e5; --accent2:#7c3aed; --text:#1e2235; --text-sec:#4a4f63;
+         --border:#e6e8f0; --green:#047857; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Heebo','Segoe UI',system-ui,sans-serif;color:var(--text);
+    background:linear-gradient(135deg,#f0f2f8,#e8ecf7) fixed;line-height:1.75}
+  .wrap{max-width:780px;margin:0 auto;padding:24px 18px 60px}
+  a{color:var(--accent);font-weight:700}
+  .nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+  .logo{font-size:23px;font-weight:900;letter-spacing:-.5px;text-decoration:none;color:var(--text)}
+  .logo .eat{color:var(--accent)}
+  .head{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+    border-radius:18px;padding:30px 26px;margin-bottom:20px;box-shadow:0 6px 24px rgba(40,46,90,.12)}
+  .head h1{font-size:30px;font-weight:900;letter-spacing:-.5px;margin-bottom:10px}
+  .head p{color:#fff;opacity:.95;font-size:16px}
+  .card{background:#fff;border-radius:16px;padding:22px 24px;margin-bottom:16px;
+    box-shadow:0 4px 18px rgba(40,46,90,.08)}
+  .card.warn{background:#fff8f0;border:1.5px solid #f0c89a}
+  h2{font-size:21px;font-weight:800;margin-bottom:10px;color:var(--text)}
+  h3{font-size:17px;font-weight:800;margin:16px 0 6px;color:var(--text)}
+  p,li,td,th{font-size:16px;color:var(--text-sec)}
+  ul{padding-inline-start:22px;margin-top:6px}
+  li{margin-bottom:6px}
+  b{color:var(--text)}
+  .meal{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .meal-head{display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:10px;gap:10px}
+  .meal-name{font-size:17px;font-weight:800;color:var(--text)}
+  .meal-cal{font-size:14px;font-weight:700;color:var(--green);white-space:nowrap}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:4px 0}
+  .row .amt{color:#6b7186;font-size:15px;white-space:nowrap}
+  .salad-parts{font-size:14px;color:#6b7186;padding-inline-start:4px}
+  .meal-macro{font-size:13px;color:#6b7186;margin-top:8px;border-top:1px dashed var(--border);padding-top:8px}
+  .tbl{width:100%;border-collapse:collapse;margin-top:8px}
+  .tbl th,.tbl td{text-align:right;padding:9px 6px;border-bottom:1px solid var(--border)}
+  .tbl th{font-weight:800;color:var(--text);font-size:15px}
+  .cta{display:block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;
+    font-weight:800;font-size:17px;padding:15px 20px;border-radius:12px;margin-top:14px}
+  .note{font-size:13px;color:#5f6675;text-align:center;margin-top:10px}
+  .disc{font-size:14px;color:#4a4f63;background:#fff;border:1.5px solid var(--border);
+    border-radius:12px;padding:16px 18px;margin-top:22px}
+  .foot{font-size:13px;color:#5f6675;text-align:center;margin-top:22px}
+  .foot a{color:#5f6675;font-weight:600;margin:0 6px}
+  .hub-grid{display:grid;gap:12px;margin-top:6px}
+  .hub-card{display:block;border:1px solid var(--border);border-radius:12px;padding:14px 16px;
+    text-decoration:none;font-weight:400;color:var(--text)}
+  .hub-card:hover,.hub-card:focus-visible{border-color:var(--accent)}
+  .hub-name{display:block;font-size:17px;font-weight:800;color:var(--accent)}
+  .hub-who{display:block;font-size:15px;color:var(--text-sec);margin-top:2px}
+  .hub-num{display:block;font-size:14px;font-weight:700;color:var(--green);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <a class="logo" href="/">Shap<span class="eat">Eat</span></a>
+    <a href="/">בנו תפריט משלכם ←</a>
+  </nav>
+
+  <div class="head">
+    <h1>תפריטים לדוגמה</h1>
+    <p>ימים שלמים מאוכל ישראלי רגיל, עם חלבון, שומן ופחמימות לכל ארוחה.</p>
+  </div>
+
+  <div class="card">
+    <p>אף תפריט כאן לא נכתב ביד. <b>מנוע ShapEat חישב כל אחד מהם לאדם מסוים</b>, לפי גובה,
+      משקל, גיל, מטרה ואימונים.</p>
+    <p style="margin-top:10px">לכן כל תפריט הוא דוגמה, ולא תפריט שמתאים לכולם: <b>אותו מספר
+      קלוריות יכול להיות גירעון אצל אחד ותחזוקה אצל אחר</b>.</p>
+    <a class="cta" href="/">לבנות תפריט לפי הנתונים שלי ←</a>
+    <p class="note">בחינם, בלי הרשמה, ולוקח פחות מדקה.</p>
+  </div>
+
+  <div class="card">
+    <h2>לפי מטרה</h2>
+    <div class="hub-grid">
+      <a class="hub-card" href="/menu-weight-loss/">
+        <span class="hub-name">תפריט לירידה במשקל לגבר</span>
+        <span class="hub-who">גבר שמתחיל לרדת במשקל, לא מתאמן</span>
+        <span class="hub-num">2,058 קלוריות · 128 גרם חלבון</span>
+      </a>
+      <a class="hub-card" href="/menu-trainee/">
+        <span class="hub-name">תפריט תזונה למתאמן</span>
+        <span class="hub-who">גבר שמתאמן בצהריים, מטרת שמירה</span>
+        <span class="hub-num">2,537 קלוריות · 158 גרם חלבון</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>לפי קלוריות</h2>
+    <div class="hub-grid">
+      <a class="hub-card" href="/menu-1500/">
+        <span class="hub-name">תפריט 1500 קלוריות</span>
+        <span class="hub-who">אישה בחיטוב, לא מתאמנת</span>
+        <span class="hub-num">1,498 קלוריות · 120 גרם חלבון</span>
+      </a>
+      <a class="hub-card" href="/menu-1800/">
+        <span class="hub-name">תפריט 1800 קלוריות</span>
+        <span class="hub-who">אישה מתאמנת, מטרת שמירה</span>
+        <span class="hub-num">1,790 קלוריות · 124 גרם חלבון</span>
+      </a>
+      <a class="hub-card" href="/menu-2000/">
+        <span class="hub-name">תפריט 2000 קלוריות</span>
+        <span class="hub-who">גבר בחיטוב, מתאמן</span>
+        <span class="hub-num">2,003 קלוריות · 188 גרם חלבון</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="disc">
+    <b>הבהרה.</b> ShapEat מספק מידע כללי ותפריטים לדוגמה <b>למבוגרים בריאים מגיל 18</b>,
+    ואינו תחליף לייעוץ של רופא, דיאטן או תזונאי. החישוב מבוסס על נוסחת Harris-Benedict
+    והוא הערכה בלבד. במצב רפואי כלשהו, בנטילת תרופות קבועות, בהיריון או בהנקה יש להתייעץ
+    עם איש מקצוע לפני שינוי תזונתי. כל שימוש באחריות המשתמש/ת בלבד.
+  </div>
+
+  <div class="foot">
+    <a href="/">האפליקציה</a>·<a href="/terms.html">תנאי שימוש</a>·<a href="/privacy.html">פרטיות</a>·<a href="/accessibility.html">נגישות</a>
+  </div>
+</div>
+</body>
+</html>
