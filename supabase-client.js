@@ -1490,6 +1490,20 @@
 
   // יום ראשון של שימוש נרשם; הבאנר יופיע רק מהיום השני / השלמת יום
   if (!lsGet('shapeat-first-seen')) lsSet('shapeat-first-seen', todayStr());
+
+  // ── day_opened (24/11/2026): חזרה ליום שמור, פעם אחת לתאריך לכל מכשיר ──
+  // עד כאן חזרה של משתמשת אנונימית לא השאירה שום עקבות: ui.js משחזר את היום ומציג אותו
+  // לפני שהקובץ הזה נטען, ו-menu_built נרשם רק בבנייה. ב-20-23/11 היו 6 ביקורים ואפס אירועים,
+  // ולא הייתה דרך לדעת אם זו משתמשת שחוזרת לתפריט שלה. ⇐ "חזרה" נמדדת בשרת לפי anon_id:
+  // כל אירוע מאותו מכשיר בתאריך מאוחר מהבנייה הראשונה (internal/queries/retention.sql).
+  // DAY קיים כאן = נפתח יום (שוחזר, או נבנה מחדש אחרי ארוחה-פינוק ב-ui.js, בלי העטיפה).
+  try {
+    // ⚠️ DAY הוא `let` ב-ui.js ⇐ לא נמצא על window; גישה ישירה (typeof מגן אם ui.js לא נטען)
+    if (typeof DAY !== 'undefined' && DAY && DAY.meals && lsGet('shapeat-evt-open') !== todayStr()) {
+      lsSet('shapeat-evt-open', todayStr());
+      track('day_opened');
+    }
+  } catch (e) {}
   injectAccountBtn();
   setTimeout(maybeShowBanner, 1500);
 
